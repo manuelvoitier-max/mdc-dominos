@@ -322,20 +322,20 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, mdcPoints, wi
                 </div>
             )}
             <div className="relative">
-                <div className={`w-24 h-24 rounded-full border-4 flex items-center justify-center bg-zinc-950 transition-all duration-500 ${active ? 'border-red-600 shadow-[0_0_30px_rgba(220,38,38,0.5)]' : 'border-zinc-700 shadow-xl'}`}>
-                    {isBot ? <Wifi size={36} className={active ? "text-red-500" : "text-zinc-600"} /> : <div className={active ? "text-red-500" : "text-zinc-500"}>{getAvatarIcon(equippedAvatar, 36)}</div>}
+                <div className={`w-16 h-16 md:w-24 md:h-24 rounded-full border-4 flex items-center justify-center bg-zinc-950 transition-all duration-500 ${active ? 'border-red-600 shadow-[0_0_30px_rgba(220,38,38,0.5)]' : 'border-zinc-700 shadow-xl'}`}>
+                    {isBot ? <Wifi size={24} className={`md:w-9 md:h-9 ${active ? "text-red-500" : "text-zinc-600"}`} /> : <div className={active ? "text-red-500" : "text-zinc-500"}>{getAvatarIcon(equippedAvatar, 24, "md:w-9 md:h-9")}</div>}
                     {active && <div className="absolute -top-3 -right-1 bg-red-600 text-white text-[9px] font-black px-2 py-0.5 rounded uppercase shadow-lg">JOUE</div>}
                 </div>
-                <div className="absolute -bottom-1 -left-1 w-10 h-10 bg-white text-black rounded-full border-4 border-zinc-950 flex items-center justify-center shadow-lg"><span className="font-black text-sm">{cardsCount}</span></div>
+                <div className="absolute -bottom-1 -left-1 w-8 h-8 md:w-10 md:h-10 bg-white text-black rounded-full border-4 border-zinc-950 flex items-center justify-center shadow-lg"><span className="font-black text-xs md:text-sm">{cardsCount}</span></div>
             </div>
-            <div className={`flex flex-col ${position === 'top-left' ? 'items-start' : 'items-end'} bg-zinc-900/90 backdrop-blur-xl px-5 py-3 rounded-lg border border-zinc-700 shadow-2xl min-w-[140px]`}>
-                <span className={`font-sans font-bold text-xs tracking-widest uppercase mb-1 flex items-center gap-2 ${isVip ? 'text-yellow-400' : 'text-white'}`}>{isVip && <Crown size={12} className="text-yellow-400 fill-yellow-400" />}{name}</span>
+            <div className={`flex flex-col ${position === 'top-left' ? 'items-start' : 'items-end'} bg-zinc-900/90 backdrop-blur-xl px-3 py-2 md:px-5 md:py-3 rounded-lg border border-zinc-700 shadow-2xl min-w-[100px] md:min-w-[140px]`}>
+                <span className={`font-sans font-bold text-[10px] md:text-xs tracking-widest uppercase mb-1 flex items-center gap-2 ${isVip ? 'text-yellow-400' : 'text-white'}`}>{isVip && <Crown size={10} className="md:w-3 md:h-3 text-yellow-400 fill-yellow-400" />}{name}</span>
                 <div className="flex items-center gap-3">
-                    <div className="flex flex-col items-center"><span className="text-[8px] text-green-500 font-black uppercase">Parties</span><span className="text-4xl leading-none font-mono font-black text-white">{wins}</span></div>
-                    <div className="w-[1px] h-8 bg-zinc-700"></div>
-                    <div className="flex flex-col items-center"><span className="text-[8px] text-yellow-500 font-black uppercase tracking-tighter text-center">Score</span><span className="text-xl leading-none font-mono font-black text-yellow-500">{mdcPoints}</span></div>
+                    <div className="flex flex-col items-center"><span className="text-[6px] md:text-[8px] text-green-500 font-black uppercase">Parties</span><span className="text-2xl md:text-4xl leading-none font-mono font-black text-white">{wins}</span></div>
+                    <div className="w-[1px] h-6 md:h-8 bg-zinc-700"></div>
+                    <div className="flex flex-col items-center"><span className="text-[6px] md:text-[8px] text-yellow-500 font-black uppercase tracking-tighter text-center">Score</span><span className="text-lg md:text-xl leading-none font-mono font-black text-yellow-500">{mdcPoints}</span></div>
                 </div>
-                {isBoude && <div className="mt-2 text-white bg-red-600 font-black text-[10px] uppercase tracking-widest animate-pulse px-2 py-0.5 rounded">BOUDÉ !!</div>}
+                {isBoude && <div className="mt-2 text-white bg-red-600 font-black text-[8px] md:text-[10px] uppercase tracking-widest animate-pulse px-2 py-0.5 rounded">BOUDÉ !!</div>}
             </div>
         </div>
     );
@@ -422,12 +422,12 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable }) => {
     const filteredTables = MOCK_TABLES.filter(t => filterStake === 'all' || t.stake === filterStake);
 
     return (
-        <div className="flex flex-col h-full p-6 relative bg-zinc-950 overflow-y-auto text-white font-sans">
+        <div className="flex flex-col h-full p-4 md:p-6 relative bg-zinc-950 overflow-y-auto text-white font-sans">
             <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><ChevronLeft size={32} /></button>
             <div className="flex-1 max-w-3xl mx-auto w-full pt-8 pb-12">
                 <div className="flex justify-between items-end mb-8">
                     <div>
-                        <h2 className="text-4xl font-black uppercase tracking-tighter italic">SALON <span className="text-green-500">JEU</span></h2>
+                        <h2 className="text-2xl md:text-4xl font-black uppercase tracking-tighter italic">SALON <span className="text-green-500">JEU</span></h2>
                         <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mt-1">Rejoignez une table ou créez la vôtre</p>
                     </div>
                     <Button onClick={onCreateTable} className="text-xs py-3 px-5"><Settings size={14} /> CRÉER UNE TABLE</Button>
@@ -523,7 +523,7 @@ const LoginScreen = ({ onLogin }) => {
 const HomeScreen = ({ onNavigate, user }) => {
   const modes = [ { id: 'solo', title: 'Entraînement', desc: 'Contre IA', icon: User, target: 'setup', config: { mode: 'solo' } }, { id: 'online', title: 'Partie Rapide', desc: 'Multijoueur', icon: Wifi, target: 'lobby' } ];
   return (
-    <div className="flex flex-col h-full p-6 bg-[#09090b] relative text-white font-sans">
+    <div className="flex flex-col h-full p-4 md:p-6 bg-[#09090b] relative text-white font-sans">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_#27272a_0%,_#09090b_60%)] opacity-80 pointer-events-none"></div>
       <div className="relative z-10 flex justify-between items-start mb-6">
         <div className="flex flex-col">
@@ -531,7 +531,7 @@ const HomeScreen = ({ onNavigate, user }) => {
               <div className="w-10 h-10 bg-red-600 rounded flex items-center justify-center shadow-lg transform -skew-x-12">
                   <Logo972 className="w-6 h-6 text-white skew-x-12" />
               </div>
-              <h1 className="text-2xl font-black text-white tracking-tighter italic">MDC <span className="text-red-600">DOMINOS</span></h1>
+              <h1 className="text-xl md:text-2xl font-black text-white tracking-tighter italic">MDC <span className="text-red-600">DOMINOS</span></h1>
           </div>
           <p className={`text-[10px] uppercase tracking-[0.3em] font-bold ml-1 flex items-center gap-2 ${user.isVip ? 'text-yellow-400' : 'text-zinc-500'}`}>{user.isVip && <Crown size={12} className="fill-current" />} Bonjour, {user.pseudo}</p>
         </div>
@@ -592,7 +592,7 @@ const ShopScreen = ({ onBack, user, onUpdateUser }) => {
     };
     const renderItems = (type) => ( <div className="grid grid-cols-2 gap-6 mt-8"> {MOCK_DB.items.filter(i => i.type === type).map(item => { const owned = user.inventory.includes(item.id); const equipped = (type === 'skin' ? user.equippedSkin : type === 'board' ? user.equippedBoard : user.equippedAvatar) === item.id; return ( <div key={item.id} className={`p-4 rounded-xl border ${equipped && type !== 'phrase' ? 'border-green-500 bg-green-500/10' : 'border-zinc-800 bg-zinc-900'} flex flex-col justify-between gap-4 relative overflow-hidden`}> <div className="flex items-center gap-4 relative z-10"> {type === 'skin' ? ( <div className={`w-12 h-6 rounded flex border ${item.color}`}> <div className="flex-1 border-r border-current/20"></div> <div className="flex-1"></div> </div> ) : type === 'board' ? ( <div className={`w-12 h-8 rounded border border-white/20 ${item.style}`}></div> ) : type === 'grade' ? ( <div className="w-12 h-12 rounded bg-yellow-600 flex items-center justify-center text-xl shadow-lg border border-yellow-400"><Crown size={24} className="text-white"/></div> ) : type === 'legend' ? ( <div className="w-12 h-12 rounded bg-zinc-900 flex items-center justify-center text-xl shadow-lg border border-yellow-600 text-yellow-500"><Crown size={24} className="text-yellow-500" /></div> ) : type === 'avatar' ? ( <div className="w-12 h-12 rounded bg-zinc-800 flex items-center justify-center text-xl shadow-lg border border-zinc-700"> {getAvatarIcon(item.id, 24, "text-zinc-400")} </div> ) : ( <div className="w-12 h-12 rounded bg-black flex items-center justify-center text-xl">{item.text.split(' ').pop().slice(0,2)}</div> )} <div className="text-left"> <div className="font-bold text-sm text-white uppercase leading-tight">{item.name}</div> {type === 'phrase' && <div className="text-[10px] text-zinc-400 italic mt-1">"{item.text}"</div>} {!owned ? ( <div className="flex flex-col items-start"> <div className="text-xs text-purple-400 font-mono flex items-center gap-1 mt-1"><Gem size={10}/> {item.price}</div> <span className="text-[9px] text-zinc-500 uppercase font-black">À vie</span> </div> ) : ( <div className="flex items-center gap-1 text-[10px] text-green-400 font-bold mt-1"> <CheckCircle size={10} /> POSSÉDÉ </div> )} </div> </div> <Button onClick={() => buyItem(item)} className={`py-2 px-4 text-xs w-full ${owned ? (equipped && type !== 'phrase' && type !== 'grade' && type !== 'legend' ? 'bg-green-600 border-green-500' : 'bg-zinc-700 border-zinc-600') : type === 'legend' ? 'bg-gradient-to-r from-yellow-600 to-amber-800 border-yellow-500 text-white' : 'bg-purple-600 border-purple-500'}`}> {owned ? (type === 'phrase' || type === 'grade' || type === 'legend' ? 'POSSÉDÉ' : equipped ? 'ÉQUIPÉ' : 'METTRE') : 'ACHETER'} </Button> </div> ) })} </div> );
     return (
-        <div className="flex flex-col h-full p-6 relative bg-[#09090b] overflow-y-auto text-white font-sans">
+        <div className="flex flex-col h-full p-4 md:p-6 relative bg-[#09090b] overflow-y-auto text-white font-sans">
             {showingAd && <AdOverlay onClose={() => setShowingAd(false)} onReward={handleAdReward} />}
             <div className="flex justify-between items-center mb-6"><button onClick={onBack} className="text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><ChevronLeft size={32} /></button><div className="flex gap-2 bg-zinc-900 p-1 rounded-lg border border-zinc-800 overflow-x-auto custom-scrollbar"><button onClick={() => setTab('coins')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'coins' ? 'bg-yellow-500 text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Pièces</button><button onClick={() => setTab('gems')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'gems' ? 'bg-purple-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Banque</button><button onClick={() => setTab('vip')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'vip' ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>VIP</button><button onClick={() => setTab('legends')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'legends' ? 'bg-gradient-to-r from-zinc-800 to-black text-yellow-500 border border-yellow-600 shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Légendes</button><button onClick={() => setTab('grades')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'grades' ? 'bg-orange-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Grades</button><button onClick={() => setTab('avatars')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'avatars' ? 'bg-blue-500 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Avatars</button><button onClick={() => setTab('skins')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'skins' ? 'bg-cyan-500 text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Dominos</button><button onClick={() => setTab('boards')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'boards' ? 'bg-green-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Tapis</button><button onClick={() => setTab('phrases')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'phrases' ? 'bg-red-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Paroles</button></div><div className="flex items-center gap-2 bg-purple-900/30 px-3 py-1 rounded-full border border-purple-500/30 whitespace-nowrap"><Gem size={14} className="text-purple-400"/> <span className="font-mono font-bold text-purple-200">{user.wallet.gems}</span></div></div>
             <div className="flex-1 max-w-4xl mx-auto w-full pt-4 pb-12">
@@ -624,10 +624,10 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
   useEffect(() => { setTarget(format === 'manches' ? 3 : 15); }, [format]);
   const handleStart = () => { if (difficulty === 'expert' && !hasExpertLicense) { alert("Niveau Expert verrouillé ! Achetez la Licence Pro en boutique."); return; } if (difficulty === 'legend' && !hasManX) { alert("Niveau Légende verrouillé ! Achetez Man'X en boutique."); return; } if(target <= 0) { alert("L'objectif doit être supérieur à 0 !"); return; } if(stake <= 0) { alert("La mise doit être supérieure à 0 !"); return; } onStart({ format, target, stake, currency: 'gold', difficulty }); };
   return (
-    <div className="flex flex-col h-full p-6 relative bg-zinc-950 overflow-y-auto text-white text-center font-sans">
+    <div className="flex flex-col h-full p-4 md:p-6 relative bg-zinc-950 overflow-y-auto text-white text-center font-sans">
       <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><ChevronLeft size={32} /></button>
       <div className="flex-1 flex flex-col items-center max-w-lg mx-auto w-full pt-8 pb-12 text-center">
-        <h2 className="text-4xl font-black mb-8 uppercase tracking-tighter italic">{mode === 'multi' ? 'CRÉER' : 'CONFIG'} <span className="text-red-600">TABLE</span></h2>
+        <h2 className="text-2xl md:text-4xl font-black mb-8 uppercase tracking-tighter italic">{mode === 'multi' ? 'CRÉER' : 'CONFIG'} <span className="text-red-600">TABLE</span></h2>
         
         {/* AJOUT: Section Configuration Salon (Public/Privé) */}
         {mode === 'multi' && (
@@ -964,7 +964,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
       )}
 
       {/* HEADER */}
-      <div className="relative z-[60] flex justify-between items-center p-4 bg-black/40 backdrop-blur-md border-b border-white/5 shadow-2xl">
+      <div className="relative z-[60] flex justify-between items-center p-2 md:p-4 bg-black/40 backdrop-blur-md border-b border-white/5 shadow-2xl">
          <Button variant="ghost" onClick={onExit}><X /></Button>
          <div className="flex flex-col items-center">
              <div className="relative text-center"><span className="text-5xl font-black font-mono text-white drop-shadow-md">{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span></div>
@@ -1034,7 +1034,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
       </div>
       
       {/* MAIN JOUEUR */}
-      <div className="h-40 relative bg-gradient-to-t from-black via-black/80 to-transparent flex items-end pb-12 px-6 overflow-visible z-[100]">
+      <div className="h-32 md:h-40 relative bg-gradient-to-t from-black via-black/80 to-transparent flex items-end pb-12 px-2 md:px-6 overflow-visible z-[100]">
          
          {/* COIN BAS GAUCHE - CHAT */}
          <div className="w-48 flex items-end pb-4 relative pointer-events-auto">
@@ -1047,7 +1047,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
              
              {/* LISTE DES PHRASES */}
              {showChat && (
-                 <div className="absolute bottom-16 left-0 w-64 bg-zinc-900 border-2 border-zinc-700 rounded-2xl p-2 shadow-2xl animate-in slide-in-from-bottom-2 pointer-events-auto">
+                 <div className="absolute bottom-20 left-0 w-64 bg-zinc-900 border-2 border-zinc-700 rounded-2xl p-2 shadow-2xl animate-in slide-in-from-bottom-2 pointer-events-auto">
                      <h3 className="text-[10px] font-black uppercase text-zinc-500 mb-2 px-2">Vos Phrases</h3>
                      <div className="flex flex-col gap-1 max-h-48 overflow-y-auto custom-scrollbar">
                          {ownedPhrases.length > 0 ? ownedPhrases.map(phrase => (
@@ -1428,8 +1428,8 @@ const App = () => {
 
 
   return (
-    <div className="w-full h-screen bg-[#020617] text-white overflow-hidden select-none flex justify-center items-center">
-      <div className="w-full h-full max-w-[900px] max-h-[650px] sm:border sm:border-slate-800 sm:rounded-3xl shadow-[0_50px_100px_rgba(0,0,0,0.8)] bg-slate-950 relative overflow-hidden flex flex-col ring-1 ring-white/10 text-white">
+    <div className="w-full h-[100dvh] bg-[#020617] text-white overflow-hidden select-none flex justify-center items-center">
+      <div className="w-full h-full sm:max-w-[900px] sm:max-h-[650px] sm:border sm:border-slate-800 sm:rounded-3xl shadow-[0_50px_100px_rgba(0,0,0,0.8)] bg-slate-950 relative overflow-hidden flex flex-col ring-1 ring-white/10 text-white">
         {screen === 'login' && <LoginScreen onLogin={handleLogin} />}
         
         {screen === 'home' && currentUser && <HomeScreen user={currentUser} onNavigate={(s, c) => { 
