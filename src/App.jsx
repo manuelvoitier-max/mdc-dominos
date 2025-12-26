@@ -962,6 +962,13 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   const playTile = (id, tile, side) => {
     const playerName = gameState.players[id].name;
     addLog({ player: playerName, action: 'Posé', info: `[${tile.v1}|${tile.v2}]` });
+    
+    // Detect win before state update to set side-effect state
+    const isWin = gameState.players[id].hand.length === 1 && gameState.players[id].hand[0].id === tile.id;
+    if (isWin) {
+        setWinningInfo({ winnerId: id, winningTile: tile });
+    }
+
     setGameState(prev => {
       let newBoard = [...prev.board];
       let newEnds = prev.ends ? { ...prev.ends } : { left: null, right: null };
@@ -973,7 +980,21 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
         else { placed.flipped = (tile.v2 === newEnds.right); newEnds.right = placed.flipped ? tile.v1 : tile.v2; newBoard.push(placed); }
       }
       const newPlayers = prev.players.map(p => p.id === id ? { ...p, hand: p.hand.filter(h => h.id !== tile.id), isBoude: false } : p);
-      if (newPlayers[id].hand.length === 0) return resolvePartieEnd(prev, newPlayers, id);
+      
+      if (newPlayers[id].hand.length === 0) {
+          // Instead of resolving immediately, go to animation state
+          return {
+              ...prev,
+              players: newPlayers,
+              board: newBoard,
+              ends: newEnds,
+              status: 'winning_animation',
+              winnerId: id,
+              pendingChoice: null,
+              mandatoryTile: null
+          };
+      }
+      
       return { ...prev, players: newPlayers, board: newBoard, ends: newEnds, turnIndex: (prev.turnIndex + 2) % 3, pendingChoice: null, mandatoryTile: null };
     });
     setTimeLeft(15);
