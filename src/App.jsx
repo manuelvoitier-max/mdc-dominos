@@ -739,26 +739,18 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   const [adWatchedForThisWin, setAdWatchedForThisWin] = useState(false);
   const [showAdOverlay, setShowAdOverlay] = useState(false);
   const [winningInfo, setWinningInfo] = useState(null); // { winnerId, winningTile }
-  const [orientation, setOrientation] = useState(typeof window !== 'undefined' && window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
-
+  
+  // MODIFICATION: Suppression de l'état 'orientation' car on ne force plus le mode paysage
+  
   const boardRef = useRef(null);
   const containerRef = useRef(null);
   const paidRef = useRef(false);
-
-  // AJOUT: Gestion de l'orientation
-  useEffect(() => {
-    const handleResize = () => {
-        setOrientation(window.innerWidth > window.innerHeight ? 'landscape' : 'portrait');
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
 
   // RECUPERATION DES PHRASES POSSEDEES
   const ownedPhrases = MOCK_DB.items.filter(i => i.type === 'phrase' && user.inventory.includes(i.id));
 
   // RÉCUPÉRATION DU BOARD ÉQUIPÉ
-  const currentBoard = MOCK_DB.items.find(i => i.id === user.equippedBoard) || MOCK_DB.items.find(i => i.id === 'board_classic');
+  const currentBoard = MOCK_DB.items.find(i => i.id === user.equippedBoard) || MOCK_DB.items.find(i => i.id === 'board_classic');
 
   useEffect(() => { startRound(1, 1); }, []);
 
@@ -817,15 +809,15 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           
           // MODIFICATION: Facteurs de sécurité augmentés pour utiliser plus d'espace (95% largeur)
           const isLandscape = containerWidth > containerHeight;
-          const safeWidth = containerWidth * (isLandscape ? 0.98 : 0.85);
-          const safeHeight = containerHeight * (isLandscape ? 0.85 : 0.65); 
+          const safeWidth = containerWidth * (isLandscape ? 0.95 : 0.85);
+          const safeHeight = containerHeight * (isLandscape ? 0.85 : 0.60); 
           
           setZoomScale(Math.min(safeWidth / boardWidth, safeHeight / boardHeight, 1));
         }
     };
     setTimeout(calculateZoom, 50);
     // On garde gameState.board comme dépendance pour recalculer à chaque coup
-  }, [gameState.board, orientation]); 
+  }, [gameState.board]); 
 
   const addLog = (log) => {
     setGameState(prev => ({
