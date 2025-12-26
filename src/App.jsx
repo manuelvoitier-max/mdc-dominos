@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Trophy, Coins, Settings, Wifi, ChevronLeft, X, Crown, ShoppingBag, Gem, AlertCircle, Maximize, Lock, TrendingUp, Gift, Play, Loader, Snowflake, MessageCircle, Camera, Zap, CheckCircle, Award, Star, LogIn, LogOut } from 'lucide-react';
+import { User, Trophy, Coins, Settings, Wifi, ChevronLeft, X, Crown, ShoppingBag, Gem, AlertCircle, Maximize, Lock, TrendingUp, Gift, Play, Loader, Snowflake, MessageCircle, Camera, Zap, CheckCircle, Award, Star } from 'lucide-react';
 
 /**
  * --- ASSETS ---
@@ -316,9 +316,9 @@ const getAvatarIcon = (avatarId, size = 36, className = "") => {
 const PlayerAvatar = ({ name, active, isBot, position, cardsCount, mdcPoints, wins, isBoude, chatMessage, isVip, equippedAvatar }) => {
     const getPosStyle = () => {
         switch(position) {
-          case 'top-left': return { top: '2px', left: '2px', flexDirection: 'row' }; // Marges réduites mobile
-          case 'top-right': return { top: '2px', right: '2px', flexDirection: 'row-reverse' };
-          case 'bottom-right': return { bottom: '2px', right: '2px', flexDirection: 'row-reverse' };
+          case 'top-left': return { top: '8px', left: '8px', flexDirection: 'row' }; // Marges réduites
+          case 'top-right': return { top: '8px', right: '8px', flexDirection: 'row-reverse' };
+          case 'bottom-right': return { bottom: '8px', right: '8px', flexDirection: 'row-reverse' };
           default: return {};
         }
     };
@@ -331,7 +331,7 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, mdcPoints, wi
             : "top-full mt-2 right-0";
 
     return (
-        <div className={`absolute flex gap-2 md:gap-4 transition-all duration-300 items-center ${active ? 'scale-105 opacity-100 z-[100]' : 'opacity-80 scale-100'} scale-[0.65] md:scale-100 origin-${position.includes('left') ? 'top-left' : 'top-right'}`} style={style}>
+        <div className={`absolute flex gap-2 md:gap-4 transition-all duration-300 items-center ${active ? 'scale-105 opacity-100 z-[100]' : 'opacity-80 scale-100'} scale-75 md:scale-100 origin-${position.includes('left') ? 'top-left' : 'top-right'}`} style={style}>
             {chatMessage && (
                 <div className={`absolute ${bubbleStyle} z-[150] animate-in slide-in-from-bottom-2 fade-in duration-300 w-max`}>
                     <div className="bg-white text-black font-black text-xs md:text-sm px-3 py-2 rounded-xl shadow-2xl border-2 border-black relative max-w-[150px] md:max-w-[200px] text-center uppercase tracking-tight">
@@ -613,7 +613,7 @@ const ShopScreen = ({ onBack, user, onUpdateUser }) => {
     };
     const renderItems = (type) => ( <div className="grid grid-cols-2 gap-6 mt-8"> {MOCK_DB.items.filter(i => i.type === type).map(item => { const owned = user.inventory.includes(item.id); const equipped = (type === 'skin' ? user.equippedSkin : type === 'board' ? user.equippedBoard : user.equippedAvatar) === item.id; return ( <div key={item.id} className={`p-4 rounded-xl border ${equipped && type !== 'phrase' ? 'border-green-500 bg-green-500/10' : 'border-zinc-800 bg-zinc-900'} flex flex-col justify-between gap-4 relative overflow-hidden`}> <div className="flex items-center gap-4 relative z-10"> {type === 'skin' ? ( <div className={`w-12 h-6 rounded flex border ${item.color}`}> <div className="flex-1 border-r border-current/20"></div> <div className="flex-1"></div> </div> ) : type === 'board' ? ( <div className={`w-12 h-8 rounded border border-white/20 ${item.style}`}></div> ) : type === 'grade' ? ( <div className="w-12 h-12 rounded bg-yellow-600 flex items-center justify-center text-xl shadow-lg border border-yellow-400"><Crown size={24} className="text-white"/></div> ) : type === 'legend' ? ( <div className="w-12 h-12 rounded bg-zinc-900 flex items-center justify-center text-xl shadow-lg border border-yellow-600 text-yellow-500"><Crown size={24} className="text-yellow-500" /></div> ) : type === 'avatar' ? ( <div className="w-12 h-12 rounded bg-zinc-800 flex items-center justify-center text-xl shadow-lg border border-zinc-700"> {getAvatarIcon(item.id, 24, "text-zinc-400")} </div> ) : ( <div className="w-12 h-12 rounded bg-black flex items-center justify-center text-xl">{item.text.split(' ').pop().slice(0,2)}</div> )} <div className="text-left"> <div className="font-bold text-sm text-white uppercase leading-tight">{item.name}</div> {type === 'phrase' && <div className="text-[10px] text-zinc-400 italic mt-1">"{item.text}"</div>} {!owned ? ( <div className="flex flex-col items-start"> <div className="text-xs text-purple-400 font-mono flex items-center gap-1 mt-1"><Gem size={10}/> {item.price}</div> <span className="text-[9px] text-zinc-500 uppercase font-black">À vie</span> </div> ) : ( <div className="flex items-center gap-1 text-[10px] text-green-400 font-bold mt-1"> <CheckCircle size={10} /> POSSÉDÉ </div> )} </div> </div> <Button onClick={() => buyItem(item)} className={`py-2 px-4 text-xs w-full ${owned ? (equipped && type !== 'phrase' && type !== 'grade' && type !== 'legend' ? 'bg-green-600 border-green-500' : 'bg-zinc-700 border-zinc-600') : type === 'legend' ? 'bg-gradient-to-r from-yellow-600 to-amber-800 border-yellow-500 text-white' : 'bg-purple-600 border-purple-500'}`}> {owned ? (type === 'phrase' || type === 'grade' || type === 'legend' ? 'POSSÉDÉ' : equipped ? 'ÉQUIPÉ' : 'METTRE') : 'ACHETER'} </Button> </div> ) })} </div> );
     return (
-        <div className="flex flex-col h-full p-4 md:p-6 relative bg-[#09090b] overflow-y-auto text-white font-sans">
+        <div className="flex flex-col h-full p-4 md:p-6 relative bg-slate-950 overflow-y-auto text-white font-sans">
             {showingAd && <AdOverlay onClose={() => setShowingAd(false)} onReward={handleAdReward} />}
             <div className="flex justify-between items-center mb-6"><button onClick={onBack} className="text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><ChevronLeft size={32} /></button><div className="flex gap-2 bg-zinc-900 p-1 rounded-lg border border-zinc-800 overflow-x-auto custom-scrollbar"><button onClick={() => setTab('coins')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'coins' ? 'bg-yellow-500 text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Pièces</button><button onClick={() => setTab('gems')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'gems' ? 'bg-purple-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Banque</button><button onClick={() => setTab('vip')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'vip' ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>VIP</button><button onClick={() => setTab('legends')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'legends' ? 'bg-gradient-to-r from-zinc-800 to-black text-yellow-500 border border-yellow-600 shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Légendes</button><button onClick={() => setTab('grades')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'grades' ? 'bg-orange-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Grades</button><button onClick={() => setTab('avatars')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'avatars' ? 'bg-blue-500 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Avatars</button><button onClick={() => setTab('skins')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'skins' ? 'bg-cyan-500 text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Dominos</button><button onClick={() => setTab('boards')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'boards' ? 'bg-green-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Tapis</button><button onClick={() => setTab('phrases')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'phrases' ? 'bg-red-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Paroles</button></div><div className="flex items-center gap-2 bg-purple-900/30 px-3 py-1 rounded-full border border-purple-500/30 whitespace-nowrap"><Gem size={14} className="text-purple-400"/> <span className="font-mono font-bold text-purple-200">{user.wallet.gems}</span></div></div>
             <div className="flex-1 max-w-4xl mx-auto w-full pt-4 pb-12">
@@ -1272,7 +1272,7 @@ const MemberScreen = ({ onBack, user, onLogout }) => {
                     </div>
                     <div className="flex-1 relative z-10">
                         <div className="flex items-center gap-2">
-                             <h3 className={`text-2xl font-black uppercase ${user.isVip ? 'text-yellow-400' : 'text-white'}`}>{user.pseudo}</h3>
+                             <h3 className={`text-xl md:text-2xl font-black uppercase ${user.isVip ? 'text-yellow-400' : 'text-white'}`}>{user.pseudo}</h3>
                              {user.isVip && <span className="bg-yellow-500/20 text-yellow-500 text-[10px] font-black px-2 py-0.5 rounded uppercase border border-yellow-500/30">VIP</span>}
                         </div>
                         <span className="text-zinc-500 font-bold uppercase text-xs">{user.role === 'admin' ? 'Administrateur' : 'Membre du Club'}</span>
@@ -1297,9 +1297,9 @@ const MemberScreen = ({ onBack, user, onLogout }) => {
                           <TrendingUp size={14} /> Performance Globale
                       </h3>
                       <div className="grid grid-cols-3 gap-4 text-center mb-6">
-                          <div><div className="text-3xl font-mono font-black text-white">{user.stats.played}</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Jouées</div></div>
-                          <div><div className="text-3xl font-mono font-black text-green-500">{user.stats.won}</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Gagnées</div></div>
-                          <div><div className="text-3xl font-mono font-black text-white">{winRate}%</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Ratio</div></div>
+                          <div><div className="text-2xl md:text-3xl font-mono font-black text-white">{user.stats.played}</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Jouées</div></div>
+                          <div><div className="text-2xl md:text-3xl font-mono font-black text-green-500">{user.stats.won}</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Gagnées</div></div>
+                          <div><div className="text-2xl md:text-3xl font-mono font-black text-white">{winRate}%</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Ratio</div></div>
                       </div>
                       <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-green-500" style={{ width: `${winRate}%` }}></div></div>
                 </div>
