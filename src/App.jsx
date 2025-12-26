@@ -750,7 +750,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   const ownedPhrases = MOCK_DB.items.filter(i => i.type === 'phrase' && user.inventory.includes(i.id));
 
   // RÉCUPÉRATION DU BOARD ÉQUIPÉ
-  const currentBoard = MOCK_DB.items.find(i => i.id === user.equippedBoard) || MOCK_DB.items.find(i => i.id === 'board_classic');
+  const currentBoard = MOCK_DB.items.find(i => i.id === user.equippedBoard) || MOCK_DB.items.find(i => i.id === 'board_classic');
 
   useEffect(() => { startRound(1, 1); }, []);
 
@@ -1245,7 +1245,16 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
 
                 {/* NAVIGATION */}
                 {gameState.status === 'partie_over' || gameState.status === 'partie_draw' ? (
-                    <Button onClick={() => startRound(gameState.currentManche, gameState.currentPartie + 1, gameState.winnerId)} className="flex-1 py-3 text-sm text-blue-950">DONNE SUIVANTE</Button>
+                     <Button 
+                         onClick={() => startRound(
+                             gameState.currentManche, 
+                             gameState.currentPartie + 1, 
+                             gameState.winnerId !== null ? gameState.winnerId : -1
+                         )} 
+                         className="flex-1 py-3 text-sm text-blue-950"
+                     >
+                         DONNE SUIVANTE
+                     </Button>
                 ) : gameState.status === 'manche_over' ? (
                     <Button onClick={() => {
                         setGameState(prev => ({ ...prev, players: prev.players.map(p => ({ ...p, wins: 0, label: null })), mancheScoreMDC: null }));
@@ -1477,11 +1486,11 @@ const App = () => {
       updateUser({ ...currentUser, wallet: { ...currentUser.wallet, [currency]: currentUser.wallet[currency] + amount } });
       alert(`Gagné ! +${amount} ${currency}`);
   };
- 
+  
   const handleDoubleWin = (amount, currency) => {
        updateUser({ ...currentUser, wallet: { ...currentUser.wallet, [currency]: currentUser.wallet[currency] + amount } });
   };
- 
+  
   const handleLogout = () => {
       setCurrentUser(null);
       setScreen('login');
