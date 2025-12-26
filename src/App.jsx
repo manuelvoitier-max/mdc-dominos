@@ -818,7 +818,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           // AJOUT: En paysage, on utilise plus de hauteur car le header/footer sont petits
           const isLandscape = containerWidth > containerHeight;
           const safeWidth = containerWidth * (isLandscape ? 0.90 : 0.80);
-          const safeHeight = containerHeight * (isLandscape ? 0.75 : 0.60); 
+          const safeHeight = containerHeight * (isLandscape ? 0.70 : 0.60); 
           
           setZoomScale(Math.min(safeWidth / boardWidth, safeHeight / boardHeight, 1));
         }
@@ -989,18 +989,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
 
   return (
     <div className={`flex flex-col h-full relative overflow-hidden text-white font-sans ${currentBoard.style} transition-colors duration-500`}>
-      {/* OVERLAY ORIENTATION PORTRAIT - AJOUT */}
-      {orientation === 'portrait' && (
-          <div className="fixed inset-0 z-[1000] bg-black flex flex-col items-center justify-center p-6 text-center">
-              <svg viewBox="0 0 24 24" width="64" height="64" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-500 animate-spin mb-4" style={{ animationDuration: '3s' }}>
-                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                <path d="M3 3v5h5" />
-              </svg>
-              <h2 className="text-2xl font-black text-white uppercase italic mb-2">Tournez votre appareil</h2>
-              <p className="text-zinc-400">Ce jeu est optimisé pour le mode paysage.</p>
-          </div>
-      )}
-
       {showAdOverlay && <AdOverlay onClose={() => setShowAdOverlay(false)} onReward={onAdCompleted} />}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-20 mix-blend-overlay"></div>
       
@@ -1266,190 +1254,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   );
 };
 
-const MemberScreen = ({ onBack, user, onLogout }) => {
-    const winRate = user.stats.played > 0 ? ((user.stats.won / user.stats.played) * 100).toFixed(1) : "0.0";
-    const [rankingTab, setRankingTab] = useState('cochonsDonnes');
-
-    return (
-        <div className="flex flex-col h-full p-4 md:p-6 relative bg-[#09090b] overflow-y-auto text-white font-sans">
-            <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><ChevronLeft size={32} /></button>
-            
-            <div className="flex-1 flex flex-col items-center max-w-2xl mx-auto w-full pt-8 pb-12">
-                <h2 className="text-2xl md:text-4xl font-black mb-2 uppercase tracking-tighter text-center italic">ESPACE <span className="text-red-600">MEMBRE</span></h2>
-                <div className="w-16 h-1 bg-red-600 mb-8"></div>
-                
-                {/* PROFIL CARD */}
-                <div className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-6 flex items-center gap-6 shadow-xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-2 opacity-10"><User size={120}/></div>
-                    <div className="w-20 h-20 rounded bg-zinc-800 flex items-center justify-center border-2 border-zinc-700 relative">
-                        {getAvatarIcon(user.equippedAvatar, 40, "text-zinc-400")}
-                        {user.isVip && <div className="absolute -top-2 -right-2 bg-yellow-500 text-black p-1 rounded-full border-2 border-zinc-900"><Crown size={12} className="fill-current" /></div>}
-                    </div>
-                    <div className="flex-1 relative z-10">
-                        <div className="flex items-center gap-2">
-                             <h3 className={`text-xl md:text-2xl font-black uppercase ${user.isVip ? 'text-yellow-400' : 'text-white'}`}>{user.pseudo}</h3>
-                             {user.isVip && <span className="bg-yellow-500/20 text-yellow-500 text-[10px] font-black px-2 py-0.5 rounded uppercase border border-yellow-500/30">VIP</span>}
-                        </div>
-                        <span className="text-zinc-500 font-bold uppercase text-xs">{user.role === 'admin' ? 'Administrateur' : 'Membre du Club'}</span>
-                    </div>
-                </div>
-
-                 {/* PORTEFEUILLE */}
-                <div className="w-full grid grid-cols-2 gap-4 mb-6">
-                    <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col items-center justify-center shadow-lg">
-                        <div className="text-blue-400 font-black text-xs uppercase mb-1 flex items-center gap-1"><Gem size={12}/> Jetons</div>
-                        <span className="text-2xl font-mono font-black text-white">{user.wallet.gold.toLocaleString()}</span>
-                    </div>
-                    <div className="bg-zinc-900 border border-purple-900/30 p-4 rounded-xl flex flex-col items-center justify-center shadow-lg">
-                        <div className="text-purple-400 font-black text-xs uppercase mb-1 flex items-center gap-1"><Gem size={12}/> Gemmes</div>
-                        <span className="text-2xl font-mono font-black text-white">{user.wallet.gems.toLocaleString()}</span>
-                    </div>
-                </div>
-
-                {/* STATISTIQUES */}
-                <div className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl mb-8">
-                      <h3 className="text-xs font-black uppercase text-zinc-400 mb-6 flex items-center gap-2">
-                          <TrendingUp size={14} /> Performance Globale
-                      </h3>
-                      <div className="grid grid-cols-3 gap-4 text-center mb-6">
-                          <div><div className="text-2xl md:text-3xl font-mono font-black text-white">{user.stats.played}</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Jouées</div></div>
-                          <div><div className="text-2xl md:text-3xl font-mono font-black text-green-500">{user.stats.won}</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Gagnées</div></div>
-                          <div><div className="text-2xl md:text-3xl font-mono font-black text-white">{winRate}%</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Ratio</div></div>
-                      </div>
-                      <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-green-500" style={{ width: `${winRate}%` }}></div></div>
-                </div>
-
-                {/* RANKING MENSUEL */}
-                <div className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl mb-8">
-                    <h3 className="text-xs font-black uppercase text-zinc-400 mb-4 flex items-center gap-2"><Award size={14} /> Classement du Mois</h3>
-                    
-                    <div className="flex gap-2 mb-6 bg-zinc-950 p-1 rounded-lg">
-                        <button onClick={() => setRankingTab('cochonsDonnes')} className={`flex-1 py-2 rounded text-[10px] font-black uppercase transition-all ${rankingTab === 'cochonsDonnes' ? 'bg-red-600 text-white' : 'text-zinc-500 hover:text-white'}`}>🐷 Boucher</button>
-                        <button onClick={() => setRankingTab('cochonsPris')} className={`flex-1 py-2 rounded text-[10px] font-black uppercase transition-all ${rankingTab === 'cochonsPris' ? 'bg-blue-600 text-white' : 'text-zinc-500 hover:text-white'}`}>🛡️ Défense</button>
-                        <button onClick={() => setRankingTab('points')} className={`flex-1 py-2 rounded text-[10px] font-black uppercase transition-all ${rankingTab === 'points' ? 'bg-yellow-500 text-black' : 'text-zinc-500 hover:text-white'}`}>🏆 Score</button>
-                    </div>
-
-                    <div className="flex flex-col gap-3">
-                        {MOCK_RANKINGS[rankingTab].map((rank, i) => (
-                            <div key={i} className={`flex items-center justify-between p-3 rounded-xl border ${i === 0 ? 'bg-gradient-to-r from-yellow-900/20 to-transparent border-yellow-500/30' : 'bg-zinc-800/50 border-zinc-800'}`}>
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${i === 0 ? 'bg-yellow-500 text-black' : i === 1 ? 'bg-zinc-400 text-black' : i === 2 ? 'bg-orange-700 text-white' : 'bg-zinc-800 text-zinc-500'}`}>{i + 1}</div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 bg-zinc-800 rounded-full flex items-center justify-center border border-zinc-700">{getAvatarIcon(rank.avatar, 16, "text-zinc-400")}</div>
-                                        <span className={`font-bold text-sm ${rank.name === user.pseudo ? 'text-yellow-400' : 'text-white'}`}>{rank.name}</span>
-                                    </div>
-                                </div>
-                                <div className="text-right">
-                                    <div className="flex flex-col items-end">
-                                        <span className="font-mono font-black text-lg text-white">{rank.val}</span>
-                                        <span className="text-[10px] text-zinc-500 uppercase font-bold">
-                                            {rankingTab === 'cochonsDonnes' ? 'Donnés' : rankingTab === 'cochonsPris' ? 'Pris' : 'Pts'}
-                                        </span>
-                                        {rank.played !== undefined && (
-                                            <div className="flex items-center gap-2 mt-1 bg-black/20 px-2 py-0.5 rounded">
-                                                <span className="text-[8px] text-zinc-400">{rank.played} Part.</span>
-                                                <span className={`text-[8px] font-bold ${rank.winRate > 50 ? 'text-green-500' : 'text-zinc-500'}`}>{rank.winRate}% Vic.</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    <div className="mt-4 text-center text-[10px] text-zinc-600 italic">Classement mis à jour toutes les 24h.</div>
-                </div>
-
-                <Button variant="danger" onClick={onLogout} className="w-full py-4 border-2">
-                    DÉCONNEXION
-                </Button>
-            </div>
-        </div>
-    );
-};
-
-
-const RankingScreen = ({ onBack, user }) => {
-    const [rankingTab, setRankingTab] = useState('cochonsDonnes');
-
-    return (
-        <div className="flex flex-col h-full p-4 md:p-6 relative bg-zinc-950 overflow-y-auto text-white font-sans">
-            <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><ChevronLeft size={32} /></button>
-            <div className="flex-1 max-w-2xl mx-auto w-full pt-8 pb-12">
-                <div className="flex flex-col items-center mb-10">
-                    <h2 className="text-2xl md:text-4xl font-black uppercase tracking-tighter text-center italic">CLASSEMENT <span className="text-yellow-500">MENSUEL</span></h2>
-                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mt-1">Les meilleurs joueurs de la Martinique</p>
-                </div>
-
-                <div className="flex gap-2 mb-8 bg-zinc-900 p-1.5 rounded-xl border border-zinc-800">
-                    <button onClick={() => setRankingTab('cochonsDonnes')} className={`flex-1 py-4 rounded-lg text-xs font-black uppercase transition-all flex flex-col items-center gap-1 ${rankingTab === 'cochonsDonnes' ? 'bg-gradient-to-br from-red-600 to-red-800 text-white shadow-lg' : 'text-zinc-500 hover:text-white hover:bg-zinc-800'}`}>
-                        <span className="text-lg">🐷</span>
-                        <span>Boucher</span>
-                        <span className="text-[8px] opacity-60 font-normal capitalize">Le + de cochons</span>
-                    </button>
-                    <button onClick={() => setRankingTab('cochonsPris')} className={`flex-1 py-4 rounded-lg text-xs font-black uppercase transition-all flex flex-col items-center gap-1 ${rankingTab === 'cochonsPris' ? 'bg-gradient-to-br from-blue-600 to-blue-800 text-white shadow-lg' : 'text-zinc-500 hover:text-white hover:bg-zinc-800'}`}>
-                        <span className="text-lg">🛡️</span>
-                        <span>Défenseur</span>
-                        <span className="text-[8px] opacity-60 font-normal capitalize">Le - de cochons</span>
-                    </button>
-                    <button onClick={() => setRankingTab('points')} className={`flex-1 py-4 rounded-lg text-xs font-black uppercase transition-all flex flex-col items-center gap-1 ${rankingTab === 'points' ? 'bg-gradient-to-br from-yellow-500 to-yellow-700 text-black shadow-lg' : 'text-zinc-500 hover:text-white hover:bg-zinc-800'}`}>
-                        <span className="text-lg">🏆</span>
-                        <span>Scoreur</span>
-                        <span className="text-[8px] opacity-60 font-normal capitalize">Le + de points</span>
-                    </button>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                    {MOCK_RANKINGS[rankingTab].map((rank, i) => (
-                        <div key={i} className={`flex items-center justify-between p-4 rounded-2xl border transition-all hover:scale-[1.02] ${
-                            i === 0 ? 'bg-gradient-to-r from-yellow-900/40 to-transparent border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.2)]' :
-                            i === 1 ? 'bg-zinc-800/60 border-zinc-400/30' :
-                            i === 2 ? 'bg-orange-900/30 border-orange-500/30' :
-                            'bg-zinc-900/50 border-zinc-800'
-                        }`}>
-                            <div className="flex items-center gap-4">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-lg ${
-                                    i === 0 ? 'bg-yellow-500 text-black shadow-lg' :
-                                    i === 1 ? 'bg-zinc-400 text-black' :
-                                    i === 2 ? 'bg-orange-700 text-white' :
-                                    'bg-zinc-800 text-zinc-500 border border-zinc-700'
-                                }`}>
-                                    {i + 1}
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center border-2 border-zinc-700 shadow-md">
-                                        {getAvatarIcon(rank.avatar, 20, "text-zinc-400")}
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className={`font-black text-sm uppercase ${rank.name === user.pseudo ? 'text-yellow-400' : 'text-white'}`}>
-                                            {rank.name}
-                                        </span>
-                                        {i === 0 && <span className="text-[8px] text-yellow-500 font-bold uppercase tracking-widest">Champion en titre</span>}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <div className="flex flex-col items-end">
-                                    <span className={`font-mono font-black text-2xl ${i===0 ? 'text-yellow-500' : 'text-white'}`}>{rank.val}</span>
-                                    <span className="text-[9px] text-zinc-500 uppercase font-bold">
-                                        {rankingTab === 'cochonsDonnes' ? 'Donnés' : rankingTab === 'cochonsPris' ? 'Pris' : 'Pts'}
-                                    </span>
-                                    {rank.played !== undefined && (
-                                        <div className="flex items-center gap-2 mt-1 bg-black/20 px-2 py-0.5 rounded">
-                                            <span className="text-[8px] text-zinc-400">{rank.played} Part.</span>
-                                            <span className={`text-[8px] font-bold ${rank.winRate > 50 ? 'text-green-500' : 'text-zinc-500'}`}>{rank.winRate}% Vic.</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
 const App = () => {
   const [screen, setScreen] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
@@ -1483,7 +1287,7 @@ const App = () => {
 
   return (
     <div className="w-full h-[100dvh] bg-[#020617] text-white overflow-hidden select-none flex justify-center items-center">
-      <div className="w-full h-full sm:max-w-[900px] sm:max-h-[650px] sm:border sm:border-slate-800 sm:rounded-3xl shadow-[0_50px_100px_rgba(0,0,0,0.8)] bg-slate-950 relative overflow-hidden flex flex-col ring-1 ring-white/10 text-white">
+      <div className="w-full h-full lg:max-w-[900px] lg:max-h-[650px] lg:border lg:border-slate-800 lg:rounded-3xl shadow-[0_50px_100px_rgba(0,0,0,0.8)] bg-slate-950 relative overflow-hidden flex flex-col ring-1 ring-white/10 text-white">
         {screen === 'login' && <LoginScreen onLogin={handleLogin} />}
         
         {screen === 'home' && currentUser && <HomeScreen user={currentUser} onNavigate={(s, c) => { 
