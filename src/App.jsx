@@ -316,7 +316,7 @@ const getAvatarIcon = (avatarId, size = 36, className = "") => {
 const PlayerAvatar = ({ name, active, isBot, position, cardsCount, mdcPoints, wins, isBoude, chatMessage, isVip, equippedAvatar }) => {
     const getPosStyle = () => {
         switch(position) {
-          case 'top-left': return { top: '8px', left: '8px', flexDirection: 'row' };
+          case 'top-left': return { top: '8px', left: '8px', flexDirection: 'row' }; // Marges réduites
           case 'top-right': return { top: '8px', right: '8px', flexDirection: 'row-reverse' };
           case 'bottom-right': return { bottom: '8px', right: '8px', flexDirection: 'row-reverse' };
           default: return {};
@@ -751,8 +751,18 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   const containerRef = useRef(null);
   const paidRef = useRef(false);
 
-  // MODIFICATION: Suppression de l'écouteur de redimensionnement pour l'overlay
-  // useEffect(() => { ... }, []);
+  // AJOUT: Etat isPortrait pour la rotation
+  const [isPortrait, setIsPortrait] = useState(typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : false);
+
+  useEffect(() => {
+    const handleResize = () => {
+        setIsPortrait(window.innerHeight > window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    // Init check
+    handleResize();
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // RECUPERATION DES PHRASES POSSEDEES
   const ownedPhrases = MOCK_DB.items.filter(i => i.type === 'phrase' && user.inventory.includes(i.id));
@@ -811,22 +821,24 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
     const calculateZoom = () => {
         if (boardRef.current && containerRef.current) {
           const boardWidth = boardRef.current.scrollWidth;
-          const containerWidth = containerRef.current.clientWidth;
+          // MODIFICATION: Utilisation de dimensions en fonction de la rotation
+          // Si on est en portrait (mais jeu tourné), la largeur dispo est la hauteur de la fenetre
+          const containerWidth = isPortrait ? window.innerHeight : containerRef.current.clientWidth;
+          const containerHeight = isPortrait ? window.innerWidth : containerRef.current.clientHeight;
+
           const boardHeight = boardRef.current.scrollHeight;
-          const containerHeight = containerRef.current.clientHeight;
           
-          // MODIFICATION: Facteurs de sécurité augmentés pour utiliser plus d'espace
-          const isLandscape = containerWidth > containerHeight;
-          // On passe à 0.98 (largeur) et 0.85 (hauteur) pour le mode paysage
-          const safeWidth = containerWidth * (isLandscape ? 0.98 : 0.85);
-          const safeHeight = containerHeight * (isLandscape ? 0.85 : 0.65); 
+          // MODIFICATION: Facteurs de sécurité augmentés pour utiliser plus d'espace (95% largeur)
+          const safeWidth = containerWidth * 0.95;
+          // Hauteur dispo moins header/main (approx 20-30%)
+          const safeHeight = containerHeight * 0.70; 
           
           setZoomScale(Math.min(safeWidth / boardWidth, safeHeight / boardHeight, 1));
         }
     };
     setTimeout(calculateZoom, 50);
     // On garde gameState.board comme dépendance pour recalculer à chaque coup
-  }, [gameState.board]); 
+  }, [gameState.board, isPortrait]); 
 
   const addLog = (log) => {
     setGameState(prev => ({
@@ -989,8 +1001,24 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   const humanHand = gameState.players[0].hand;
   const isMyTurn = gameState.turnIndex === 0 && gameState.status === 'playing';
 
+  // --- STYLE ROTATIF AUTOMATIQUE ---
+  const screenStyle = isPortrait ? {
+      width: '100vh',
+      height: '100vw',
+      position: 'absolute',
+      top: '50%',
+      left: '50%',
+      transform: 'translate(-50%, -50%) rotate(90deg)',
+      overflow: 'hidden'
+  } : {
+      width: '100%',
+      height: '100%',
+      position: 'relative',
+      overflow: 'hidden'
+  };
+
   return (
-    <div className={`flex flex-col h-full relative overflow-hidden text-white font-sans ${currentBoard.style} transition-colors duration-500`}>
+    <div style={screenStyle} className={`bg-[#020617] text-white font-sans ${currentBoard.style} transition-colors duration-500`}>
       {/* MODIFICATION: Suppression de l'overlay portrait pour laisser le joueur choisir */}
 
       {showAdOverlay && <AdOverlay onClose={() => setShowAdOverlay(false)} onReward={onAdCompleted} />}
@@ -1071,7 +1099,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
 
          <div className="absolute bottom-[20%] flex gap-6 pointer-events-none z-20">
             {gameState.players.map(p => p.isBoude && (
-                <div key={p.id} className="text-red-500 font-black text-[8px] md:text-xs uppercase tracking-widest animate-pulse bg-red-500/10 px-4 md:px-6 py-1 md:py-2 rounded-full border border-red-500/30 shadow-2xl">{p.name} BOUDÉ !!</div>
+                <div key={p.id} className="text-red-500 font-black text-xs uppercase tracking-widest animate-pulse bg-red-500/10 px-4 md:px-6 py-1 md:py-2 rounded-full border border-red-500/30 shadow-2xl">{p.name} BOUDÉ !!</div>
             ))}
         </div>
       </div>
