@@ -316,9 +316,9 @@ const getAvatarIcon = (avatarId, size = 36, className = "") => {
 const PlayerAvatar = ({ name, active, isBot, position, cardsCount, mdcPoints, wins, isBoude, chatMessage, isVip, equippedAvatar }) => {
     const getPosStyle = () => {
         switch(position) {
-          case 'top-left': return { top: '8px', left: '8px', flexDirection: 'row' }; // Marges réduites
-          case 'top-right': return { top: '8px', right: '8px', flexDirection: 'row-reverse' };
-          case 'bottom-right': return { bottom: '8px', right: '8px', flexDirection: 'row-reverse' };
+          case 'top-left': return { top: '2px', left: '2px', flexDirection: 'row' }; // Marges réduites mobile
+          case 'top-right': return { top: '2px', right: '2px', flexDirection: 'row-reverse' };
+          case 'bottom-right': return { bottom: '2px', right: '2px', flexDirection: 'row-reverse' };
           default: return {};
         }
     };
@@ -331,7 +331,7 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, mdcPoints, wi
             : "top-full mt-2 right-0";
 
     return (
-        <div className={`absolute flex gap-2 md:gap-4 transition-all duration-300 items-center ${active ? 'scale-105 opacity-100 z-[100]' : 'opacity-80 scale-100'} scale-75 md:scale-100 origin-${position.includes('left') ? 'top-left' : 'top-right'}`} style={style}>
+        <div className={`absolute flex gap-2 md:gap-4 transition-all duration-300 items-center ${active ? 'scale-105 opacity-100 z-[100]' : 'opacity-80 scale-100'} scale-[0.65] md:scale-100 origin-${position.includes('left') ? 'top-left' : 'top-right'}`} style={style}>
             {chatMessage && (
                 <div className={`absolute ${bubbleStyle} z-[150] animate-in slide-in-from-bottom-2 fade-in duration-300 w-max`}>
                     <div className="bg-white text-black font-black text-xs md:text-sm px-3 py-2 rounded-xl shadow-2xl border-2 border-black relative max-w-[150px] md:max-w-[200px] text-center uppercase tracking-tight">
@@ -983,7 +983,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   const isMyTurn = gameState.turnIndex === 0 && gameState.status === 'playing';
 
   return (
-    <div className={`fixed inset-0 w-screen h-screen z-50 bg-slate-950 overflow-hidden text-white font-sans ${currentBoard.style} transition-colors duration-500`}>
+    <div className={`fixed inset-0 w-full h-full z-50 bg-slate-950 overflow-hidden text-white font-sans ${currentBoard.style} transition-colors duration-500`}>
       {/* OVERLAY ORIENTATION PORTRAIT - SUPPRIMÉ */}
 
       {showAdOverlay && <AdOverlay onClose={() => setShowAdOverlay(false)} onReward={onAdCompleted} />}
@@ -1017,7 +1017,8 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
       </div>
       
       {/* TAPIS DE JEU */}
-      <div className="flex-1 flex flex-col items-center justify-center relative pt-10" ref={containerRef}>
+      {/* MODIFICATION : Ajout de pt-10 et pb-[18vh] pour centrer le plateau en tenant compte des interfaces */}
+      <div className="flex-1 w-full h-full flex flex-col items-center justify-center relative pt-10 pb-[18vh]" ref={containerRef}>
          {/* SPONSOR */}
          {currentBoard.id === 'board_sponsor' && (
              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30 z-0">
