@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Trophy, Coins, Settings, Wifi, ChevronLeft, X, Crown, ShoppingBag, Gem, AlertCircle, Maximize, Lock, TrendingUp, Gift, Play, Loader, Snowflake, MessageCircle, Camera, Zap, CheckCircle, Award, Star } from 'lucide-react';
+import { User, Trophy, Coins, Settings, Wifi, ChevronLeft, X, Crown, ShoppingBag, Gem, AlertCircle, Maximize, Lock, TrendingUp, Gift, Play, Loader, Snowflake, MessageCircle, Camera, Zap, CheckCircle, Award, Star, LogIn, LogOut } from 'lucide-react';
 
 /**
  * --- ASSETS ---
@@ -809,8 +809,8 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           
           // MODIFICATION: Facteurs de sécurité augmentés pour utiliser plus d'espace (95% largeur)
           const isLandscape = containerWidth > containerHeight;
-          const safeWidth = containerWidth * (isLandscape ? 0.98 : 0.85);
-          const safeHeight = containerHeight * (isLandscape ? 0.70 : 0.60); // 0.70 pour laisser place à la main
+          const safeWidth = containerWidth * (isLandscape ? 0.92 : 0.85);
+          const safeHeight = containerHeight * (isLandscape ? 0.60 : 0.60); 
           
           // MODIFICATION: On limite le zoom max à 0.6 pour que ça ne soit jamais "trop gros" au départ
           const calculatedZoom = Math.min(safeWidth / boardWidth, safeHeight / boardHeight, 0.6);
