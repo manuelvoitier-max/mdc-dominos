@@ -810,7 +810,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           // MODIFICATION: Facteurs de sécurité augmentés pour utiliser plus d'espace (95% largeur)
           const isLandscape = containerWidth > containerHeight;
           const safeWidth = containerWidth * (isLandscape ? 0.98 : 0.85);
-          const safeHeight = containerHeight * (isLandscape ? 0.85 : 0.65); 
+          const safeHeight = containerHeight * (isLandscape ? 0.70 : 0.60); // 0.70 pour laisser place à la main
           
           // MODIFICATION: On limite le zoom max à 0.6 pour que ça ne soit jamais "trop gros" au départ
           const calculatedZoom = Math.min(safeWidth / boardWidth, safeHeight / boardHeight, 0.6);
@@ -1298,9 +1298,9 @@ const MemberScreen = ({ onBack, user, onLogout }) => {
                           <TrendingUp size={14} /> Performance Globale
                       </h3>
                       <div className="grid grid-cols-3 gap-4 text-center mb-6">
-                          <div><div className="text-2xl md:text-3xl font-mono font-black text-white">{user.stats.played}</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Jouées</div></div>
-                          <div><div className="text-2xl md:text-3xl font-mono font-black text-green-500">{user.stats.won}</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Gagnées</div></div>
-                          <div><div className="text-2xl md:text-3xl font-mono font-black text-white">{winRate}%</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Ratio</div></div>
+                          <div><div className="text-3xl font-mono font-black text-white">{user.stats.played}</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Jouées</div></div>
+                          <div><div className="text-3xl font-mono font-black text-green-500">{user.stats.won}</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Gagnées</div></div>
+                          <div><div className="text-3xl font-mono font-black text-white">{winRate}%</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Ratio</div></div>
                       </div>
                       <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-green-500" style={{ width: `${winRate}%` }}></div></div>
                 </div>
