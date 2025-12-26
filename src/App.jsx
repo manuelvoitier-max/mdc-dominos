@@ -719,602 +719,785 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
 
 // ... GameScreen ... (Same as provided above)
 const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) => {
- 
-  const bot1Name = config.difficulty === 'legend' ? "Man'X le Président" : config.difficulty === 'expert' ? "Chaton la tigresse" : "Chaton";
-  const bot2Name = config.difficulty === 'legend' ? "Valou le Redoutable" : config.difficulty === 'expert' ? "Olivier le blagueur" : "Olivier";
+ 
+  const bot1Name = config.difficulty === 'legend' ? "Man'X le Président" : config.difficulty === 'expert' ? "Chaton la tigresse" : "Chaton";
+  const bot2Name = config.difficulty === 'legend' ? "Valou le Redoutable" : config.difficulty === 'expert' ? "Olivier le blagueur" : "Olivier";
 
-  const [gameState, setGameState] = useState({
-    players: [
-      { id: 0, name: user.pseudo, type: 'human', hand: [], mdcPoints: 0, wins: 0, isBoude: false, mancheHistory: [], label: null, initialMaxDouble: -1 },
-      { id: 1, name: bot1Name, type: 'bot', hand: [], mdcPoints: 0, wins: 0, isBoude: false, mancheHistory: [], label: null, initialMaxDouble: -1 },
-      { id: 2, name: bot2Name, type: 'bot', hand: [], mdcPoints: 0, wins: 0, isBoude: false, mancheHistory: [], label: null, initialMaxDouble: -1 }
-    ],
-    board: [], ends: null, turnIndex: 0, status: 'dealing', currentManche: 1, currentPartie: 1, winnerId: null, pendingChoice: null, history: [], mandatoryTile: null
-  });
+  const [gameState, setGameState] = useState({
+    players: [
+      { id: 0, name: user.pseudo, type: 'human', hand: [], mdcPoints: 0, wins: 0, isBoude: false, mancheHistory: [], label: null, initialMaxDouble: -1 },
+      { id: 1, name: bot1Name, type: 'bot', hand: [], mdcPoints: 0, wins: 0, isBoude: false, mancheHistory: [], label: null, initialMaxDouble: -1 },
+      { id: 2, name: bot2Name, type: 'bot', hand: [], mdcPoints: 0, wins: 0, isBoude: false, mancheHistory: [], label: null, initialMaxDouble: -1 }
+    ],
+    board: [], ends: null, turnIndex: 0, status: 'dealing', currentManche: 1, currentPartie: 1, winnerId: null, pendingChoice: null, history: [], mandatoryTile: null
+  });
 
-  const [timeLeft, setTimeLeft] = useState(15);
-  const [zoomScale, setZoomScale] = useState(0.6); // MODIFICATION: Zoom initial plus petit (0.6) pour éviter le débordement
-  const [showChat, setShowChat] = useState(false);
-  const [lastChatMessage, setLastChatMessage] = useState(null);
-  const [adWatchedForThisWin, setAdWatchedForThisWin] = useState(false);
-  const [showAdOverlay, setShowAdOverlay] = useState(false);
-  const [winningInfo, setWinningInfo] = useState(null); // { winnerId, winningTile }
+  const [timeLeft, setTimeLeft] = useState(15);
+  const [zoomScale, setZoomScale] = useState(0.6); // MODIFICATION: Zoom initial plus petit (0.6) pour éviter le débordement
+  const [showChat, setShowChat] = useState(false);
+  const [lastChatMessage, setLastChatMessage] = useState(null);
+  const [adWatchedForThisWin, setAdWatchedForThisWin] = useState(false);
+  const [showAdOverlay, setShowAdOverlay] = useState(false);
+  const [winningInfo, setWinningInfo] = useState(null); // { winnerId, winningTile }
   
   // MODIFICATION: Suppression complète de la logique d'orientation forcée
-  
-  const boardRef = useRef(null);
-  const containerRef = useRef(null);
-  const paidRef = useRef(false);
+  
+  const boardRef = useRef(null);
+  const containerRef = useRef(null);
+  const paidRef = useRef(false);
 
-  // RECUPERATION DES PHRASES POSSEDEES
-  const ownedPhrases = MOCK_DB.items.filter(i => i.type === 'phrase' && user.inventory.includes(i.id));
+  // RECUPERATION DES PHRASES POSSEDEES
+  const ownedPhrases = MOCK_DB.items.filter(i => i.type === 'phrase' && user.inventory.includes(i.id));
 
-  // RÉCUPÉRATION DU BOARD ÉQUIPÉ
-  const currentBoard = MOCK_DB.items.find(i => i.id === user.equippedBoard) || MOCK_DB.items.find(i => i.id === 'board_classic');
+  // RÉCUPÉRATION DU BOARD ÉQUIPÉ
+  const currentBoard = MOCK_DB.items.find(i => i.id === user.equippedBoard) || MOCK_DB.items.find(i => i.id === 'board_classic');
 
-  useEffect(() => { startRound(1, 1); }, []);
+  useEffect(() => { startRound(1, 1); }, []);
 
-  // Timer & Auto-Pass
-  useEffect(() => {
-    let timer;
-    if (gameState.status === 'playing' && timeLeft > 0 && !gameState.pendingChoice) {
-      timer = setInterval(() => setTimeLeft(p => p - 1), 1000);
-    } else if (timeLeft === 0 && gameState.status === 'playing') {
-      const p = gameState.players[gameState.turnIndex];
-      const moves = getValidMoves(p.hand, gameState.ends);
-      if (moves.length > 0) playTile(p.id, moves[0].tile, moves[0].side);
-      else passTurn(p.id);
-    }
-    return () => clearInterval(timer);
-  }, [timeLeft, gameState.status, gameState.pendingChoice, gameState.turnIndex]);
+  // Timer & Auto-Pass
+  useEffect(() => {
+    let timer;
+    if (gameState.status === 'playing' && timeLeft > 0 && !gameState.pendingChoice) {
+      timer = setInterval(() => setTimeLeft(p => p - 1), 1000);
+    } else if (timeLeft === 0 && gameState.status === 'playing') {
+      const p = gameState.players[gameState.turnIndex];
+      const moves = getValidMoves(p.hand, gameState.ends);
+      if (moves.length > 0) playTile(p.id, moves[0].tile, moves[0].side);
+      else passTurn(p.id);
+    }
+    return () => clearInterval(timer);
+  }, [timeLeft, gameState.status, gameState.pendingChoice, gameState.turnIndex]);
 
-  // Handle winning animation transition
-  useEffect(() => {
-      if (gameState.status === 'winning_animation') {
-          const t = setTimeout(() => {
-             setGameState(prev => resolvePartieEnd(prev, prev.players, prev.winnerId));
-             setWinningInfo(null);
-          }, 3000); // 3 seconds banner display
-          return () => clearTimeout(t);
-      }
-  }, [gameState.status]);
+  // Handle winning animation transition
+  useEffect(() => {
+      if (gameState.status === 'winning_animation') {
+          const t = setTimeout(() => {
+             setGameState(prev => resolvePartieEnd(prev, prev.players, prev.winnerId));
+             setWinningInfo(null);
+          }, 3000); // 3 seconds banner display
+          return () => clearTimeout(t);
+      }
+  }, [gameState.status]);
 
-  // Détection Boudé Humain
-  useEffect(() => {
-    if (gameState.status === 'playing' && gameState.turnIndex === 0) {
-      const moves = getValidMoves(gameState.players[0].hand, gameState.ends);
-      if (!gameState.mandatoryTile && moves.length === 0 && gameState.board.length > 0) {
-        const t = setTimeout(() => passTurn(0), 1000);
-        return () => clearTimeout(t);
-      }
-    }
-  }, [gameState.turnIndex, gameState.ends, gameState.status, gameState.board.length, gameState.mandatoryTile]);
+  // Détection Boudé Humain
+  useEffect(() => {
+    if (gameState.status === 'playing' && gameState.turnIndex === 0) {
+      const moves = getValidMoves(gameState.players[0].hand, gameState.ends);
+      if (!gameState.mandatoryTile && moves.length === 0 && gameState.board.length > 0) {
+        const t = setTimeout(() => passTurn(0), 1000);
+        return () => clearTimeout(t);
+      }
+    }
+  }, [gameState.turnIndex, gameState.ends, gameState.status, gameState.board.length, gameState.mandatoryTile]);
 
-  // Paiement Victoire
-  useEffect(() => {
-      if (gameState.status === 'tournoi_over' && gameState.winnerId === 0 && !paidRef.current) {
-          paidRef.current = true;
-          onWin(config.stake * 3, config.currency);
-      }
-  }, [gameState.status, gameState.winnerId]);
+  // Paiement Victoire
+  useEffect(() => {
+      if (gameState.status === 'tournoi_over' && gameState.winnerId === 0 && !paidRef.current) {
+          paidRef.current = true;
+          onWin(config.stake * 3, config.currency);
+      }
+  }, [gameState.status, gameState.winnerId]);
 
-  // Zoom Optimisé pour Paysage Mobile (Bord à bord)
-  useEffect(() => {
-    const calculateZoom = () => {
-        if (boardRef.current && containerRef.current) {
-          const boardWidth = boardRef.current.scrollWidth;
-          const containerWidth = containerRef.current.clientWidth;
-          const boardHeight = boardRef.current.scrollHeight;
-          const containerHeight = containerRef.current.clientHeight;
-          
-          // MODIFICATION: Facteurs de sécurité plus stricts pour éviter tout débordement
-          const isLandscape = containerWidth > containerHeight;
-          // On réduit les facteurs d'échelle pour être sûr que tout rentre
-          const safeWidth = containerWidth * (isLandscape ? 0.9 : 0.8);
-          const safeHeight = containerHeight * (isLandscape ? 0.7 : 0.6); 
-          
-          // MODIFICATION: On limite le zoom max à 0.6 pour que ça ne soit jamais "trop gros" au départ
+  // Zoom Optimisé pour Paysage Mobile (Bord à bord)
+  useEffect(() => {
+    const calculateZoom = () => {
+        if (boardRef.current && containerRef.current) {
+          const boardWidth = boardRef.current.scrollWidth;
+          const containerWidth = containerRef.current.clientWidth;
+          const boardHeight = boardRef.current.scrollHeight;
+          const containerHeight = containerRef.current.clientHeight;
+          
+          // MODIFICATION: Facteurs de sécurité augmentés pour utiliser plus d'espace (95% largeur)
+          const isLandscape = containerWidth > containerHeight;
+          const safeWidth = containerWidth * (isLandscape ? 0.98 : 0.85);
+          const safeHeight = containerHeight * (isLandscape ? 0.85 : 0.65); 
+          
+          // MODIFICATION: On limite le zoom max à 0.6 pour que ça ne soit jamais "trop gros" au départ
           const calculatedZoom = Math.min(safeWidth / boardWidth, safeHeight / boardHeight, 0.6);
-          setZoomScale(calculatedZoom);
-        }
-    };
+          setZoomScale(calculatedZoom);
+        }
+    };
     // On appelle le zoom dès le montage et à chaque changement de plateau
-    setTimeout(calculateZoom, 50);
-  }, [gameState.board]); 
+    setTimeout(calculateZoom, 50);
+  }, [gameState.board]); 
 
-  const addLog = (log) => {
-    setGameState(prev => ({
-        ...prev,
-        history: [{ ...log, id: Date.now() }, ...prev.history].slice(0, 30)
-    }));
-  };
+  const addLog = (log) => {
+    setGameState(prev => ({
+        ...prev,
+        history: [{ ...log, id: Date.now() }, ...prev.history].slice(0, 30)
+    }));
+  };
 
-  const handleSendChat = (text) => {
-      setLastChatMessage({ playerId: 0, text });
-      setShowChat(false);
-      setTimeout(() => setLastChatMessage(null), 3000);
-  };
+  const handleSendChat = (text) => {
+      setLastChatMessage({ playerId: 0, text });
+      setShowChat(false);
+      setTimeout(() => setLastChatMessage(null), 3000);
+  };
 
-  const toggleFullScreen = () => {
-    if (!document.fullscreenElement) {
-        // Tente de mettre l'élément racine en plein écran pour couvrir tout le mobile
-        document.documentElement.requestFullscreen().catch((e) => {
-            console.log("Erreur plein écran:", e);
-        });
-    } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        }
-    }
-  };
+  const toggleFullScreen = () => {
+    if (!document.fullscreenElement) {
+        // Tente de mettre l'élément racine en plein écran pour couvrir tout le mobile
+        document.documentElement.requestFullscreen().catch((e) => {
+            console.log("Erreur plein écran:", e);
+        });
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
+    }
+  };
 
-  const handleScreenshot = () => {
-      alert("📸 Capture d'écran sauvegardée dans la galerie ! (Simulation)");
-  };
+  const handleScreenshot = () => {
+      alert("📸 Capture d'écran sauvegardée dans la galerie ! (Simulation)");
+  };
 
-  const handleDoubleReward = () => {
-      setShowAdOverlay(true);
-  };
+  const handleDoubleReward = () => {
+      setShowAdOverlay(true);
+  };
 
-  const onAdCompleted = () => {
-      setAdWatchedForThisWin(true);
-      onDoubleWin(config.stake * 3, config.currency); // Re-pay the winning amount
-      alert("Gain Doublé !");
-  };
+  const onAdCompleted = () => {
+      setAdWatchedForThisWin(true);
+      onDoubleWin(config.stake * 3, config.currency); // Re-pay the winning amount
+      alert("Gain Doublé !");
+  };
 
 
-  const startRound = (mancheNum, partieNum, forcedStarterId = -1) => {
-    const allTiles = generateDominoes();
-    const hands = [allTiles.slice(0, 7), allTiles.slice(7, 14), allTiles.slice(14, 21)];
-   
-    let starterIndex = forcedStarterId;
-    let maxDTotal = -1;
-    let starterTile = null;
+  const startRound = (mancheNum, partieNum, forcedStarterId = -1) => {
+    const allTiles = generateDominoes();
+    const hands = [allTiles.slice(0, 7), allTiles.slice(7, 14), allTiles.slice(14, 21)];
+    
+    let starterIndex = forcedStarterId;
+    let maxDTotal = -1;
+    let starterTile = null;
 
-    const playersWithDoubles = hands.map((hand, pIdx) => {
-        let pMaxD = -1;
-        hand.forEach(t => { if (t.v1 === t.v2 && t.v1 > pMaxD) pMaxD = t.v1; });
-        if (pMaxD > maxDTotal && starterIndex === -1) {
-            maxDTotal = pMaxD;
-            starterIndex = pIdx;
-        }
-        return { pIdx, maxD: pMaxD };
-    });
+    const playersWithDoubles = hands.map((hand, pIdx) => {
+        let pMaxD = -1;
+        hand.forEach(t => { if (t.v1 === t.v2 && t.v1 > pMaxD) pMaxD = t.v1; });
+        if (pMaxD > maxDTotal && starterIndex === -1) {
+            maxDTotal = pMaxD;
+            starterIndex = pIdx;
+        }
+        return { pIdx, maxD: pMaxD };
+    });
 
-    if (forcedStarterId !== -1) starterIndex = forcedStarterId;
-    else starterTile = hands[starterIndex].find(t => t.v1 === t.v2 && t.v1 === maxDTotal);
+    if (forcedStarterId !== -1) starterIndex = forcedStarterId;
+    else starterTile = hands[starterIndex].find(t => t.v1 === t.v2 && t.v1 === maxDTotal);
 
-    setGameState(prev => ({
-      ...prev,
-      players: prev.players.map((p, i) => ({ ...p, hand: hands[i], isBoude: false, initialMaxDouble: playersWithDoubles[i].maxD })),
-      board: [], ends: null, status: 'playing', turnIndex: starterIndex, currentManche: mancheNum, currentPartie: partieNum, winnerId: null, pendingChoice: null,
-      mandatoryTile: (forcedStarterId === -1 && starterTile) ? starterTile : null
-    }));
-    setTimeLeft(15);
-    addLog({ player: 'SYSTÈME', action: `Début Partie ${partieNum}`, info: `Distrib.` });
-    if (forcedStarterId === -1 && starterTile) setTimeout(() => { playTile(starterIndex, starterTile, 'start'); }, 600);
-  };
+    setGameState(prev => ({
+      ...prev,
+      players: prev.players.map((p, i) => ({ ...p, hand: hands[i], isBoude: false, initialMaxDouble: playersWithDoubles[i].maxD })),
+      board: [], ends: null, status: 'playing', turnIndex: starterIndex, currentManche: mancheNum, currentPartie: partieNum, winnerId: null, pendingChoice: null,
+      mandatoryTile: (forcedStarterId === -1 && starterTile) ? starterTile : null
+    }));
+    setTimeLeft(15);
+    addLog({ player: 'SYSTÈME', action: `Début Partie ${partieNum}`, info: `Distrib.` });
+    if (forcedStarterId === -1 && starterTile) setTimeout(() => { playTile(starterIndex, starterTile, 'start'); }, 600);
+  };
 
-  // --- BOT ENGINE AVEC DIFFICULTE ---
-  useEffect(() => {
-    if (gameState.status !== 'playing' || gameState.pendingChoice) return;
-    const player = gameState.players[gameState.turnIndex];
-    if (player.type === 'bot') {
-      const timer = setTimeout(() => {
-        const move = getBotMove(player.hand, gameState.ends, config.difficulty || 'easy');
-        if (move) playTile(player.id, move.tile, move.side);
-        else passTurn(player.id);
-      }, 600);
-      return () => clearTimeout(timer);
-    }
-  }, [gameState.turnIndex, gameState.status, gameState.pendingChoice]);
+  // --- BOT ENGINE AVEC DIFFICULTE ---
+  useEffect(() => {
+    if (gameState.status !== 'playing' || gameState.pendingChoice) return;
+    const player = gameState.players[gameState.turnIndex];
+    if (player.type === 'bot') {
+      const timer = setTimeout(() => {
+        const move = getBotMove(player.hand, gameState.ends, config.difficulty || 'easy');
+        if (move) playTile(player.id, move.tile, move.side);
+        else passTurn(player.id);
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, [gameState.turnIndex, gameState.status, gameState.pendingChoice]);
 
-  const passTurn = (id) => {
-    const playerName = gameState.players[id].name;
-    addLog({ player: playerName, action: 'BOUDÉ', type: 'alert' });
-    setGameState(prev => {
-        const newPlayers = prev.players.map(p => p.id === id ? { ...p, isBoude: true } : p);
-        const allBlocked = newPlayers.every(p => p.isBoude || p.hand.length === 0);
-        if (allBlocked) {
-            const scores = newPlayers.map(p => ({ id: p.id, points: calculateHandPoints(p.hand) }));
-            const minPoints = Math.min(...scores.map(s => s.points));
-            const winners = scores.filter(s => s.points === minPoints);
-            if (winners.length > 1) {
-                addLog({ player: 'SYSTÈME', action: 'ÉGALITÉ TOTALE', type: 'alert' });
-                return { ...prev, status: 'partie_draw', players: newPlayers };
-            } else {
-                return resolvePartieEnd(prev, newPlayers, winners[0].id);
-            }
-        }
-        return { ...prev, turnIndex: (prev.turnIndex + 2) % 3, players: newPlayers };
-    });
-    setTimeLeft(15);
-  };
+  const passTurn = (id) => {
+    const playerName = gameState.players[id].name;
+    addLog({ player: playerName, action: 'BOUDÉ', type: 'alert' });
+    setGameState(prev => {
+        const newPlayers = prev.players.map(p => p.id === id ? { ...p, isBoude: true } : p);
+        const allBlocked = newPlayers.every(p => p.isBoude || p.hand.length === 0);
+        if (allBlocked) {
+            const scores = newPlayers.map(p => ({ id: p.id, points: calculateHandPoints(p.hand) }));
+            const minPoints = Math.min(...scores.map(s => s.points));
+            const winners = scores.filter(s => s.points === minPoints);
+            if (winners.length > 1) {
+                addLog({ player: 'SYSTÈME', action: 'ÉGALITÉ TOTALE', type: 'alert' });
+                return { ...prev, status: 'partie_draw', players: newPlayers };
+            } else {
+                return resolvePartieEnd(prev, newPlayers, winners[0].id);
+            }
+        }
+        return { ...prev, turnIndex: (prev.turnIndex + 2) % 3, players: newPlayers };
+    });
+    setTimeLeft(15);
+  };
 
-  const resolvePartieEnd = (prevState, currentPlayers, winnerId) => {
-      const winnerName = currentPlayers[winnerId].name;
-      addLog({ player: winnerName, action: 'GAGNE LA PARTIE', type: 'success' });
-      if (onPartieEnd) onPartieEnd(winnerId);
+  const resolvePartieEnd = (prevState, currentPlayers, winnerId) => {
+      const winnerName = currentPlayers[winnerId].name;
+      addLog({ player: winnerName, action: 'GAGNE LA PARTIE', type: 'success' });
+      if (onPartieEnd) onPartieEnd(winnerId);
 
-      const withWins = currentPlayers.map(p => ({ ...p, wins: p.id === winnerId ? p.wins + 1 : p.wins }));
-      const hasKO = withWins.some(p => p.wins >= 3);
-      const everyoneWonOnce = withWins.every(p => p.wins >= 1);
+      const withWins = currentPlayers.map(p => ({ ...p, wins: p.id === winnerId ? p.wins + 1 : p.wins }));
+      const hasKO = withWins.some(p => p.wins >= 3);
+      const everyoneWonOnce = withWins.every(p => p.wins >= 1);
 
-      if (hasKO || everyoneWonOnce) {
-          const maxW = Math.max(...withWins.map(p => p.wins));
-          const mancheWinnerId = withWins.find(p => p.wins === maxW).id;
-          const numCochons = withWins.filter(p => p.wins === 0).length;
-          const finalMdcManche = withWins.map(p => {
-              let mdcGain = p.wins;
-              let label = "";
-              if (p.id === mancheWinnerId) {
-                  if (numCochons === 2) { mdcGain = 5; label = "DOUBLE COCHON !!"; }
-                  else if (numCochons === 1) { mdcGain = 4; label = "COCHON !"; }
-              } else if (p.wins === 0) { mdcGain = -1; label = "COCHON PRIS (-1)"; }
-              return { ...p, mdcTotal: p.mdcPoints + mdcGain, gain: mdcGain, label, mancheHistory: [...p.mancheHistory, mdcGain] };
-          });
-          const updatedGlobalPlayers = finalMdcManche.map(p => ({ ...p, mdcPoints: p.mdcTotal }));
-          const isTournoiFini = config.format === 'manches' ? prevState.currentManche >= config.target : updatedGlobalPlayers.some(p => p.mdcPoints >= config.target);
-          return { ...prevState, players: updatedGlobalPlayers, status: isTournoiFini ? 'tournoi_over' : 'manche_over', winnerId, mancheScoreMDC: finalMdcManche };
-      }
-      return { ...prevState, players: withWins, status: 'partie_over', winnerId };
-  };
+      if (hasKO || everyoneWonOnce) {
+          const maxW = Math.max(...withWins.map(p => p.wins));
+          const mancheWinnerId = withWins.find(p => p.wins === maxW).id;
+          const numCochons = withWins.filter(p => p.wins === 0).length;
+          const finalMdcManche = withWins.map(p => {
+              let mdcGain = p.wins;
+              let label = "";
+              if (p.id === mancheWinnerId) {
+                  if (numCochons === 2) { mdcGain = 5; label = "DOUBLE COCHON !!"; }
+                  else if (numCochons === 1) { mdcGain = 4; label = "COCHON !"; }
+              } else if (p.wins === 0) { mdcGain = -1; label = "COCHON PRIS (-1)"; }
+              return { ...p, mdcTotal: p.mdcPoints + mdcGain, gain: mdcGain, label, mancheHistory: [...p.mancheHistory, mdcGain] };
+          });
+          const updatedGlobalPlayers = finalMdcManche.map(p => ({ ...p, mdcPoints: p.mdcTotal }));
+          const isTournoiFini = config.format === 'manches' ? prevState.currentManche >= config.target : updatedGlobalPlayers.some(p => p.mdcPoints >= config.target);
+          return { ...prevState, players: updatedGlobalPlayers, status: isTournoiFini ? 'tournoi_over' : 'manche_over', winnerId, mancheScoreMDC: finalMdcManche };
+      }
+      return { ...prevState, players: withWins, status: 'partie_over', winnerId };
+  };
 
-  const playTile = (id, tile, side) => {
-    const playerName = gameState.players[id].name;
-    addLog({ player: playerName, action: 'Posé', info: `[${tile.v1}|${tile.v2}]` });
-    setGameState(prev => {
-      let newBoard = [...prev.board];
-      let newEnds = prev.ends ? { ...prev.ends } : { left: null, right: null };
-      let placed = { ...tile, orientation: (tile.v1 === tile.v2) ? 'vertical' : 'horizontal', flipped: false };
+  const playTile = (id, tile, side) => {
+    const playerName = gameState.players[id].name;
+    addLog({ player: playerName, action: 'Posé', info: `[${tile.v1}|${tile.v2}]` });
+    setGameState(prev => {
+      let newBoard = [...prev.board];
+      let newEnds = prev.ends ? { ...prev.ends } : { left: null, right: null };
+      let placed = { ...tile, orientation: (tile.v1 === tile.v2) ? 'vertical' : 'horizontal', flipped: false };
 
-      if (!prev.ends) { newBoard = [placed]; newEnds = { left: tile.v1, right: tile.v2 }; }
-      else {
-        if (side === 'left') { placed.flipped = (tile.v1 === newEnds.left); newEnds.left = placed.flipped ? tile.v2 : tile.v1; newBoard.unshift(placed); }
-        else { placed.flipped = (tile.v2 === newEnds.right); newEnds.right = placed.flipped ? tile.v1 : tile.v2; newBoard.push(placed); }
-      }
-      const newPlayers = prev.players.map(p => p.id === id ? { ...p, hand: p.hand.filter(h => h.id !== tile.id), isBoude: false } : p);
-      if (newPlayers[id].hand.length === 0) return resolvePartieEnd(prev, newPlayers, id);
-      return { ...prev, players: newPlayers, board: newBoard, ends: newEnds, turnIndex: (prev.turnIndex + 2) % 3, pendingChoice: null, mandatoryTile: null };
-    });
-    setTimeLeft(15);
-  };
+      if (!prev.ends) { newBoard = [placed]; newEnds = { left: tile.v1, right: tile.v2 }; }
+      else {
+        if (side === 'left') { placed.flipped = (tile.v1 === newEnds.left); newEnds.left = placed.flipped ? tile.v2 : tile.v1; newBoard.unshift(placed); }
+        else { placed.flipped = (tile.v2 === newEnds.right); newEnds.right = placed.flipped ? tile.v1 : tile.v2; newBoard.push(placed); }
+      }
+      const newPlayers = prev.players.map(p => p.id === id ? { ...p, hand: p.hand.filter(h => h.id !== tile.id), isBoude: false } : p);
+      if (newPlayers[id].hand.length === 0) return resolvePartieEnd(prev, newPlayers, id);
+      return { ...prev, players: newPlayers, board: newBoard, ends: newEnds, turnIndex: (prev.turnIndex + 2) % 3, pendingChoice: null, mandatoryTile: null };
+    });
+    setTimeLeft(15);
+  };
 
-  const humanHand = gameState.players[0].hand;
-  const isMyTurn = gameState.turnIndex === 0 && gameState.status === 'playing';
+  const humanHand = gameState.players[0].hand;
+  const isMyTurn = gameState.turnIndex === 0 && gameState.status === 'playing';
 
-  return (
-    <div className={`fixed inset-0 w-screen h-screen z-50 bg-[#020617] overflow-hidden text-white font-sans ${currentBoard.style} transition-colors duration-500`}>
-      {/* OVERLAY ORIENTATION PORTRAIT - SUPPRIMÉ */}
+  return (
+    <div className={`fixed inset-0 w-screen h-screen z-50 bg-slate-950 overflow-hidden text-white font-sans ${currentBoard.style} transition-colors duration-500`}>
+      {/* OVERLAY ORIENTATION PORTRAIT - SUPPRIMÉ */}
 
-      {showAdOverlay && <AdOverlay onClose={() => setShowAdOverlay(false)} onReward={onAdCompleted} />}
-      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-20 mix-blend-overlay"></div>
-     
-      {/* EFFET NEIGE SI NOEL */}
-      {currentBoard.id === 'board_xmas' && (
-          <div className="absolute inset-0 pointer-events-none opacity-30 flex justify-between px-10">
-              <Snowflake className="animate-bounce text-white w-8 h-8 opacity-50" style={{animationDuration:'3s'}} />
-              <Snowflake className="animate-bounce text-white w-12 h-12 opacity-30" style={{animationDuration:'5s'}} />
-              <Snowflake className="animate-bounce text-white w-6 h-6 opacity-60" style={{animationDuration:'4s'}} />
-          </div>
-      )}
+      {showAdOverlay && <AdOverlay onClose={() => setShowAdOverlay(false)} onReward={onAdCompleted} />}
+      <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-20 mix-blend-overlay"></div>
+      
+      {/* EFFET NEIGE SI NOEL */}
+      {currentBoard.id === 'board_xmas' && (
+          <div className="absolute inset-0 pointer-events-none opacity-30 flex justify-between px-10">
+              <Snowflake className="animate-bounce text-white w-8 h-8 opacity-50" style={{animationDuration:'3s'}} />
+              <Snowflake className="animate-bounce text-white w-12 h-12 opacity-30" style={{animationDuration:'5s'}} />
+              <Snowflake className="animate-bounce text-white w-6 h-6 opacity-60" style={{animationDuration:'4s'}} />
+          </div>
+      )}
 
-      {/* HEADER COMPACTE (h-10) MODIFIÉ: Absolute pour gain de place */}
-      <div className="absolute top-0 left-0 w-full z-[60] flex justify-between items-center px-4 h-10 bg-black/40 backdrop-blur-md border-b border-white/5 shadow-2xl">
-         <Button variant="ghost" onClick={onExit} className="p-1"><X size={20} /></Button>
-         <div className="flex flex-col items-center">
-             {/* CHRONO REDUIT */}
-             <div className="relative text-center leading-none"><span className="text-xl font-black font-mono text-white drop-shadow-md">{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span></div>
-             <div className="text-[8px] text-zinc-400 uppercase font-black tracking-widest leading-none mt-0.5">
-                 OBJ: {config.target} {config.format === 'manches' ? 'V' : 'P'}
-             </div>
-         </div>
-         <div className="flex items-center gap-2">
-             <span className="text-[10px] text-yellow-500 font-black font-mono bg-black/50 px-2 py-0.5 rounded">{config.stake} OR</span>
-             <button onClick={toggleFullScreen} className="p-1.5 bg-black/30 rounded hover:bg-white/10 transition-colors">
-                 <Maximize size={16} className="text-zinc-300" />
-             </button>
-         </div>
-      </div>
-     
-      {/* TAPIS DE JEU */}
-      <div className="absolute inset-0 flex items-center justify-center pt-10 pb-20 overflow-hidden" ref={containerRef}>
-         {/* SPONSOR */}
-         {currentBoard.id === 'board_sponsor' && (
-             <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30 z-0">
-                 <div className="flex flex-col items-center">
-                     <h1 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter">Rhumerie 972</h1>
-                     <p className="text-sm md:text-xl uppercase tracking-widest text-zinc-300">Sponsor Officiel</p>
-                 </div>
-             </div>
-         )}
-         
-         {/* BANNIERE VICTOIRE ANIMATION */}
-         {gameState.status === 'winning_animation' && winningInfo && (
-            <div className="absolute inset-0 z-[250] flex flex-col items-center justify-center pointer-events-none animate-in zoom-in duration-500">
-                <div className="bg-black/80 backdrop-blur-lg p-8 rounded-3xl border-4 border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.6)] flex flex-col items-center text-center">
-                    <Crown size={64} className="text-yellow-500 mb-4 animate-bounce" />
-                    <h2 className="text-2xl md:text-4xl font-black text-white uppercase italic tracking-tighter mb-2">Victoire de</h2>
-                    <h3 className="text-3xl md:text-5xl font-black text-yellow-400 uppercase mb-8 drop-shadow-lg">{gameState.players[winningInfo.winnerId].name}</h3>
-                    <div className="scale-125 md:scale-150 transform rotate-6">
-                        <DominoTile v1={winningInfo.winningTile.v1} v2={winningInfo.winningTile.v2} size="lg" skinId={user.equippedSkin} />
-                    </div>
-                </div>
-            </div>
-         )}
+      {/* HEADER COMPACTE (h-10) MODIFIÉ: Absolute pour gain de place */}
+      <div className="absolute top-0 left-0 w-full z-[60] flex justify-between items-center px-4 h-10 bg-black/40 backdrop-blur-md border-b border-white/5 shadow-2xl">
+         <Button variant="ghost" onClick={onExit} className="p-1"><X size={20} /></Button>
+         <div className="flex flex-col items-center">
+             {/* CHRONO REDUIT */}
+             <div className="relative text-center leading-none"><span className="text-xl font-black font-mono text-white drop-shadow-md">{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span></div>
+             <div className="text-[8px] text-zinc-400 uppercase font-black tracking-widest leading-none mt-0.5">
+                 OBJ: {config.target} {config.format === 'manches' ? 'V' : 'P'}
+             </div>
+         </div>
+         <div className="flex items-center gap-2">
+             <span className="text-[10px] text-yellow-500 font-black font-mono bg-black/50 px-2 py-0.5 rounded">{config.stake} OR</span>
+             <button onClick={toggleFullScreen} className="p-1.5 bg-black/30 rounded hover:bg-white/10 transition-colors">
+                 <Maximize size={16} className="text-zinc-300" />
+             </button>
+         </div>
+      </div>
+      
+      {/* TAPIS DE JEU */}
+      <div className="flex-1 flex flex-col items-center justify-center relative pt-10" ref={containerRef}>
+         {/* SPONSOR */}
+         {currentBoard.id === 'board_sponsor' && (
+             <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30 z-0">
+                 <div className="flex flex-col items-center">
+                     <h1 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter">Rhumerie 972</h1>
+                     <p className="text-sm md:text-xl uppercase tracking-widest text-zinc-300">Sponsor Officiel</p>
+                 </div>
+             </div>
+         )}
+         
+         {/* BANNIERE VICTOIRE ANIMATION */}
+         {gameState.status === 'winning_animation' && winningInfo && (
+            <div className="absolute inset-0 z-[250] flex flex-col items-center justify-center pointer-events-none animate-in zoom-in duration-500">
+                <div className="bg-black/80 backdrop-blur-lg p-8 rounded-3xl border-4 border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.6)] flex flex-col items-center text-center">
+                    <Crown size={64} className="text-yellow-500 mb-4 animate-bounce" />
+                    <h2 className="text-2xl md:text-4xl font-black text-white uppercase italic tracking-tighter mb-2">Victoire de</h2>
+                    <h3 className="text-3xl md:text-5xl font-black text-yellow-400 uppercase mb-8 drop-shadow-lg">{gameState.players[winningInfo.winnerId].name}</h3>
+                    <div className="scale-125 md:scale-150 transform rotate-6">
+                        <DominoTile v1={winningInfo.winningTile.v1} v2={winningInfo.winningTile.v2} size="lg" skinId={user.equippedSkin} />
+                    </div>
+                </div>
+            </div>
+         )}
 
-         {/* AVATARS PLUS PETITS ET DANS LES COINS */}
-         <PlayerAvatar name={gameState.players[1].name} isBot position="top-left" active={gameState.turnIndex === 1} cardsCount={gameState.players[1].hand.length} mdcPoints={gameState.players[1].mdcPoints} wins={gameState.players[1].wins} isBoude={gameState.players[1].isBoude} chatMessage={null} isVip={gameState.players[1].id === 0 ? user.isVip : false} equippedAvatar={gameState.players[1].type === 'human' ? user.equippedAvatar : gameState.players[1].name.includes('Chaton') ? 'avatar_robot' : 'avatar_smile'} />
-         <PlayerAvatar name={gameState.players[2].name} isBot position="top-right" active={gameState.turnIndex === 2} cardsCount={gameState.players[2].hand.length} mdcPoints={gameState.players[2].mdcPoints} wins={gameState.players[2].wins} isBoude={gameState.players[2].isBoude} chatMessage={null} isVip={gameState.players[2].id === 0 ? user.isVip : false} equippedAvatar={gameState.players[2].type === 'human' ? user.equippedAvatar : gameState.players[2].name.includes('Olivier') ? 'avatar_king' : 'avatar_classic'} />
+         {/* AVATARS PLUS PETITS ET DANS LES COINS */}
+         <PlayerAvatar name={gameState.players[1].name} isBot position="top-left" active={gameState.turnIndex === 1} cardsCount={gameState.players[1].hand.length} mdcPoints={gameState.players[1].mdcPoints} wins={gameState.players[1].wins} isBoude={gameState.players[1].isBoude} chatMessage={null} isVip={gameState.players[1].id === 0 ? user.isVip : false} equippedAvatar={gameState.players[1].type === 'human' ? user.equippedAvatar : gameState.players[1].name.includes('Chaton') ? 'avatar_robot' : 'avatar_smile'} />
+         <PlayerAvatar name={gameState.players[2].name} isBot position="top-right" active={gameState.turnIndex === 2} cardsCount={gameState.players[2].hand.length} mdcPoints={gameState.players[2].mdcPoints} wins={gameState.players[2].wins} isBoude={gameState.players[2].isBoude} chatMessage={null} isVip={gameState.players[2].id === 0 ? user.isVip : false} equippedAvatar={gameState.players[2].type === 'human' ? user.equippedAvatar : gameState.players[2].name.includes('Olivier') ? 'avatar_king' : 'avatar_classic'} />
 
-         <div className="w-full h-full flex items-center justify-center pointer-events-none relative z-10">
-            <div ref={boardRef} className="flex items-center justify-center origin-center drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] whitespace-nowrap" style={{ transform: `scale(${zoomScale})`, transition: 'transform 0.5s ease-out' }}>
-                {gameState.board.map((tile, i) => (
-                    <DominoTile
-                        key={i}
-                        v1={tile.v1}
-                        v2={tile.v2}
-                        orientation={tile.orientation}
-                        flipped={tile.flipped}
-                        skinId={user.equippedSkin}
-                        className="mx-0.5 animate-in zoom-in duration-300"
-                    />
-                ))}
-            </div>
-         </div>
+         <div className="w-full h-full flex items-center justify-center pointer-events-none relative z-10">
+            <div ref={boardRef} className="flex items-center justify-center origin-center drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] whitespace-nowrap" style={{ transform: `scale(${zoomScale})`, transition: 'transform 0.5s ease-out' }}>
+                {gameState.board.map((tile, i) => (
+                    <DominoTile
+                        key={i}
+                        v1={tile.v1}
+                        v2={tile.v2}
+                        orientation={tile.orientation}
+                        flipped={tile.flipped}
+                        skinId={user.equippedSkin}
+                        className="mx-0.5 animate-in zoom-in duration-300"
+                    />
+                ))}
+            </div>
+         </div>
 
-         <div className="absolute bottom-[20%] flex gap-6 pointer-events-none z-20">
-            {gameState.players.map(p => p.isBoude && (
-                <div key={p.id} className="text-red-500 font-black text-[8px] md:text-xs uppercase tracking-widest animate-pulse bg-red-500/10 px-4 md:px-6 py-1 md:py-2 rounded-full border border-red-500/30 shadow-2xl">{p.name} BOUDÉ !!</div>
-            ))}
-        </div>
-      </div>
-     
-      {/* MAIN JOUEUR (COMPACTE: h-[18vh]) */}
-      <div className="absolute bottom-0 left-0 w-full h-[18vh] bg-gradient-to-t from-black via-black/90 to-transparent flex items-end pb-2 px-2 overflow-visible z-[100]">
-         
-         {/* COIN BAS GAUCHE - CHAT */}
-         <div className="w-12 flex items-end pb-2 relative pointer-events-auto mr-2">
-             <button
-                onClick={() => setShowChat(!showChat)}
-                className="bg-zinc-800 border-2 border-zinc-600 rounded-full w-8 h-8 flex items-center justify-center text-white shadow-xl hover:bg-zinc-700 active:scale-95 transition-all"
-             >
-                 <MessageCircle size={16} />
-             </button>
-             
-             {/* LISTE DES PHRASES */}
-             {showChat && (
-                 <div className="absolute bottom-10 left-0 w-48 bg-zinc-900 border-2 border-zinc-700 rounded-xl p-2 shadow-2xl animate-in slide-in-from-bottom-2 pointer-events-auto">
-                     <h3 className="text-[8px] font-black uppercase text-zinc-500 mb-1 px-2">Vos Phrases</h3>
-                     <div className="flex flex-col gap-1 max-h-32 overflow-y-auto custom-scrollbar">
-                         {ownedPhrases.length > 0 ? ownedPhrases.map(phrase => (
-                             <button
-                                key={phrase.id}
-                                onClick={() => handleSendChat(phrase.text)}
-                                className="text-left text-[10px] font-bold text-white bg-zinc-800 hover:bg-zinc-700 p-2 rounded transition-colors border border-white/5"
-                             >
-                                 {phrase.text}
-                             </button>
-                         )) : (
-                             <div className="text-[10px] text-zinc-500 p-2 italic text-center">Aucune phrase.<br/>Allez en boutique !</div>
-                         )}
-                     </div>
-                 </div>
-             )}
-         </div>
+         <div className="absolute bottom-[20%] flex gap-6 pointer-events-none z-20">
+            {gameState.players.map(p => p.isBoude && (
+                <div key={p.id} className="text-red-500 font-black text-[8px] md:text-xs uppercase tracking-widest animate-pulse bg-red-500/10 px-4 md:px-6 py-1 md:py-2 rounded-full border border-red-500/30 shadow-2xl">{p.name} BOUDÉ !!</div>
+            ))}
+        </div>
+      </div>
+      
+      {/* MAIN JOUEUR (COMPACTE: h-[18vh]) */}
+      <div className="absolute bottom-0 left-0 w-full h-[18vh] bg-gradient-to-t from-black via-black/90 to-transparent flex items-end pb-2 px-2 overflow-visible z-[100]">
+         
+         {/* COIN BAS GAUCHE - CHAT */}
+         <div className="w-12 flex items-end pb-2 relative pointer-events-auto mr-2">
+             <button
+                onClick={() => setShowChat(!showChat)}
+                className="bg-zinc-800 border-2 border-zinc-600 rounded-full w-8 h-8 flex items-center justify-center text-white shadow-xl hover:bg-zinc-700 active:scale-95 transition-all"
+             >
+                 <MessageCircle size={16} />
+             </button>
+             
+             {/* LISTE DES PHRASES */}
+             {showChat && (
+                 <div className="absolute bottom-10 left-0 w-48 bg-zinc-900 border-2 border-zinc-700 rounded-xl p-2 shadow-2xl animate-in slide-in-from-bottom-2 pointer-events-auto">
+                     <h3 className="text-[8px] font-black uppercase text-zinc-500 mb-1 px-2">Vos Phrases</h3>
+                     <div className="flex flex-col gap-1 max-h-32 overflow-y-auto custom-scrollbar">
+                         {ownedPhrases.length > 0 ? ownedPhrases.map(phrase => (
+                             <button
+                                key={phrase.id}
+                                onClick={() => handleSendChat(phrase.text)}
+                                className="text-left text-[10px] font-bold text-white bg-zinc-800 hover:bg-zinc-700 p-2 rounded transition-colors border border-white/5"
+                             >
+                                 {phrase.text}
+                             </button>
+                         )) : (
+                             <div className="text-[10px] text-zinc-500 p-2 italic text-center">Aucune phrase.<br/>Allez en boutique !</div>
+                         )}
+                     </div>
+                 </div>
+             )}
+         </div>
 
-         <div className="flex-1 flex justify-center items-end gap-1 overflow-visible px-0 pointer-events-none pb-2">
-          {humanHand.map((tile) => {
-             const m = getValidMoves([tile], gameState.ends);
-             const canClick = isMyTurn && m.length > 0;
-             return (
-               <div key={tile.id} className="overflow-visible pointer-events-auto">
-                 <DominoTile
-                    v1={tile.v1} v2={tile.v2} size="lg" orientation="vertical" skinId={user.equippedSkin} highlight={canClick && !gameState.mandatoryTile} isMandatory={false}
-                    onClick={() => {
-                        if (gameState.mandatoryTile) return;
-                        if (canClick && m.length === 1) playTile(0, tile, m[0].side);
-                        else if (canClick && m.length > 1) setGameState(prev => ({ ...prev, pendingChoice: { tile, moves: m } }));
-                    }}
-                    className={`transform transition-all duration-300 scale-75 origin-bottom ${canClick && !gameState.mandatoryTile ? 'hover:-translate-y-4 cursor-pointer hover:scale-90 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'opacity-30 grayscale translate-y-1'}`}
-                 />
-               </div>
-             )
-          })}
-        </div>
-        
-        {/* AVATAR JOUEUR (Compact) */}
-        <div className="w-auto flex justify-end items-end pb-2 ml-2">
-           <PlayerAvatar
-                name={user.pseudo}
-                position="bottom-right"
-                active={isMyTurn}
-                cardsCount={humanHand.length}
-                mdcPoints={gameState.players[0].mdcPoints}
-                wins={gameState.players[0].wins}
-                isBoude={gameState.players[0].isBoude}
-                chatMessage={lastChatMessage?.playerId === 0 ? lastChatMessage.text : null}
-                isVip={user.isVip}
-                equippedAvatar={user.equippedAvatar}
-           />
-        </div>
-        
-        {gameState.pendingChoice && (
-            <div className="absolute inset-0 z-[200] bg-black/70 backdrop-blur-md flex flex-col items-center justify-center rounded-t-xl pointer-events-auto text-white">
-                <div className="bg-slate-900 border border-yellow-500/50 p-4 rounded-2xl shadow-2xl text-center text-white">
-                    <h3 className="font-black uppercase mb-4 tracking-widest text-sm">Côté ?</h3>
-                    <div className="flex gap-4">
-                        <Button onClick={() => playTile(0, gameState.pendingChoice.tile, 'left')} className="flex-1 py-3 text-xs">GAUCHE</Button>
-                        <Button onClick={() => playTile(0, gameState.pendingChoice.tile, 'right')} className="flex-1 py-3 text-xs">DROITE</Button>
-                    </div>
-                </div>
-            </div>
-        )}
-      </div>
+         <div className="flex-1 flex justify-center items-end gap-1 overflow-visible px-0 pointer-events-none pb-2">
+          {humanHand.map((tile) => {
+             const m = getValidMoves([tile], gameState.ends);
+             const canClick = isMyTurn && m.length > 0;
+             return (
+               <div key={tile.id} className="overflow-visible pointer-events-auto">
+                 <DominoTile
+                    v1={tile.v1} v2={tile.v2} size="lg" orientation="vertical" skinId={user.equippedSkin} highlight={canClick && !gameState.mandatoryTile} isMandatory={false}
+                    onClick={() => {
+                        if (gameState.mandatoryTile) return;
+                        if (canClick && m.length === 1) playTile(0, tile, m[0].side);
+                        else if (canClick && m.length > 1) setGameState(prev => ({ ...prev, pendingChoice: { tile, moves: m } }));
+                    }}
+                    className={`transform transition-all duration-300 scale-75 origin-bottom ${canClick && !gameState.mandatoryTile ? 'hover:-translate-y-4 cursor-pointer hover:scale-90 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'opacity-30 grayscale translate-y-1'}`}
+                 />
+               </div>
+             )
+          })}
+        </div>
+        
+        {/* AVATAR JOUEUR (Compact) */}
+        <div className="w-auto flex justify-end items-end pb-2 ml-2">
+           <PlayerAvatar
+                name={user.pseudo}
+                position="bottom-right"
+                active={isMyTurn}
+                cardsCount={humanHand.length}
+                mdcPoints={gameState.players[0].mdcPoints}
+                wins={gameState.players[0].wins}
+                isBoude={gameState.players[0].isBoude}
+                chatMessage={lastChatMessage?.playerId === 0 ? lastChatMessage.text : null}
+                isVip={user.isVip}
+                equippedAvatar={user.equippedAvatar}
+           />
+        </div>
+        
+        {gameState.pendingChoice && (
+            <div className="absolute inset-0 z-[200] bg-black/70 backdrop-blur-md flex flex-col items-center justify-center rounded-t-xl pointer-events-auto text-white">
+                <div className="bg-slate-900 border border-yellow-500/50 p-4 rounded-2xl shadow-2xl text-center text-white">
+                    <h3 className="font-black uppercase mb-4 tracking-widest text-sm">Côté ?</h3>
+                    <div className="flex gap-4">
+                        <Button onClick={() => playTile(0, gameState.pendingChoice.tile, 'left')} className="flex-1 py-3 text-xs">GAUCHE</Button>
+                        <Button onClick={() => playTile(0, gameState.pendingChoice.tile, 'right')} className="flex-1 py-3 text-xs">DROITE</Button>
+                    </div>
+                </div>
+            </div>
+        )}
+      </div>
 
-      {/* MODAL FIN DE MANCHE / PARTIE / TOURNOI */}
-      {(gameState.status !== 'playing' && gameState.status !== 'dealing' && gameState.status !== 'winning_animation') && (
-        <div className="absolute inset-0 z-[300] bg-black/95 flex flex-col items-center justify-center p-4 text-center backdrop-blur-xl animate-in fade-in duration-500 text-white">
-           <div className="bg-slate-900 border-2 border-red-700 p-4 rounded-2xl shadow-2xl max-w-lg w-full relative overflow-hidden text-white flex flex-col max-h-[85vh]">
-             <div className="absolute top-0 left-0 w-full h-1 bg-red-500 shadow-[0_0_10px_#ef4444]"></div>
-             
-             {/* ICONE ET TITRE */}
-             <div className="mb-2">
-                 {gameState.status === 'partie_draw' ? <AlertCircle size={32} className="text-red-500 mx-auto mb-2 animate-pulse" /> : <Trophy size={32} className="text-red-500 mx-auto mb-2 animate-bounce" />}
-                 <h2 className="text-xl font-serif font-black uppercase tracking-tighter leading-tight">
-                    {gameState.status === 'tournoi_over' ? 'VICTOIRE FINALE' :
-                     gameState.status === 'manche_over' ? `Fin Manche ${gameState.currentManche}` :
-                     gameState.status === 'partie_draw' ? 'ÉGALITÉ' :
-                     `Partie Gagnée par ${gameState.players[gameState.winnerId].name}`}
-                 </h2>
-             </div>
+      {/* MODAL FIN DE MANCHE / PARTIE / TOURNOI */}
+      {(gameState.status !== 'playing' && gameState.status !== 'dealing' && gameState.status !== 'winning_animation') && (
+        <div className="absolute inset-0 z-[300] bg-black/95 flex flex-col items-center justify-center p-4 text-center backdrop-blur-xl animate-in fade-in duration-500 text-white">
+           <div className="bg-slate-900 border-2 border-red-700 p-4 rounded-2xl shadow-2xl max-w-lg w-full relative overflow-hidden text-white flex flex-col max-h-[85vh]">
+             <div className="absolute top-0 left-0 w-full h-1 bg-red-500 shadow-[0_0_10px_#ef4444]"></div>
+             
+             {/* ICONE ET TITRE */}
+             <div className="mb-2">
+                 {gameState.status === 'partie_draw' ? <AlertCircle size={32} className="text-red-500 mx-auto mb-2 animate-pulse" /> : <Trophy size={32} className="text-red-500 mx-auto mb-2 animate-bounce" />}
+                 <h2 className="text-xl font-serif font-black uppercase tracking-tighter leading-tight">
+                    {gameState.status === 'tournoi_over' ? 'VICTOIRE FINALE' :
+                     gameState.status === 'manche_over' ? `Fin Manche ${gameState.currentManche}` :
+                     gameState.status === 'partie_draw' ? 'ÉGALITÉ' :
+                     `Partie Gagnée par ${gameState.players[gameState.winnerId].name}`}
+                 </h2>
+             </div>
 
-             {/* TABLEAU DES SCORES DÉTAILLÉ */}
-             <div className="overflow-auto mb-4 bg-black/30 rounded-xl border border-white/5 text-left p-2 custom-scrollbar flex-1">
-                <table className="w-full border-collapse text-[10px]">
-                    <thead>
-                        <tr className="border-b border-white/10 text-zinc-500 font-black">
-                            <th className="p-2 uppercase text-white sticky top-0 bg-black/80">Joueur</th>
-                            {gameState.players[0].mancheHistory.map((_, i) => (
-                                <th key={i} className="p-2 text-center text-white sticky top-0 bg-black/80">M{i+1}</th>
-                            ))}
-                            <th className="p-2 uppercase text-right text-red-500 sticky top-0 bg-black/80">TOTAL</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {gameState.players.map((p) => (
-                            <tr key={p.id} className="border-b border-white/5 last:border-0 text-white">
-                                <td className="p-2 text-white">
-                                    <div className="flex flex-col">
-                                        <span className="text-xs font-bold uppercase">{p.name}</span>
-                                        {gameState.status === 'manche_over' && p.label && <span className={`text-[6px] font-black ${p.gain === -1 ? 'text-red-400' : 'text-green-400'}`}>{p.label}</span>}
-                                    </div>
-                                </td>
-                                {p.mancheHistory.map((score, i) => (
-                                    <td key={i} className={`p-2 text-center font-mono font-black ${score >= 4 ? 'text-green-400' : score === -1 ? 'text-red-500' : 'text-zinc-400'}`}>
-                                        {score > 0 ? `+${score}` : score}
-                                    </td>
-                                ))}
-                                <td className="p-2 text-lg font-mono font-black text-yellow-500 text-right">{p.mdcPoints}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-             </div>
-             
-             {/* Bouton Doubler Gains */}
-             {gameState.status === 'tournoi_over' && gameState.winnerId === 0 && !user.isVip && !adWatchedForThisWin && (
-                 <div className="mb-2">
-                     <Button onClick={handleDoubleReward} variant="ad" className="w-full text-sm py-3 animate-pulse">
-                         <Play size={14} className="fill-current" /> DOUBLER (PUB)
-                     </Button>
-                 </div>
-             )}
+             {/* TABLEAU DES SCORES DÉTAILLÉ */}
+             <div className="overflow-auto mb-4 bg-black/30 rounded-xl border border-white/5 text-left p-2 custom-scrollbar flex-1">
+                <table className="w-full border-collapse text-[10px]">
+                    <thead>
+                        <tr className="border-b border-white/10 text-zinc-500 font-black">
+                            <th className="p-2 uppercase text-white sticky top-0 bg-black/80">Joueur</th>
+                            {gameState.players[0].mancheHistory.map((_, i) => (
+                                <th key={i} className="p-2 text-center text-white sticky top-0 bg-black/80">M{i+1}</th>
+                            ))}
+                            <th className="p-2 uppercase text-right text-red-500 sticky top-0 bg-black/80">TOTAL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {gameState.players.map((p) => (
+                            <tr key={p.id} className="border-b border-white/5 last:border-0 text-white">
+                                <td className="p-2 text-white">
+                                    <div className="flex flex-col">
+                                        <span className="text-xs font-bold uppercase">{p.name}</span>
+                                        {gameState.status === 'manche_over' && p.label && <span className={`text-[6px] font-black ${p.gain === -1 ? 'text-red-400' : 'text-green-400'}`}>{p.label}</span>}
+                                    </div>
+                                </td>
+                                {p.mancheHistory.map((score, i) => (
+                                    <td key={i} className={`p-2 text-center font-mono font-black ${score >= 4 ? 'text-green-400' : score === -1 ? 'text-red-500' : 'text-zinc-400'}`}>
+                                        {score > 0 ? `+${score}` : score}
+                                    </td>
+                                ))}
+                                <td className="p-2 text-lg font-mono font-black text-yellow-500 text-right">{p.mdcPoints}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+             </div>
+             
+             {/* Bouton Doubler Gains */}
+             {gameState.status === 'tournoi_over' && gameState.winnerId === 0 && !user.isVip && !adWatchedForThisWin && (
+                 <div className="mb-2">
+                     <Button onClick={handleDoubleReward} variant="ad" className="w-full text-sm py-3 animate-pulse">
+                         <Play size={14} className="fill-current" /> DOUBLER (PUB)
+                     </Button>
+                 </div>
+             )}
 
-             {/* BOUTONS D'ACTION */}
-             <div className="flex gap-2 items-center">
-                {/* BOUTON SCREENSHOT */}
-                <button
-                    onClick={handleScreenshot}
-                    className="p-3 bg-zinc-800 rounded-xl hover:bg-zinc-700 transition-colors border border-zinc-600"
-                    title="Prendre une photo"
-                >
-                    <Camera size={18} className="text-white" />
-                </button>
+             {/* BOUTONS D'ACTION */}
+             <div className="flex gap-2 items-center">
+                {/* BOUTON SCREENSHOT */}
+                <button
+                    onClick={handleScreenshot}
+                    className="p-3 bg-zinc-800 rounded-xl hover:bg-zinc-700 transition-colors border border-zinc-600"
+                    title="Prendre une photo"
+                >
+                    <Camera size={18} className="text-white" />
+                </button>
 
-                {/* NAVIGATION */}
-                {gameState.status === 'partie_over' || gameState.status === 'partie_draw' ? (
-                    <Button onClick={() => startRound(gameState.currentManche, gameState.currentPartie + 1, gameState.winnerId)} className="flex-1 py-3 text-sm text-blue-950">DONNE SUIVANTE</Button>
-                ) : gameState.status === 'manche_over' ? (
-                    <Button onClick={() => {
-                        setGameState(prev => ({ ...prev, players: prev.players.map(p => ({ ...p, wins: 0, label: null })), mancheScoreMDC: null }));
-                        startRound(gameState.currentManche + 1, 1);
-                    }} className="flex-1 py-3 text-sm text-blue-950">MANCHE SUIVANTE</Button>
-                ) : (
-                    <Button onClick={onExit} className="flex-1 py-3 text-sm text-blue-200">RETOUR MENU</Button>
-                )}
-               
-                {/* FERMER */}
-                <button
-                    onClick={() => {
-                        alert("Le tableau reste affiché. Utilisez les boutons pour continuer.");
-                    }}
-                    className="p-3 bg-zinc-800 rounded-xl hover:bg-red-900/50 transition-colors border border-zinc-600 text-red-400"
-                    title="Fermer"
-                >
-                    <X size={18} />
-                </button>
-             </div>
-           </div>
-        </div>
-      )}
-    </div>
-  );
+                {/* NAVIGATION */}
+                {gameState.status === 'partie_over' || gameState.status === 'partie_draw' ? (
+                    <Button onClick={() => startRound(gameState.currentManche, gameState.currentPartie + 1, gameState.winnerId)} className="flex-1 py-3 text-sm text-blue-950">DONNE SUIVANTE</Button>
+                ) : gameState.status === 'manche_over' ? (
+                    <Button onClick={() => {
+                        setGameState(prev => ({ ...prev, players: prev.players.map(p => ({ ...p, wins: 0, label: null })), mancheScoreMDC: null }));
+                        startRound(gameState.currentManche + 1, 1);
+                    }} className="flex-1 py-3 text-sm text-blue-950">MANCHE SUIVANTE</Button>
+                ) : (
+                    <Button onClick={onExit} className="flex-1 py-3 text-sm text-blue-200">RETOUR MENU</Button>
+                )}
+                
+                {/* FERMER */}
+                <button
+                    onClick={() => {
+                        alert("Le tableau reste affiché. Utilisez les boutons pour continuer.");
+                    }}
+                    className="p-3 bg-zinc-800 rounded-xl hover:bg-red-900/50 transition-colors border border-zinc-600 text-red-400"
+                    title="Fermer"
+                >
+                    <X size={18} />
+                </button>
+             </div>
+           </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
+const MemberScreen = ({ onBack, user, onLogout }) => {
+    const winRate = user.stats.played > 0 ? ((user.stats.won / user.stats.played) * 100).toFixed(1) : "0.0";
+    const [rankingTab, setRankingTab] = useState('cochonsDonnes');
+
+    return (
+        <div className="flex flex-col h-full p-6 relative bg-slate-950 overflow-y-auto text-white font-sans">
+            <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><ChevronLeft size={32} /></button>
+            
+            <div className="flex-1 flex flex-col items-center max-w-2xl mx-auto w-full pt-8 pb-12">
+                <h2 className="text-4xl font-black mb-2 uppercase tracking-tighter text-center italic">ESPACE <span className="text-red-600">MEMBRE</span></h2>
+                <div className="w-16 h-1 bg-red-600 mb-8"></div>
+                
+                {/* PROFIL CARD */}
+                <div className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-6 flex items-center gap-6 shadow-xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-2 opacity-10"><User size={120}/></div>
+                    <div className="w-20 h-20 rounded bg-zinc-800 flex items-center justify-center border-2 border-zinc-700 relative">
+                        {getAvatarIcon(user.equippedAvatar, 40, "text-zinc-400")}
+                        {user.isVip && <div className="absolute -top-2 -right-2 bg-yellow-500 text-black p-1 rounded-full border-2 border-zinc-900"><Crown size={12} className="fill-current" /></div>}
+                    </div>
+                    <div className="flex-1 relative z-10">
+                        <div className="flex items-center gap-2">
+                             <h3 className={`text-2xl font-black uppercase ${user.isVip ? 'text-yellow-400' : 'text-white'}`}>{user.pseudo}</h3>
+                             {user.isVip && <span className="bg-yellow-500/20 text-yellow-500 text-[10px] font-black px-2 py-0.5 rounded uppercase border border-yellow-500/30">VIP</span>}
+                        </div>
+                        <span className="text-zinc-500 font-bold uppercase text-xs">{user.role === 'admin' ? 'Administrateur' : 'Membre du Club'}</span>
+                    </div>
+                </div>
+
+                 {/* PORTEFEUILLE */}
+                <div className="w-full grid grid-cols-2 gap-4 mb-6">
+                    <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col items-center justify-center shadow-lg">
+                        <div className="text-blue-400 font-black text-xs uppercase mb-1 flex items-center gap-1"><Gem size={12}/> Jetons</div>
+                        <span className="text-2xl font-mono font-black text-white">{user.wallet.gold.toLocaleString()}</span>
+                    </div>
+                    <div className="bg-zinc-900 border border-purple-900/30 p-4 rounded-xl flex flex-col items-center justify-center shadow-lg">
+                        <div className="text-purple-400 font-black text-xs uppercase mb-1 flex items-center gap-1"><Gem size={12}/> Gemmes</div>
+                        <span className="text-2xl font-mono font-black text-white">{user.wallet.gems.toLocaleString()}</span>
+                    </div>
+                </div>
+
+                {/* STATISTIQUES */}
+                <div className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl mb-8">
+                      <h3 className="text-xs font-black uppercase text-zinc-400 mb-6 flex items-center gap-2">
+                          <TrendingUp size={14} /> Performance Globale
+                      </h3>
+                      <div className="grid grid-cols-3 gap-4 text-center mb-6">
+                          <div><div className="text-3xl font-mono font-black text-white">{user.stats.played}</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Jouées</div></div>
+                          <div><div className="text-3xl font-mono font-black text-green-500">{user.stats.won}</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Gagnées</div></div>
+                          <div><div className="text-3xl font-mono font-black text-white">{winRate}%</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Ratio</div></div>
+                      </div>
+                      <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-green-500" style={{ width: `${winRate}%` }}></div></div>
+                </div>
+
+                {/* RANKING MENSUEL */}
+                <div className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl mb-8">
+                    <h3 className="text-xs font-black uppercase text-zinc-400 mb-4 flex items-center gap-2"><Award size={14} /> Classement du Mois</h3>
+                    
+                    <div className="flex gap-2 mb-6 bg-zinc-950 p-1 rounded-lg">
+                        <button onClick={() => setRankingTab('cochonsDonnes')} className={`flex-1 py-2 rounded text-[10px] font-black uppercase transition-all ${rankingTab === 'cochonsDonnes' ? 'bg-red-600 text-white' : 'text-zinc-500 hover:text-white'}`}>🐷 Boucher</button>
+                        <button onClick={() => setRankingTab('cochonsPris')} className={`flex-1 py-2 rounded text-[10px] font-black uppercase transition-all ${rankingTab === 'cochonsPris' ? 'bg-blue-600 text-white' : 'text-zinc-500 hover:text-white'}`}>🛡️ Défense</button>
+                        <button onClick={() => setRankingTab('points')} className={`flex-1 py-2 rounded text-[10px] font-black uppercase transition-all ${rankingTab === 'points' ? 'bg-yellow-500 text-black' : 'text-zinc-500 hover:text-white'}`}>🏆 Score</button>
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                        {MOCK_RANKINGS[rankingTab].map((rank, i) => (
+                            <div key={i} className={`flex items-center justify-between p-3 rounded-xl border ${i === 0 ? 'bg-gradient-to-r from-yellow-900/20 to-transparent border-yellow-500/30' : 'bg-zinc-800/50 border-zinc-800'}`}>
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${i === 0 ? 'bg-yellow-500 text-black' : i === 1 ? 'bg-zinc-400 text-black' : i === 2 ? 'bg-orange-700 text-white' : 'bg-zinc-800 text-zinc-500'}`}>{i + 1}</div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 bg-zinc-800 rounded-full flex items-center justify-center border border-zinc-700">{getAvatarIcon(rank.avatar, 16, "text-zinc-400")}</div>
+                                        <span className={`font-bold text-sm ${rank.name === user.pseudo ? 'text-yellow-400' : 'text-white'}`}>{rank.name}</span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="flex flex-col items-end">
+                                        <span className="font-mono font-black text-lg text-white">{rank.val}</span>
+                                        <span className="text-[10px] text-zinc-500 uppercase font-bold">
+                                            {rankingTab === 'cochonsDonnes' ? 'Donnés' : rankingTab === 'cochonsPris' ? 'Pris' : 'Pts'}
+                                        </span>
+                                        {rank.played !== undefined && (
+                                            <div className="flex items-center gap-2 mt-1 bg-black/20 px-2 py-0.5 rounded">
+                                                <span className="text-[8px] text-zinc-400">{rank.played} Part.</span>
+                                                <span className={`text-[8px] font-bold ${rank.winRate > 50 ? 'text-green-500' : 'text-zinc-500'}`}>{rank.winRate}% Vic.</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="mt-4 text-center text-[10px] text-zinc-600 italic">Classement mis à jour toutes les 24h.</div>
+                </div>
+
+                <Button variant="danger" onClick={onLogout} className="w-full py-4 border-2">
+                    DÉCONNEXION
+                </Button>
+            </div>
+        </div>
+    );
+};
+
+
+const RankingScreen = ({ onBack, user }) => {
+    const [rankingTab, setRankingTab] = useState('cochonsDonnes');
+
+    return (
+        <div className="flex flex-col h-full p-6 relative bg-slate-950 overflow-y-auto text-white font-sans">
+            <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><ChevronLeft size={32} /></button>
+            <div className="flex-1 max-w-2xl mx-auto w-full pt-8 pb-12">
+                <div className="flex flex-col items-center mb-10">
+                    <h2 className="text-4xl font-black uppercase tracking-tighter text-center italic">CLASSEMENT <span className="text-yellow-500">MENSUEL</span></h2>
+                    <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mt-1">Les meilleurs joueurs de la Martinique</p>
+                </div>
+
+                <div className="flex gap-2 mb-8 bg-zinc-900 p-1.5 rounded-xl border border-zinc-800">
+                    <button onClick={() => setRankingTab('cochonsDonnes')} className={`flex-1 py-4 rounded-lg text-xs font-black uppercase transition-all flex flex-col items-center gap-1 ${rankingTab === 'cochonsDonnes' ? 'bg-gradient-to-br from-red-600 to-red-800 text-white shadow-lg' : 'text-zinc-500 hover:text-white hover:bg-zinc-800'}`}>
+                        <span className="text-lg">🐷</span>
+                        <span>Boucher</span>
+                        <span className="text-[8px] opacity-60 font-normal capitalize">Le + de cochons</span>
+                    </button>
+                    <button onClick={() => setRankingTab('cochonsPris')} className={`flex-1 py-4 rounded-lg text-xs font-black uppercase transition-all flex flex-col items-center gap-1 ${rankingTab === 'cochonsPris' ? 'bg-gradient-to-br from-blue-600 to-blue-800 text-white shadow-lg' : 'text-zinc-500 hover:text-white hover:bg-zinc-800'}`}>
+                        <span className="text-lg">🛡️</span>
+                        <span>Défenseur</span>
+                        <span className="text-[8px] opacity-60 font-normal capitalize">Le - de cochons</span>
+                    </button>
+                    <button onClick={() => setRankingTab('points')} className={`flex-1 py-4 rounded-lg text-xs font-black uppercase transition-all flex flex-col items-center gap-1 ${rankingTab === 'points' ? 'bg-gradient-to-br from-yellow-500 to-yellow-700 text-black shadow-lg' : 'text-zinc-500 hover:text-white hover:bg-zinc-800'}`}>
+                        <span className="text-lg">🏆</span>
+                        <span>Scoreur</span>
+                        <span className="text-[8px] opacity-60 font-normal capitalize">Le + de points</span>
+                    </button>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                    {MOCK_RANKINGS[rankingTab].map((rank, i) => (
+                        <div key={i} className={`flex items-center justify-between p-4 rounded-2xl border transition-all hover:scale-[1.02] ${
+                            i === 0 ? 'bg-gradient-to-r from-yellow-900/40 to-transparent border-yellow-500/50 shadow-[0_0_20px_rgba(234,179,8,0.2)]' :
+                            i === 1 ? 'bg-zinc-800/60 border-zinc-400/30' :
+                            i === 2 ? 'bg-orange-900/30 border-orange-500/30' :
+                            'bg-zinc-900/50 border-zinc-800'
+                        }`}>
+                            <div className="flex items-center gap-4">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-lg ${
+                                    i === 0 ? 'bg-yellow-500 text-black shadow-lg' :
+                                    i === 1 ? 'bg-zinc-400 text-black' :
+                                    i === 2 ? 'bg-orange-700 text-white' :
+                                    'bg-zinc-800 text-zinc-500 border border-zinc-700'
+                                }`}>
+                                    {i + 1}
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center border-2 border-zinc-700 shadow-md">
+                                        {getAvatarIcon(rank.avatar, 20, "text-zinc-400")}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className={`font-black text-sm uppercase ${rank.name === user.pseudo ? 'text-yellow-400' : 'text-white'}`}>
+                                            {rank.name}
+                                        </span>
+                                        {i === 0 && <span className="text-[8px] text-yellow-500 font-bold uppercase tracking-widest">Champion en titre</span>}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <div className="flex flex-col items-end">
+                                    <span className={`font-mono font-black text-2xl ${i===0 ? 'text-yellow-500' : 'text-white'}`}>{rank.val}</span>
+                                    <span className="text-[9px] text-zinc-500 uppercase font-bold">
+                                        {rankingTab === 'cochonsDonnes' ? 'Donnés' : rankingTab === 'cochonsPris' ? 'Pris' : 'Pts'}
+                                    </span>
+                                    {rank.played !== undefined && (
+                                        <div className="flex items-center gap-2 mt-1 bg-black/20 px-2 py-0.5 rounded">
+                                            <span className="text-[8px] text-zinc-400">{rank.played} Part.</span>
+                                            <span className={`text-[8px] font-bold ${rank.winRate > 50 ? 'text-green-500' : 'text-zinc-500'}`}>{rank.winRate}% Vic.</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 const App = () => {
-  const [screen, setScreen] = useState('login');
-  const [currentUser, setCurrentUser] = useState(null);
-  const [gameConfig, setGameConfig] = useState(null);
-  const [setupMode, setSetupMode] = useState('solo'); // 'solo' ou 'multi'
+  const [screen, setScreen] = useState('login');
+  const [currentUser, setCurrentUser] = useState(null);
+  const [gameConfig, setGameConfig] = useState(null);
+  const [setupMode, setSetupMode] = useState('solo'); // 'solo' ou 'multi'
 
-  const handleLogin = (user) => { setCurrentUser(user); setScreen('home'); };
-  const updateUser = (newUser) => { setCurrentUser(newUser); };
+  const handleLogin = (user) => { setCurrentUser(user); setScreen('home'); };
+  const updateUser = (newUser) => { setCurrentUser(newUser); };
 
-  const handleStartGame = (cfg) => {
-      if (currentUser.wallet.gold < cfg.stake) { alert("Pas assez d'or ! Regardez une pub en boutique pour en gagner."); return; }
-      updateUser({ ...currentUser, wallet: { ...currentUser.wallet, gold: currentUser.wallet.gold - cfg.stake } });
-      setGameConfig(cfg);
-      setScreen('game');
-  };
+  const handleStartGame = (cfg) => {
+      if (currentUser.wallet.gold < cfg.stake) { alert("Pas assez d'or ! Regardez une pub en boutique pour en gagner."); return; }
+      updateUser({ ...currentUser, wallet: { ...currentUser.wallet, gold: currentUser.wallet.gold - cfg.stake } });
+      setGameConfig(cfg);
+      setScreen('game');
+  };
 
-  const handleWin = (amount, currency) => {
-      updateUser({ ...currentUser, wallet: { ...currentUser.wallet, [currency]: currentUser.wallet[currency] + amount } });
-      alert(`Gagné ! +${amount} ${currency}`);
-  };
- 
-  const handleDoubleWin = (amount, currency) => {
-       updateUser({ ...currentUser, wallet: { ...currentUser.wallet, [currency]: currentUser.wallet[currency] + amount } });
-  };
- 
-  const handleLogout = () => {
-      setCurrentUser(null);
-      setScreen('login');
-  };
+  const handleWin = (amount, currency) => {
+      updateUser({ ...currentUser, wallet: { ...currentUser.wallet, [currency]: currentUser.wallet[currency] + amount } });
+      alert(`Gagné ! +${amount} ${currency}`);
+  };
+ 
+  const handleDoubleWin = (amount, currency) => {
+       updateUser({ ...currentUser, wallet: { ...currentUser.wallet, [currency]: currentUser.wallet[currency] + amount } });
+  };
+ 
+  const handleLogout = () => {
+      setCurrentUser(null);
+      setScreen('login');
+  };
 
 
-  return (
-    <div className="fixed inset-0 w-screen h-screen z-50 bg-[#020617] text-white overflow-hidden select-none flex justify-center items-center">
-      <div className="w-full h-full lg:max-w-[900px] lg:max-h-[650px] lg:border lg:border-slate-800 lg:rounded-3xl shadow-[0_50px_100px_rgba(0,0,0,0.8)] bg-slate-950 relative overflow-hidden flex flex-col ring-1 ring-white/10 text-white">
-        {screen === 'login' && <LoginScreen onLogin={handleLogin} />}
-       
-        {screen === 'home' && currentUser && <HomeScreen user={currentUser} onNavigate={(s, c) => {
-            if (s === 'setup') setSetupMode('solo');
-            if (c) setGameConfig(c);
-            setScreen(s);
-        }} />}
-       
-        {screen === 'shop' && currentUser && <ShopScreen user={currentUser} onBack={() => setScreen('home')} onUpdateUser={updateUser} />}
-       
-        {screen === 'setup' && <SetupScreen
-            onBack={() => setScreen(setupMode === 'solo' ? 'home' : 'lobby')}
-            onStart={handleStartGame}
-            user={currentUser}
-            mode={setupMode}
-        />}
-       
-        {screen === 'lobby' && <LobbyScreen
-            onBack={() => setScreen('home')}
-            onJoinTable={(cfg) => handleStartGame(cfg)}
-            onCreateTable={() => { setSetupMode('multi'); setScreen('setup'); }}
-        />}
-       
-        {screen === 'game' && <GameScreen config={gameConfig} onExit={() => setScreen('home')} onWin={handleWin} onDoubleWin={handleDoubleWin} user={currentUser} />}
-        {screen === 'member' && currentUser && <MemberScreen user={currentUser} onBack={() => setScreen('home')} onLogout={handleLogout} />}
-        {screen === 'ranking' && currentUser && <RankingScreen user={currentUser} onBack={() => setScreen('home')} />}
-      </div>
-    </div>
-  );
+  return (
+    <div className="fixed inset-0 w-screen h-screen z-50 bg-[#020617] text-white overflow-hidden select-none flex justify-center items-center">
+      <div className="w-full h-full lg:max-w-[900px] lg:max-h-[650px] lg:border lg:border-slate-800 lg:rounded-3xl shadow-[0_50px_100px_rgba(0,0,0,0.8)] bg-slate-950 relative overflow-hidden flex flex-col ring-1 ring-white/10 text-white">
+        {screen === 'login' && <LoginScreen onLogin={handleLogin} />}
+        
+        {screen === 'home' && currentUser && <HomeScreen user={currentUser} onNavigate={(s, c) => { 
+            if (s === 'setup') setSetupMode('solo'); 
+            if (c) setGameConfig(c); 
+            setScreen(s); 
+        }} />}
+        
+        {screen === 'shop' && currentUser && <ShopScreen user={currentUser} onBack={() => setScreen('home')} onUpdateUser={updateUser} />}
+        
+        {screen === 'setup' && <SetupScreen 
+            onBack={() => setScreen(setupMode === 'solo' ? 'home' : 'lobby')} 
+            onStart={handleStartGame} 
+            user={currentUser} 
+            mode={setupMode} 
+        />}
+        
+        {screen === 'lobby' && <LobbyScreen 
+            onBack={() => setScreen('home')} 
+            onJoinTable={(cfg) => handleStartGame(cfg)} 
+            onCreateTable={() => { setSetupMode('multi'); setScreen('setup'); }}
+        />}
+        
+        {screen === 'game' && <GameScreen config={gameConfig} onExit={() => setScreen('home')} onWin={handleWin} onDoubleWin={handleDoubleWin} user={currentUser} />}
+        {screen === 'member' && currentUser && <MemberScreen user={currentUser} onBack={() => setScreen('home')} onLogout={handleLogout} />}
+        {screen === 'ranking' && currentUser && <RankingScreen user={currentUser} onBack={() => setScreen('home')} />}
+      </div>
+    </div>
+  );
 };
 
 export default App;
