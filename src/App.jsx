@@ -900,7 +900,9 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
     const player = gameState.players[gameState.turnIndex];
     if (player.type === 'bot') {
       const timer = setTimeout(() => {
-        const move = getBotMove(player.hand, gameState.ends, config.difficulty || 'easy');
+        // Valou joue toujours en niveau Légende
+        const aiLevel = player.name.includes("Valou") ? 'legend' : (config.difficulty || 'easy');
+        const move = getBotMove(player.hand, gameState.ends, aiLevel);
         if (move) playTile(player.id, move.tile, move.side);
         else passTurn(player.id);
       }, 600);
