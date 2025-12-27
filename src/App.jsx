@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Trophy, Coins, Settings, Wifi, ChevronLeft, X, Crown, ShoppingBag, Gem, AlertCircle, Maximize, Lock, TrendingUp, Gift, Play, Loader, Snowflake, MessageCircle, Camera, Zap, CheckCircle, Award, Star, LogIn, LogOut } from 'lucide-react';
+import { User, Trophy, Coins, Settings, Wifi, ChevronLeft, X, Crown, ShoppingBag, Gem, AlertCircle, Maximize, Lock, TrendingUp, Gift, Play, Snowflake, MessageCircle, Camera, Zap, CheckCircle, Award } from 'lucide-react';
 
 /**
  * --- ASSETS ---
@@ -11,14 +11,20 @@ const Logo972 = ({ className }) => (
     </svg>
 );
 
-// Mapping sécurisé des icônes pour éviter les crashs si une icône est undefined
+// Composant de sécurité pour afficher les icônes sans faire planter l'app si l'import échoue
+const SafeIcon = ({ icon: Icon, size, className }) => {
+    if (!Icon) return null;
+    return <Icon size={size} className={className} />;
+};
+
+// Mapping sécurisé des icônes
 const ICON_MAP = {
     user: User,
     crown: Crown,
-    bot: Settings, // Fallback safe
-    skull: AlertCircle, // Fallback safe
-    ghost: User, // Fallback safe
-    smile: User, // Fallback safe
+    bot: Settings,
+    skull: AlertCircle,
+    ghost: User,
+    smile: User,
     snowflake: Snowflake
 };
 
@@ -64,20 +70,22 @@ const MOCK_DB = {
     { id: 'board_blue', type: 'board', name: 'Nuit Bleue', price: 100, style: 'bg-[#0f172a]' }, // Slate 900
     { id: 'board_xmas', type: 'board', name: 'Noël 972', price: 300, style: 'bg-gradient-to-b from-red-900 to-green-900', icon: 'snowflake' },
     { id: 'board_sponsor', type: 'board', name: 'Sponsor Rhum', price: 1000, style: 'bg-[#451a03]' }, // Amber 950
-    // AVATARS (Utilisation de strings pour éviter les références directes undefined)
+    // AVATARS
     { id: 'avatar_classic', type: 'avatar', name: 'Anonyme', price: 0, icon: 'user' },
     { id: 'avatar_king', type: 'avatar', name: 'Le Roi', price: 500, icon: 'crown' },
     { id: 'avatar_robot', type: 'avatar', name: 'Cyborg', price: 250, icon: 'bot' },
     { id: 'avatar_pirate', type: 'avatar', name: 'Filibustier', price: 300, icon: 'skull' },
     { id: 'avatar_ghost', type: 'avatar', name: 'Fantôme', price: 150, icon: 'ghost' },
     { id: 'avatar_smile', type: 'avatar', name: 'Joyeux', price: 100, icon: 'smile' },
-    // PHRASES (PUNCHLINES)
+    // PHRASES
     { id: 'phrase_boude', type: 'phrase', name: 'Boudé Standard', text: 'Boudé ! 🛑', price: 0 },
     { id: 'phrase_manikou', type: 'phrase', name: 'Ti Manikou', text: 'Ti Manikou ! 🐭', price: 50 },
     { id: 'phrase_sale', type: 'phrase', name: 'I Salé !', text: 'I salééé !!! 🧂', price: 100 },
     { id: 'phrase_tebe', type: 'phrase', name: 'Tébé', text: 'Tébé ou quoi ? 🤨', price: 80 },
     { id: 'phrase_mize', type: 'phrase', name: 'La Mizè', text: 'Woy la mizè... 😩', price: 50 },
     { id: 'phrase_boss', type: 'phrase', name: 'Le Boss', text: 'C\'est qui le patron ? 😎', price: 150 },
+    { id: 'phrase_doudou', type: 'phrase', name: 'Doudou', text: 'I fèw mal Doudou ! 😢', price: 120 },
+    { id: 'phrase_dur', type: 'phrase', name: 'Plus Dur', text: 'Tu n\'as pas plus dur ! 💪', price: 120 },
     // GRADES / LICENCES
     { id: 'license_expert', type: 'grade', name: 'Licence Pro', text: 'Débloque le niveau Expert', price: 500 },
     { id: 'bot_manx', type: 'legend', name: "Man'X le Président", text: 'Jouez contre la Légende (IA Stratégique)', price: 2000, icon: 'crown' }
@@ -306,11 +314,10 @@ const DominoTile = ({ v1, v2, size = 'md', orientation = 'vertical', flipped = f
 
 const getAvatarIcon = (avatarId, size = 36, className = "") => {
     const avatarItem = MOCK_DB.items.find(i => i.id === avatarId);
-    if (!avatarItem) return <User size={size} className={className} />;
+    if (!avatarItem) return <SafeIcon icon={User} size={size} className={className} />;
     
-    // Utilisation du mapping sécurisé
     const IconComponent = (avatarItem.icon && ICON_MAP[avatarItem.icon]) ? ICON_MAP[avatarItem.icon] : User;
-    return <IconComponent size={size} className={className} />;
+    return <SafeIcon icon={IconComponent} size={size} className={className} />;
 };
 
 const PlayerAvatar = ({ name, active, isBot, position, cardsCount, mdcPoints, wins, isBoude, chatMessage, isVip, equippedAvatar }) => {
@@ -343,14 +350,14 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, mdcPoints, wi
             <div className="relative">
                 {/* Taille réduite drastiquement sur mobile : w-10 h-10 */}
                 <div className={`w-10 h-10 md:w-24 md:h-24 rounded-full border-2 md:border-4 flex items-center justify-center bg-zinc-950 transition-all duration-500 ${active ? 'border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.5)]' : 'border-zinc-700 shadow-xl'}`}>
-                    {isBot ? <Wifi className={`w-5 h-5 md:w-9 md:h-9 ${active ? "text-red-500" : "text-zinc-600"}`} /> : <div className={active ? "text-red-500" : "text-zinc-500"}>{getAvatarIcon(equippedAvatar, 20, "w-5 h-5 md:w-9 md:h-9")}</div>}
+                    {isBot ? <SafeIcon icon={Wifi} className={`w-5 h-5 md:w-9 md:h-9 ${active ? "text-red-500" : "text-zinc-600"}`} /> : <div className={active ? "text-red-500" : "text-zinc-500"}>{getAvatarIcon(equippedAvatar, 20, "w-5 h-5 md:w-9 md:h-9")}</div>}
                     {active && <div className="absolute -top-2 -right-1 md:-top-3 md:-right-1 bg-red-600 text-white text-[6px] md:text-[9px] font-black px-1 py-0.5 rounded uppercase shadow-lg">JOUE</div>}
                 </div>
                 <div className="absolute -bottom-1 -left-1 w-5 h-5 md:w-10 md:h-10 bg-white text-black rounded-full border-2 md:border-4 border-zinc-950 flex items-center justify-center shadow-lg"><span className="font-black text-[8px] md:text-sm">{cardsCount}</span></div>
             </div>
             {/* Panneau d'info réduit sur mobile */}
             <div className={`flex flex-col ${position === 'top-left' ? 'items-start' : 'items-end'} bg-zinc-900/90 backdrop-blur-xl px-2 py-1 md:px-5 md:py-3 rounded-md md:rounded-lg border border-zinc-700 shadow-2xl min-w-[70px] md:min-w-[140px]`}>
-                <span className={`font-sans font-bold text-[8px] md:text-xs tracking-widest uppercase mb-0.5 md:mb-1 flex items-center gap-1 ${isVip ? 'text-yellow-400' : 'text-white'}`}>{isVip && <Crown size={8} className="md:w-3 md:h-3 text-yellow-400 fill-yellow-400" />}{name}</span>
+                <span className={`font-sans font-bold text-[8px] md:text-xs tracking-widest uppercase mb-0.5 md:mb-1 flex items-center gap-1 ${isVip ? 'text-yellow-400' : 'text-white'}`}>{isVip && <SafeIcon icon={Crown} size={8} className="md:w-3 md:h-3 text-yellow-400 fill-yellow-400" />}{name}</span>
                 <div className="flex items-center gap-2 md:gap-3">
                     <div className="flex flex-col items-center"><span className="text-[5px] md:text-[8px] text-green-500 font-black uppercase">V</span><span className="text-sm md:text-4xl leading-none font-mono font-black text-white">{wins}</span></div>
                     <div className="w-[1px] h-4 md:h-8 bg-zinc-700"></div>
@@ -383,12 +390,12 @@ const TournamentBanner = ({ onJoin }) => {
   }, []);
   return (
     <div className="w-full bg-gradient-to-r from-purple-900 to-indigo-900 rounded-xl p-1 shadow-2xl mb-6 relative overflow-hidden group cursor-pointer" onClick={onJoin}>
-      <div className="absolute top-0 right-0 p-4 opacity-20"><Trophy size={120} className="text-white transform rotate-12" /></div>
+      <div className="absolute top-0 right-0 p-4 opacity-20"><SafeIcon icon={Trophy} size={120} className="text-white transform rotate-12" /></div>
       <div className="bg-black/40 backdrop-blur-sm p-6 rounded-lg flex items-center justify-between relative z-10">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2"><span className="bg-red-600 text-white text-[10px] font-black px-2 py-0.5 rounded animate-pulse">LIVE 20H00</span><h3 className="text-2xl font-black text-white italic tracking-tighter uppercase">Le Grand Tournoi <span className="text-yellow-400">Gratuit</span></h3></div>
           <p className="text-zinc-300 text-xs font-medium max-w-sm">Rejoignez l'élite tous les soirs. Inscription gratuite, dotation réelle.</p>
-          <div className="flex items-center gap-2 mt-2"><Gift size={16} className="text-yellow-400" /><span className="text-yellow-400 font-bold text-xs uppercase">À gagner : Bons Kadeos & Gemmes</span></div>
+          <div className="flex items-center gap-2 mt-2"><SafeIcon icon={Gift} size={16} className="text-yellow-400" /><span className="text-yellow-400 font-bold text-xs uppercase">À gagner : Bons Kadeos & Gemmes</span></div>
         </div>
         <div className="text-right">
           <div className="text-[10px] text-purple-300 font-bold uppercase tracking-widest mb-1">Début dans</div>
@@ -410,7 +417,7 @@ const AdOverlay = ({ onClose, onReward }) => {
     return (
         <div className="fixed inset-0 z-[999] bg-black flex flex-col items-center justify-center p-6 text-center">
             <div className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 max-w-sm w-full">
-                <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse"><Play size={32} className="text-white" /></div>
+                <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse"><SafeIcon icon={Play} size={32} className="text-white" /></div>
                 <h3 className="text-xl font-black text-white uppercase mb-2">Publicité Partenaire</h3>
                 <p className="text-zinc-400 text-sm mb-6">Merci de patienter pour recevoir votre récompense...</p>
                 <div className="w-full h-4 bg-zinc-800 rounded-full overflow-hidden border border-zinc-700"><div className="h-full bg-blue-500 transition-all duration-100 ease-linear" style={{ width: `${progress}%` }}></div></div>
@@ -444,14 +451,14 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable }) => {
 
     return (
         <div className="flex flex-col h-full p-4 md:p-6 relative bg-zinc-950 overflow-y-auto text-white font-sans">
-            <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><ChevronLeft size={32} /></button>
+            <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><SafeIcon icon={ChevronLeft} size={32} /></button>
             <div className="flex-1 max-w-3xl mx-auto w-full pt-8 pb-12">
                 <div className="flex justify-between items-end mb-8">
                     <div>
                         <h2 className="text-2xl md:text-4xl font-black uppercase tracking-tighter italic">SALON <span className="text-green-500">JEU</span></h2>
                         <p className="text-zinc-500 text-xs font-bold uppercase tracking-widest mt-1">Rejoignez une table ou créez la vôtre</p>
                     </div>
-                    <Button onClick={onCreateTable} className="text-xs py-3 px-5"><Settings size={14} /> CRÉER UNE TABLE</Button>
+                    <Button onClick={onCreateTable} className="text-xs py-3 px-5"><SafeIcon icon={Settings} size={14} /> CRÉER UNE TABLE</Button>
                 </div>
 
                 {/* FILTRES */}
@@ -468,12 +475,12 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable }) => {
                         <div key={table.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex items-center justify-between hover:border-zinc-600 transition-all group">
                             <div className="flex items-center gap-4">
                                 <div className="w-12 h-12 bg-zinc-800 rounded-full flex items-center justify-center border border-zinc-700">
-                                    <Wifi size={20} className={table.players > 0 ? "text-green-500" : "text-zinc-600"} />
+                                    <SafeIcon icon={Wifi} size={20} className={table.players > 0 ? "text-green-500" : "text-zinc-600"} />
                                 </div>
                                 <div>
                                     <div className="text-white font-black uppercase text-sm">{table.name}</div>
                                     <div className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider flex items-center gap-2">
-                                        <span className="flex items-center gap-1"><Coins size={10} className="text-yellow-500"/> {table.stake}</span>
+                                        <span className="flex items-center gap-1"><SafeIcon icon={Coins} size={10} className="text-yellow-500"/> {table.stake}</span>
                                         <span>•</span>
                                         <span>{table.format}</span>
                                         <span>•</span>
@@ -492,7 +499,10 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable }) => {
                                     className={`py-3 px-6 text-xs ${loadingTableId === table.id ? 'opacity-80' : ''}`}
                                 >
                                     {loadingTableId === table.id ? (
-                                        <span className="flex items-center gap-2"><Loader size={14} className="animate-spin" /> ...</span>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            ...
+                                        </div>
                                     ) : "REJOINDRE"}
                                 </Button>
                             </div>
@@ -554,11 +564,11 @@ const HomeScreen = ({ onNavigate, user }) => {
               </div>
               <h1 className="text-xl md:text-2xl font-black text-white tracking-tighter italic">MDC <span className="text-red-600">DOMINOS</span></h1>
           </div>
-          <p className={`text-[10px] uppercase tracking-[0.3em] font-bold ml-1 flex items-center gap-2 ${user.isVip ? 'text-yellow-400' : 'text-zinc-500'}`}>{user.isVip && <Crown size={12} className="fill-current" />} Bonjour, {user.pseudo}</p>
+          <p className={`text-[10px] uppercase tracking-[0.3em] font-bold ml-1 flex items-center gap-2 ${user.isVip ? 'text-yellow-400' : 'text-zinc-500'}`}>{user.isVip && <SafeIcon icon={Crown} size={12} className="fill-current" />} Bonjour, {user.pseudo}</p>
         </div>
         <div className="flex flex-col gap-2 items-end">
-            <div className="flex items-center gap-3 bg-zinc-900 px-4 py-1.5 rounded-full border border-zinc-700 shadow-lg text-yellow-500 font-mono font-bold text-sm" title="Pièces d'or (Jeu)"><Coins size={14} />{user.wallet.gold.toLocaleString()}</div>
-            <div className="flex items-center gap-3 bg-gradient-to-r from-purple-900/20 to-purple-600/20 px-4 py-1.5 rounded-full border border-purple-600/50 shadow-lg text-purple-400 font-mono font-bold text-sm cursor-pointer hover:bg-purple-900/40" onClick={() => onNavigate('shop')} title="Gemmes (Premium)"><Gem size={14} />{user.wallet.gems.toLocaleString()} <span className="text-[10px] bg-purple-600 text-white px-1 rounded ml-1">+</span></div>
+            <div className="flex items-center gap-3 bg-zinc-900 px-4 py-1.5 rounded-full border border-zinc-700 shadow-lg text-yellow-500 font-mono font-bold text-sm" title="Pièces d'or (Jeu)"><SafeIcon icon={Coins} size={14} />{user.wallet.gold.toLocaleString()}</div>
+            <div className="flex items-center gap-3 bg-gradient-to-r from-purple-900/20 to-purple-600/20 px-4 py-1.5 rounded-full border border-purple-600/50 shadow-lg text-purple-400 font-mono font-bold text-sm cursor-pointer hover:bg-purple-900/40" onClick={() => onNavigate('shop')} title="Gemmes (Premium)"><SafeIcon icon={Gem} size={14} />{user.wallet.gems.toLocaleString()} <span className="text-[10px] bg-purple-600 text-white px-1 rounded ml-1">+</span></div>
         </div>
       </div>
       <div className="relative z-10 max-w-6xl mx-auto w-full flex flex-col h-full pb-20 overflow-y-auto custom-scrollbar">
@@ -566,7 +576,7 @@ const HomeScreen = ({ onNavigate, user }) => {
           <div className="flex-1 flex flex-row items-stretch justify-center gap-4 w-full">
             {modes.map((mode, index) => (
               <div key={index} onClick={() => onNavigate(mode.target, mode.config)} className="group relative flex-1 min-h-[180px] bg-zinc-900 border border-zinc-800 rounded-xl cursor-pointer transition-all duration-200 ease-out hover:flex-[1.2] hover:bg-zinc-800 hover:border-red-600 hover:shadow-[0_0_30px_rgba(220,38,38,0.3)] flex flex-col items-center justify-center text-center overflow-hidden">
-                  <div className="mb-4 text-zinc-600 group-hover:text-red-500 group-hover:scale-125 transition-all duration-200 transform group-hover:-translate-y-2"><mode.icon size={48} strokeWidth={1.5} /></div>
+                  <div className="mb-4 text-zinc-600 group-hover:text-red-500 group-hover:scale-125 transition-all duration-200 transform group-hover:-translate-y-2"><SafeIcon icon={mode.icon} size={48} strokeWidth={1.5} /></div>
                   <h3 className="font-black uppercase tracking-tighter text-lg text-white group-hover:text-xl transition-all duration-200 whitespace-nowrap">{mode.title}</h3>
                   <div className="h-1 w-8 bg-zinc-700 my-3 group-hover:bg-red-600 group-hover:w-16 transition-all"></div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 group-hover:text-white">{mode.desc}</p>
@@ -575,9 +585,9 @@ const HomeScreen = ({ onNavigate, user }) => {
           </div>
       </div>
       <div className="absolute bottom-6 left-0 right-0 z-20 flex justify-center items-center gap-6">
-        <Button onClick={() => onNavigate('member')} variant="secondary" className="px-6 py-3 text-sm border-2 border-zinc-600 hover:border-white"><User size={16} className="mr-2"/> PROFIL</Button>
-        <Button onClick={() => onNavigate('shop')} variant="shop" className="px-8 py-4 text-base border-2 border-purple-500 hover:border-purple-300 text-white font-black scale-110 shadow-2xl"><ShoppingBag size={20} className="mr-2"/> BOUTIQUE</Button>
-        <Button onClick={() => onNavigate('ranking')} variant="secondary" className="px-6 py-3 text-sm border-2 border-zinc-600 hover:border-white"><TrendingUp size={16} className="mr-2"/> RANK</Button>
+        <Button onClick={() => onNavigate('member')} variant="secondary" className="px-6 py-3 text-sm border-2 border-zinc-600 hover:border-white"><SafeIcon icon={User} size={16} className="mr-2"/> PROFIL</Button>
+        <Button onClick={() => onNavigate('shop')} variant="shop" className="px-8 py-4 text-base border-2 border-purple-500 hover:border-purple-300 text-white font-black scale-110 shadow-2xl"><SafeIcon icon={ShoppingBag} size={20} className="mr-2"/> BOUTIQUE</Button>
+        <Button onClick={() => onNavigate('ranking')} variant="secondary" className="px-6 py-3 text-sm border-2 border-zinc-600 hover:border-white"><SafeIcon icon={TrendingUp} size={16} className="mr-2"/> RANK</Button>
       </div>
     </div>
   );
@@ -611,15 +621,15 @@ const ShopScreen = ({ onBack, user, onUpdateUser }) => {
             } else { alert("Pas assez de Gemmes !"); }
         }
     };
-    const renderItems = (type) => ( <div className="grid grid-cols-2 gap-6 mt-8"> {MOCK_DB.items.filter(i => i.type === type).map(item => { const owned = user.inventory.includes(item.id); const equipped = (type === 'skin' ? user.equippedSkin : type === 'board' ? user.equippedBoard : user.equippedAvatar) === item.id; return ( <div key={item.id} className={`p-4 rounded-xl border ${equipped && type !== 'phrase' ? 'border-green-500 bg-green-500/10' : 'border-zinc-800 bg-zinc-900'} flex flex-col justify-between gap-4 relative overflow-hidden`}> <div className="flex items-center gap-4 relative z-10"> {type === 'skin' ? ( <div className={`w-12 h-6 rounded flex border ${item.color}`}> <div className="flex-1 border-r border-current/20"></div> <div className="flex-1"></div> </div> ) : type === 'board' ? ( <div className={`w-12 h-8 rounded border border-white/20 ${item.style}`}></div> ) : type === 'grade' ? ( <div className="w-12 h-12 rounded bg-yellow-600 flex items-center justify-center text-xl shadow-lg border border-yellow-400"><Crown size={24} className="text-white"/></div> ) : type === 'legend' ? ( <div className="w-12 h-12 rounded bg-zinc-900 flex items-center justify-center text-xl shadow-lg border border-yellow-600 text-yellow-500"><Crown size={24} className="text-yellow-500" /></div> ) : type === 'avatar' ? ( <div className="w-12 h-12 rounded bg-zinc-800 flex items-center justify-center text-xl shadow-lg border border-zinc-700"> {getAvatarIcon(item.id, 24, "text-zinc-400")} </div> ) : ( <div className="w-12 h-12 rounded bg-black flex items-center justify-center text-xl">{item.text.split(' ').pop().slice(0,2)}</div> )} <div className="text-left"> <div className="font-bold text-sm text-white uppercase leading-tight">{item.name}</div> {type === 'phrase' && <div className="text-[10px] text-zinc-400 italic mt-1">"{item.text}"</div>} {!owned ? ( <div className="flex flex-col items-start"> <div className="text-xs text-purple-400 font-mono flex items-center gap-1 mt-1"><Gem size={10}/> {item.price}</div> <span className="text-[9px] text-zinc-500 uppercase font-black">À vie</span> </div> ) : ( <div className="flex items-center gap-1 text-[10px] text-green-400 font-bold mt-1"> <CheckCircle size={10} /> POSSÉDÉ </div> )} </div> </div> <Button onClick={() => buyItem(item)} className={`py-2 px-4 text-xs w-full ${owned ? (equipped && type !== 'phrase' && type !== 'grade' && type !== 'legend' ? 'bg-green-600 border-green-500' : 'bg-zinc-700 border-zinc-600') : type === 'legend' ? 'bg-gradient-to-r from-yellow-600 to-amber-800 border-yellow-500 text-white' : 'bg-purple-600 border-purple-500'}`}> {owned ? (type === 'phrase' || type === 'grade' || type === 'legend' ? 'POSSÉDÉ' : equipped ? 'ÉQUIPÉ' : 'METTRE') : 'ACHETER'} </Button> </div> ) })} </div> );
+    const renderItems = (type) => ( <div className="grid grid-cols-2 gap-6 mt-8"> {MOCK_DB.items.filter(i => i.type === type).map(item => { const owned = user.inventory.includes(item.id); const equipped = (type === 'skin' ? user.equippedSkin : type === 'board' ? user.equippedBoard : user.equippedAvatar) === item.id; return ( <div key={item.id} className={`p-4 rounded-xl border ${equipped && type !== 'phrase' ? 'border-green-500 bg-green-500/10' : 'border-zinc-800 bg-zinc-900'} flex flex-col justify-between gap-4 relative overflow-hidden`}> <div className="flex items-center gap-4 relative z-10"> {type === 'skin' ? ( <div className={`w-12 h-6 rounded flex border ${item.color}`}> <div className="flex-1 border-r border-current/20"></div> <div className="flex-1"></div> </div> ) : type === 'board' ? ( <div className={`w-12 h-8 rounded border border-white/20 ${item.style}`}></div> ) : type === 'grade' ? ( <div className="w-12 h-12 rounded bg-yellow-600 flex items-center justify-center text-xl shadow-lg border border-yellow-400"><SafeIcon icon={Crown} size={24} className="text-white"/></div> ) : type === 'legend' ? ( <div className="w-12 h-12 rounded bg-zinc-900 flex items-center justify-center text-xl shadow-lg border border-yellow-600 text-yellow-500"><SafeIcon icon={Crown} size={24} className="text-yellow-500" /></div> ) : type === 'avatar' ? ( <div className="w-12 h-12 rounded bg-zinc-800 flex items-center justify-center text-xl shadow-lg border border-zinc-700"> {getAvatarIcon(item.id, 24, "text-zinc-400")} </div> ) : ( <div className="w-12 h-12 rounded bg-black flex items-center justify-center text-xl">{item.text.split(' ').pop().slice(0,2)}</div> )} <div className="text-left"> <div className="font-bold text-sm text-white uppercase leading-tight">{item.name}</div> {type === 'phrase' && <div className="text-[10px] text-zinc-400 italic mt-1">"{item.text}"</div>} {!owned ? ( <div className="flex flex-col items-start"> <div className="text-xs text-purple-400 font-mono flex items-center gap-1 mt-1"><SafeIcon icon={Gem} size={10}/> {item.price}</div> <span className="text-[9px] text-zinc-500 uppercase font-black">À vie</span> </div> ) : ( <div className="flex items-center gap-1 text-[10px] text-green-400 font-bold mt-1"> <SafeIcon icon={CheckCircle} size={10} /> POSSÉDÉ </div> )} </div> </div> <Button onClick={() => buyItem(item)} className={`py-2 px-4 text-xs w-full ${owned ? (equipped && type !== 'phrase' && type !== 'grade' && type !== 'legend' ? 'bg-green-600 border-green-500' : 'bg-zinc-700 border-zinc-600') : type === 'legend' ? 'bg-gradient-to-r from-yellow-600 to-amber-800 border-yellow-500 text-white' : 'bg-purple-600 border-purple-500'}`}> {owned ? (type === 'phrase' || type === 'grade' || type === 'legend' ? 'POSSÉDÉ' : equipped ? 'ÉQUIPÉ' : 'METTRE') : 'ACHETER'} </Button> </div> ) })} </div> );
     return (
         <div className="flex flex-col h-full p-4 md:p-6 relative bg-slate-950 overflow-y-auto text-white font-sans">
             {showingAd && <AdOverlay onClose={() => setShowingAd(false)} onReward={handleAdReward} />}
-            <div className="flex justify-between items-center mb-6"><button onClick={onBack} className="text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><ChevronLeft size={32} /></button><div className="flex gap-2 bg-zinc-900 p-1 rounded-lg border border-zinc-800 overflow-x-auto custom-scrollbar"><button onClick={() => setTab('coins')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'coins' ? 'bg-yellow-500 text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Pièces</button><button onClick={() => setTab('gems')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'gems' ? 'bg-purple-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Banque</button><button onClick={() => setTab('vip')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'vip' ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>VIP</button><button onClick={() => setTab('legends')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'legends' ? 'bg-gradient-to-r from-zinc-800 to-black text-yellow-500 border border-yellow-600 shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Légendes</button><button onClick={() => setTab('grades')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'grades' ? 'bg-orange-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Grades</button><button onClick={() => setTab('avatars')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'avatars' ? 'bg-blue-500 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Avatars</button><button onClick={() => setTab('skins')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'skins' ? 'bg-cyan-500 text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Dominos</button><button onClick={() => setTab('boards')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'boards' ? 'bg-green-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Tapis</button><button onClick={() => setTab('phrases')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'phrases' ? 'bg-red-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Paroles</button></div><div className="flex items-center gap-2 bg-purple-900/30 px-3 py-1 rounded-full border border-purple-500/30 whitespace-nowrap"><Gem size={14} className="text-purple-400"/> <span className="font-mono font-bold text-purple-200">{user.wallet.gems}</span></div></div>
+            <div className="flex justify-between items-center mb-6"><button onClick={onBack} className="text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><SafeIcon icon={ChevronLeft} size={32} /></button><div className="flex gap-2 bg-zinc-900 p-1 rounded-lg border border-zinc-800 overflow-x-auto custom-scrollbar"><button onClick={() => setTab('coins')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'coins' ? 'bg-yellow-500 text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Pièces</button><button onClick={() => setTab('gems')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'gems' ? 'bg-purple-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Banque</button><button onClick={() => setTab('vip')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'vip' ? 'bg-gradient-to-r from-yellow-500 to-amber-600 text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>VIP</button><button onClick={() => setTab('legends')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'legends' ? 'bg-gradient-to-r from-zinc-800 to-black text-yellow-500 border border-yellow-600 shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Légendes</button><button onClick={() => setTab('grades')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'grades' ? 'bg-orange-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Grades</button><button onClick={() => setTab('avatars')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'avatars' ? 'bg-blue-500 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Avatars</button><button onClick={() => setTab('skins')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'skins' ? 'bg-cyan-500 text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Dominos</button><button onClick={() => setTab('boards')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'boards' ? 'bg-green-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Tapis</button><button onClick={() => setTab('phrases')} className={`px-3 py-2 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-all ${tab === 'phrases' ? 'bg-red-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Paroles</button></div><div className="flex items-center gap-2 bg-purple-900/30 px-3 py-1 rounded-full border border-purple-500/30 whitespace-nowrap"><SafeIcon icon={Gem} size={14} className="text-purple-400"/> <span className="font-mono font-bold text-purple-200">{user.wallet.gems}</span></div></div>
             <div className="flex-1 max-w-4xl mx-auto w-full pt-4 pb-12">
-                {tab === 'coins' && ( <> <h2 className="text-3xl font-black mb-2 uppercase tracking-tighter text-center italic">Pièces <span className="text-yellow-500">Gratuites</span></h2> <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden max-w-sm mx-auto mt-8"> <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-black px-3 py-1 rounded-bl-lg">OFFRE SPÉCIALE</div> {user.isVip ? ( <div className="w-20 h-20 bg-yellow-600/20 rounded-full flex items-center justify-center mb-4 border border-yellow-500/50"><Crown size={40} className="text-yellow-500" /></div> ) : ( <div className="w-20 h-20 bg-blue-600/20 rounded-full flex items-center justify-center mb-4 border border-blue-500/50"><Play size={40} className="text-blue-500" /></div> )} <h3 className="text-xl font-black text-white uppercase mb-1"> {user.isVip ? "Bonus Quotidien VIP" : "Visionner une Pub"} </h3> <p className="text-zinc-400 text-xs mb-6 max-w-xs"> {user.isVip ? "En tant que membre VIP, récupérez vos pièces instantanément !" : "Regardez une vidéo de 30 secondes pour soutenir l'association et recevoir votre récompense."} </p> <div className="text-4xl font-black text-yellow-500 mb-6 flex items-center gap-2">+500 <Coins size={32} /></div> <Button onClick={handleWatchAd} variant={user.isVip ? "vip" : "ad"} className="w-full text-lg py-4"> {user.isVip ? <><Zap size={20} className="fill-current" /> RÉCLAMER (VIP)</> : <><Play size={20} className="fill-current" /> REGARDER (30s)</>} </Button> </div> </> )}
-                {tab === 'vip' && ( <> <h2 className="text-3xl font-black mb-6 uppercase tracking-tighter text-center italic text-yellow-500 flex items-center justify-center gap-3"><Crown size={32} /> Pass VIP</h2> <div className="bg-gradient-to-br from-yellow-900/50 to-amber-900/20 border border-yellow-600/30 rounded-2xl p-8 relative overflow-hidden shadow-2xl max-w-sm mx-auto"> <div className="absolute top-0 right-0 p-10 bg-yellow-500/10 rounded-bl-[100px] -mr-10 -mt-10"></div> <div className="flex flex-col gap-4 mb-8"> <div className="flex items-center gap-3 text-white"> <div className="p-2 bg-yellow-500/20 rounded-lg"><Play size={20} className="text-yellow-400"/></div> <span className="font-bold text-sm">Plus de publicités</span> </div> <div className="flex items-center gap-3 text-white"> <div className="p-2 bg-yellow-500/20 rounded-lg"><Zap size={20} className="text-yellow-400"/></div> <span className="font-bold text-sm">Bonus instantanés</span> </div> <div className="flex items-center gap-3 text-white"> <div className="p-2 bg-yellow-500/20 rounded-lg"><Crown size={20} className="text-yellow-400"/></div> <span className="font-bold text-sm">Pseudo Doré</span> </div> <div className="flex items-center gap-3 text-white"> <div className="p-2 bg-yellow-500/20 rounded-lg"><TrendingUp size={20} className="text-yellow-400"/></div> <span className="font-bold text-sm">Stats Détaillées</span> </div> </div> {user.isVip ? ( <div className="bg-green-600/20 border border-green-500 text-green-400 font-black text-center py-4 rounded-xl uppercase tracking-widest"> ACTIF </div> ) : ( <Button onClick={buyVip} variant="vip" className="w-full text-xl py-5"> S'ABONNER 4,99€ / MOIS </Button> )} <p className="text-[10px] text-zinc-500 text-center mt-4">Sans engagement. Annulable à tout moment.</p> </div> </> )}
-                {tab === 'gems' && ( <> <h2 className="text-3xl font-black mb-2 uppercase tracking-tighter text-center italic">Recharger <span className="text-purple-500">Gemmes</span></h2> <div className="grid grid-cols-3 gap-6 mt-8"> {gemPacks.map(pack => ( <div key={pack.id} className={`relative p-6 rounded-xl shadow-2xl border-2 flex flex-col items-center text-center group cursor-pointer hover:-translate-y-2 transition-transform ${pack.color}`} onClick={() => buyGems(pack)}> {pack.popular && <div className="absolute -top-3 bg-red-600 text-white font-black px-3 py-1 rounded text-[10px] tracking-widest shadow-lg">POPULAIRE</div>} <Gem size={40} className="text-purple-400 mb-4" /> <div className="text-3xl font-black mb-1 text-white">{pack.amount}</div> <Button className="w-full mt-auto text-lg">{pack.price}</Button> </div> ))} </div> </> )}
+                {tab === 'coins' && ( <> <h2 className="text-3xl font-black mb-2 uppercase tracking-tighter text-center italic">Pièces <span className="text-yellow-500">Gratuites</span></h2> <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden max-w-sm mx-auto mt-8"> <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-black px-3 py-1 rounded-bl-lg">OFFRE SPÉCIALE</div> {user.isVip ? ( <div className="w-20 h-20 bg-yellow-600/20 rounded-full flex items-center justify-center mb-4 border border-yellow-500/50"><SafeIcon icon={Crown} size={40} className="text-yellow-500" /></div> ) : ( <div className="w-20 h-20 bg-blue-600/20 rounded-full flex items-center justify-center mb-4 border border-blue-500/50"><SafeIcon icon={Play} size={40} className="text-blue-500" /></div> )} <h3 className="text-xl font-black text-white uppercase mb-1"> {user.isVip ? "Bonus Quotidien VIP" : "Visionner une Pub"} </h3> <p className="text-zinc-400 text-xs mb-6 max-w-xs"> {user.isVip ? "En tant que membre VIP, récupérez vos pièces instantanément !" : "Regardez une vidéo de 30 secondes pour soutenir l'association et recevoir votre récompense."} </p> <div className="text-4xl font-black text-yellow-500 mb-6 flex items-center gap-2">+500 <SafeIcon icon={Coins} size={32} /></div> <Button onClick={handleWatchAd} variant={user.isVip ? "vip" : "ad"} className="w-full text-lg py-4"> {user.isVip ? <><SafeIcon icon={Zap} size={20} className="fill-current" /> RÉCLAMER (VIP)</> : <><SafeIcon icon={Play} size={20} className="fill-current" /> REGARDER (30s)</>} </Button> </div> </> )}
+                {tab === 'vip' && ( <> <h2 className="text-3xl font-black mb-6 uppercase tracking-tighter text-center italic text-yellow-500 flex items-center justify-center gap-3"><SafeIcon icon={Crown} size={32} /> Pass VIP</h2> <div className="bg-gradient-to-br from-yellow-900/50 to-amber-900/20 border border-yellow-600/30 rounded-2xl p-8 relative overflow-hidden shadow-2xl max-w-sm mx-auto"> <div className="absolute top-0 right-0 p-10 bg-yellow-500/10 rounded-bl-[100px] -mr-10 -mt-10"></div> <div className="flex flex-col gap-4 mb-8"> <div className="flex items-center gap-3 text-white"> <div className="p-2 bg-yellow-500/20 rounded-lg"><SafeIcon icon={Play} size={20} className="text-yellow-400"/></div> <span className="font-bold text-sm">Plus de publicités</span> </div> <div className="flex items-center gap-3 text-white"> <div className="p-2 bg-yellow-500/20 rounded-lg"><SafeIcon icon={Zap} size={20} className="text-yellow-400"/></div> <span className="font-bold text-sm">Bonus instantanés</span> </div> <div className="flex items-center gap-3 text-white"> <div className="p-2 bg-yellow-500/20 rounded-lg"><SafeIcon icon={Crown} size={20} className="text-yellow-400"/></div> <span className="font-bold text-sm">Pseudo Doré</span> </div> <div className="flex items-center gap-3 text-white"> <div className="p-2 bg-yellow-500/20 rounded-lg"><SafeIcon icon={TrendingUp} size={20} className="text-yellow-400"/></div> <span className="font-bold text-sm">Stats Détaillées</span> </div> </div> {user.isVip ? ( <div className="bg-green-600/20 border border-green-500 text-green-400 font-black text-center py-4 rounded-xl uppercase tracking-widest"> ACTIF </div> ) : ( <Button onClick={buyVip} variant="vip" className="w-full text-xl py-5"> S'ABONNER 4,99€ / MOIS </Button> )} <p className="text-[10px] text-zinc-500 text-center mt-4">Sans engagement. Annulable à tout moment.</p> </div> </> )}
+                {tab === 'gems' && ( <> <h2 className="text-3xl font-black mb-2 uppercase tracking-tighter text-center italic">Recharger <span className="text-purple-500">Gemmes</span></h2> <div className="grid grid-cols-3 gap-6 mt-8"> {gemPacks.map(pack => ( <div key={pack.id} className={`relative p-6 rounded-xl shadow-2xl border-2 flex flex-col items-center text-center group cursor-pointer hover:-translate-y-2 transition-transform ${pack.color}`} onClick={() => buyGems(pack)}> {pack.popular && <div className="absolute -top-3 bg-red-600 text-white font-black px-3 py-1 rounded text-[10px] tracking-widest shadow-lg">POPULAIRE</div>} <SafeIcon icon={Gem} size={40} className="text-purple-400 mb-4" /> <div className="text-3xl font-black mb-1 text-white">{pack.amount}</div> <Button className="w-full mt-auto text-lg">{pack.price}</Button> </div> ))} </div> </> )}
                 {tab === 'legends' && ( <> <h2 className="text-3xl font-black mb-2 uppercase tracking-tighter text-center italic text-yellow-500">Bots <span className="text-white">Légendaires</span></h2> <p className="text-center text-zinc-500 text-xs mb-6">Affrontez des IA avec des stratégies uniques.</p> {renderItems('legend')} </> )}
                 {tab === 'grades' && ( <> <h2 className="text-3xl font-black mb-2 uppercase tracking-tighter text-center italic">Grades <span className="text-orange-500">VIP</span></h2> <p className="text-center text-zinc-500 text-xs mb-2">Débloquez des fonctionnalités exclusives.</p> {renderItems('grade')} </> )}
                 {tab === 'skins' && ( <> <h2 className="text-3xl font-black mb-2 uppercase tracking-tighter text-center italic">Style <span className="text-cyan-500">Dominos</span></h2> {renderItems('skin')} </> )}
@@ -646,7 +656,7 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
   const handleStart = () => { if (difficulty === 'expert' && !hasExpertLicense) { alert("Niveau Expert verrouillé ! Achetez la Licence Pro en boutique."); return; } if (difficulty === 'legend' && !hasManX) { alert("Niveau Légende verrouillé ! Achetez Man'X en boutique."); return; } if(target <= 0) { alert("L'objectif doit être supérieur à 0 !"); return; } if(stake <= 0) { alert("La mise doit être supérieure à 0 !"); return; } onStart({ format, target, stake, currency: 'gold', difficulty }); };
   return (
     <div className="flex flex-col h-full p-4 md:p-6 relative bg-zinc-950 overflow-y-auto text-white text-center font-sans">
-      <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><ChevronLeft size={32} /></button>
+      <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><SafeIcon icon={ChevronLeft} size={32} /></button>
       <div className="flex-1 flex flex-col items-center max-w-lg mx-auto w-full pt-8 pb-12 text-center">
         <h2 className="text-2xl md:text-4xl font-black mb-8 uppercase tracking-tighter italic">{mode === 'multi' ? 'CRÉER' : 'CONFIG'} <span className="text-red-600">TABLE</span></h2>
         
@@ -656,11 +666,11 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
                 <label className="text-[11px] text-zinc-500 uppercase tracking-widest font-black mb-4 block text-center">Confidentialité du Salon</label>
                 <div className="grid grid-cols-2 gap-4 w-full max-w-md mx-auto mb-6">
                     <button onClick={() => setPrivacy('public')} className={`p-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${privacy === 'public' ? 'bg-zinc-800 border-green-500 text-white shadow-[0_0_20px_rgba(34,197,94,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}>
-                        <Wifi size={24} />
+                        <SafeIcon icon={Wifi} size={24} />
                         <span className="font-black tracking-widest text-xs mt-1">PUBLIC</span>
                     </button>
                     <button onClick={() => setPrivacy('private')} className={`p-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${privacy === 'private' ? 'bg-zinc-800 border-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}>
-                        <Lock size={24} />
+                        <SafeIcon icon={Lock} size={24} />
                         <span className="font-black tracking-widest text-xs mt-1">PRIVÉ</span>
                     </button>
                 </div>
@@ -672,7 +682,7 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
                         </div>
                         <div className="flex gap-2">
                             <div className="flex-1 bg-black p-3 rounded border border-zinc-700 font-mono text-xl font-black text-center tracking-[0.2em] text-white select-all">972-MDC</div>
-                            <Button onClick={() => alert("Lien d'invitation copié !")} className="py-2 px-4 text-xs bg-blue-600 border-blue-500"><Settings size={14} className="mr-1"/> COPIER</Button>
+                            <Button onClick={() => alert("Lien d'invitation copié !")} className="py-2 px-4 text-xs bg-blue-600 border-blue-500"><SafeIcon icon={Settings} size={14} className="mr-1"/> COPIER</Button>
                         </div>
                         <p className="text-[9px] text-zinc-600 mt-2 italic text-left">Envoyez ce lien à vos amis pour rejoindre.</p>
                     </div>
@@ -685,8 +695,8 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
             <div className="flex gap-2 justify-center flex-wrap">
                 <button onClick={() => setDifficulty('easy')} className={`p-3 rounded-lg border-2 flex-1 min-w-[80px] text-xs font-bold uppercase transition-all ${difficulty === 'easy' ? 'bg-green-600 border-green-400 text-white' : 'bg-zinc-900 border-zinc-700 text-zinc-500'}`}>Débutant</button>
                 <button onClick={() => setDifficulty('medium')} className={`p-3 rounded-lg border-2 flex-1 min-w-[80px] text-xs font-bold uppercase transition-all ${difficulty === 'medium' ? 'bg-yellow-600 border-yellow-400 text-white' : 'bg-zinc-900 border-zinc-700 text-zinc-500'}`}>Moyen</button>
-                <button onClick={() => setDifficulty('expert')} className={`p-3 rounded-lg border-2 flex-1 min-w-[80px] text-xs font-bold uppercase transition-all relative overflow-hidden ${difficulty === 'expert' ? 'bg-red-600 border-red-400 text-white' : 'bg-zinc-900 border-zinc-700 text-zinc-500'}`}>Expert {!hasExpertLicense && (<div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[1px]"><Lock size={16} className="text-white" /></div>)}</button>
-                <button onClick={() => setDifficulty('legend')} className={`p-3 rounded-lg border-2 flex-1 min-w-[80px] text-xs font-black uppercase transition-all relative overflow-hidden ${difficulty === 'legend' ? 'bg-yellow-600 border-yellow-400 text-black shadow-[0_0_15px_rgba(234,179,8,0.5)]' : 'bg-zinc-900 border-zinc-700 text-zinc-500'}`}>Légende {!hasManX && (<div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[1px]"><Lock size={16} className="text-white" /></div>)}</button>
+                <button onClick={() => setDifficulty('expert')} className={`p-3 rounded-lg border-2 flex-1 min-w-[80px] text-xs font-bold uppercase transition-all relative overflow-hidden ${difficulty === 'expert' ? 'bg-red-600 border-red-400 text-white' : 'bg-zinc-900 border-zinc-700 text-zinc-500'}`}>Expert {!hasExpertLicense && (<div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[1px]"><SafeIcon icon={Lock} size={16} className="text-white" /></div>)}</button>
+                <button onClick={() => setDifficulty('legend')} className={`p-3 rounded-lg border-2 flex-1 min-w-[80px] text-xs font-black uppercase transition-all relative overflow-hidden ${difficulty === 'legend' ? 'bg-yellow-600 border-yellow-400 text-black shadow-[0_0_15px_rgba(234,179,8,0.5)]' : 'bg-zinc-900 border-zinc-700 text-zinc-500'}`}>Légende {!hasManX && (<div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[1px]"><SafeIcon icon={Lock} size={16} className="text-white" /></div>)}</button>
             </div>
         </div>
         <div className="w-full mb-8">
@@ -797,6 +807,28 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           onWin(config.stake * 3, config.currency);
       }
   }, [gameState.status, gameState.winnerId]);
+
+  // EFFET: Taunt Man'X quand il bloque un joueur
+  useEffect(() => {
+      if (gameState.status === 'playing' && gameState.history.length > 0) {
+          const currentId = gameState.turnIndex;
+          const prevId = (currentId + 1) % 3; // Joueur précédent (Sens anti-horaire)
+          const prevPlayer = gameState.players[prevId];
+          const lastLog = gameState.history[0];
+
+          // Vérifier si le dernier coup était joué par Man'X et était un placement de domino
+          if (prevPlayer.name.includes("Man'X") && lastLog.player === prevPlayer.name && lastLog.action === 'Posé') {
+              const currentPlayer = gameState.players[currentId];
+              const moves = getValidMoves(currentPlayer.hand, gameState.ends);
+              
+              // Si le joueur actuel est bloqué (mais a des dominos)
+              if (moves.length === 0 && currentPlayer.hand.length > 0) {
+                  setLastChatMessage({ playerId: prevId, text: "I fèw mal Doudou !" });
+                  setTimeout(() => setLastChatMessage(null), 4000); // 4s pour bien lire
+              }
+          }
+      }
+  }, [gameState.turnIndex, gameState.status, gameState.history]); 
 
   // Zoom Optimisé pour Paysage Mobile (Bord à bord)
   useEffect(() => {
@@ -1015,15 +1047,15 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
       {/* EFFET NEIGE SI NOEL */}
       {currentBoard.id === 'board_xmas' && (
           <div className="absolute inset-0 pointer-events-none opacity-30 flex justify-between px-10">
-              <Snowflake className="animate-bounce text-white w-8 h-8 opacity-50" style={{animationDuration:'3s'}} />
-              <Snowflake className="animate-bounce text-white w-12 h-12 opacity-30" style={{animationDuration:'5s'}} />
-              <Snowflake className="animate-bounce text-white w-6 h-6 opacity-60" style={{animationDuration:'4s'}} />
+              <SafeIcon icon={Snowflake} className="animate-bounce text-white w-8 h-8 opacity-50" style={{animationDuration:'3s'}} />
+              <SafeIcon icon={Snowflake} className="animate-bounce text-white w-12 h-12 opacity-30" style={{animationDuration:'5s'}} />
+              <SafeIcon icon={Snowflake} className="animate-bounce text-white w-6 h-6 opacity-60" style={{animationDuration:'4s'}} />
           </div>
       )}
 
       {/* HEADER COMPACTE (h-10) MODIFIÉ: Absolute pour gain de place */}
       <div className="absolute top-0 left-0 w-full z-[60] flex justify-between items-center px-4 h-10 bg-black/40 backdrop-blur-md border-b border-white/5 shadow-2xl">
-         <Button variant="ghost" onClick={onExit} className="p-1"><X size={20} /></Button>
+         <Button variant="ghost" onClick={onExit} className="p-1"><SafeIcon icon={X} size={20} /></Button>
          <div className="flex flex-col items-center">
              {/* CHRONO REDUIT */}
              <div className="relative text-center leading-none"><span className="text-xl font-black font-mono text-white drop-shadow-md">{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span></div>
@@ -1034,7 +1066,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
          <div className="flex items-center gap-2">
              <span className="text-[10px] text-yellow-500 font-black font-mono bg-black/50 px-2 py-0.5 rounded">{config.stake} OR</span>
              <button onClick={toggleFullScreen} className="p-1.5 bg-black/30 rounded hover:bg-white/10 transition-colors">
-                 <Maximize size={16} className="text-zinc-300" />
+                 <SafeIcon icon={Maximize} size={16} className="text-zinc-300" />
              </button>
          </div>
       </div>
@@ -1056,7 +1088,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
          {gameState.status === 'winning_animation' && winningInfo && (
             <div className="absolute inset-0 z-[250] flex flex-col items-center justify-center pointer-events-none animate-in zoom-in duration-500">
                 <div className="bg-black/80 backdrop-blur-lg p-8 rounded-3xl border-4 border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.6)] flex flex-col items-center text-center">
-                    <Crown size={64} className="text-yellow-500 mb-4 animate-bounce" />
+                    <SafeIcon icon={Crown} size={64} className="text-yellow-500 mb-4 animate-bounce" />
                     <h2 className="text-2xl md:text-4xl font-black text-white uppercase italic tracking-tighter mb-2">Victoire de</h2>
                     <h3 className="text-3xl md:text-5xl font-black text-yellow-400 uppercase mb-8 drop-shadow-lg">{gameState.players[winningInfo.winnerId].name}</h3>
                     <div className="scale-125 md:scale-150 transform rotate-6">
@@ -1067,8 +1099,8 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
          )}
 
          {/* AVATARS PLUS PETITS ET DANS LES COINS */}
-         <PlayerAvatar name={gameState.players[1].name} isBot position="top-left" active={gameState.turnIndex === 1} cardsCount={gameState.players[1].hand.length} mdcPoints={gameState.players[1].mdcPoints} wins={gameState.players[1].wins} isBoude={gameState.players[1].isBoude} chatMessage={null} isVip={gameState.players[1].id === 0 ? user.isVip : false} equippedAvatar={gameState.players[1].type === 'human' ? user.equippedAvatar : gameState.players[1].name.includes('Chaton') ? 'avatar_robot' : 'avatar_smile'} />
-         <PlayerAvatar name={gameState.players[2].name} isBot position="top-right" active={gameState.turnIndex === 2} cardsCount={gameState.players[2].hand.length} mdcPoints={gameState.players[2].mdcPoints} wins={gameState.players[2].wins} isBoude={gameState.players[2].isBoude} chatMessage={null} isVip={gameState.players[2].id === 0 ? user.isVip : false} equippedAvatar={gameState.players[2].type === 'human' ? user.equippedAvatar : gameState.players[2].name.includes('Olivier') ? 'avatar_king' : 'avatar_classic'} />
+         <PlayerAvatar name={gameState.players[1].name} isBot position="top-left" active={gameState.turnIndex === 1} cardsCount={gameState.players[1].hand.length} mdcPoints={gameState.players[1].mdcPoints} wins={gameState.players[1].wins} isBoude={gameState.players[1].isBoude} chatMessage={lastChatMessage?.playerId === 1 ? lastChatMessage.text : null} isVip={gameState.players[1].id === 0 ? user.isVip : false} equippedAvatar={gameState.players[1].type === 'human' ? user.equippedAvatar : gameState.players[1].name.includes('Chaton') ? 'avatar_robot' : 'avatar_smile'} />
+         <PlayerAvatar name={gameState.players[2].name} isBot position="top-right" active={gameState.turnIndex === 2} cardsCount={gameState.players[2].hand.length} mdcPoints={gameState.players[2].mdcPoints} wins={gameState.players[2].wins} isBoude={gameState.players[2].isBoude} chatMessage={lastChatMessage?.playerId === 2 ? lastChatMessage.text : null} isVip={gameState.players[2].id === 0 ? user.isVip : false} equippedAvatar={gameState.players[2].type === 'human' ? user.equippedAvatar : gameState.players[2].name.includes('Olivier') ? 'avatar_king' : 'avatar_classic'} />
 
          <div className="w-full h-full flex items-center justify-center pointer-events-none relative z-10">
             <div ref={boardRef} className="flex items-center justify-center origin-center drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] whitespace-nowrap" style={{ transform: `scale(${zoomScale})`, transition: 'transform 0.5s ease-out' }}>
@@ -1102,7 +1134,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                 onClick={() => setShowChat(!showChat)}
                 className="bg-zinc-800 border-2 border-zinc-600 rounded-full w-8 h-8 flex items-center justify-center text-white shadow-xl hover:bg-zinc-700 active:scale-95 transition-all"
              >
-                 <MessageCircle size={16} />
+                 <SafeIcon icon={MessageCircle} size={16} />
              </button>
              
              {/* LISTE DES PHRASES */}
@@ -1183,7 +1215,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
              
              {/* ICONE ET TITRE */}
              <div className="mb-2">
-                 {gameState.status === 'partie_draw' ? <AlertCircle size={32} className="text-red-500 mx-auto mb-2 animate-pulse" /> : <Trophy size={32} className="text-red-500 mx-auto mb-2 animate-bounce" />}
+                 {gameState.status === 'partie_draw' ? <SafeIcon icon={AlertCircle} size={32} className="text-red-500 mx-auto mb-2 animate-pulse" /> : <SafeIcon icon={Trophy} size={32} className="text-red-500 mx-auto mb-2 animate-bounce" />}
                  <h2 className="text-xl font-serif font-black uppercase tracking-tighter leading-tight">
                     {gameState.status === 'tournoi_over' ? 'VICTOIRE FINALE' :
                      gameState.status === 'manche_over' ? `Fin Manche ${gameState.currentManche}` :
@@ -1229,7 +1261,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
              {gameState.status === 'tournoi_over' && gameState.winnerId === 0 && !user.isVip && !adWatchedForThisWin && (
                  <div className="mb-2">
                      <Button onClick={handleDoubleReward} variant="ad" className="w-full text-sm py-3 animate-pulse">
-                         <Play size={14} className="fill-current" /> DOUBLER (PUB)
+                         <SafeIcon icon={Play} size={14} className="fill-current" /> DOUBLER (PUB)
                      </Button>
                  </div>
              )}
@@ -1242,7 +1274,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                     className="p-3 bg-zinc-800 rounded-xl hover:bg-zinc-700 transition-colors border border-zinc-600"
                     title="Prendre une photo"
                 >
-                    <Camera size={18} className="text-white" />
+                    <SafeIcon icon={Camera} size={18} className="text-white" />
                 </button>
 
                 {/* NAVIGATION */}
@@ -1274,7 +1306,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                     className="p-3 bg-zinc-800 rounded-xl hover:bg-red-900/50 transition-colors border border-zinc-600 text-red-400"
                     title="Fermer"
                 >
-                    <X size={18} />
+                    <SafeIcon icon={X} size={18} />
                 </button>
              </div>
            </div>
@@ -1290,7 +1322,7 @@ const MemberScreen = ({ onBack, user, onLogout }) => {
 
     return (
         <div className="flex flex-col h-full p-6 relative bg-slate-950 overflow-y-auto text-white font-sans">
-            <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><ChevronLeft size={32} /></button>
+            <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><SafeIcon icon={ChevronLeft} size={32} /></button>
             
             <div className="flex-1 flex flex-col items-center max-w-2xl mx-auto w-full pt-8 pb-12">
                 <h2 className="text-4xl font-black mb-2 uppercase tracking-tighter text-center italic">ESPACE <span className="text-red-600">MEMBRE</span></h2>
@@ -1298,10 +1330,10 @@ const MemberScreen = ({ onBack, user, onLogout }) => {
                 
                 {/* PROFIL CARD */}
                 <div className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-6 flex items-center gap-6 shadow-xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-2 opacity-10"><User size={120}/></div>
+                    <div className="absolute top-0 right-0 p-2 opacity-10"><SafeIcon icon={User} size={120}/></div>
                     <div className="w-20 h-20 rounded bg-zinc-800 flex items-center justify-center border-2 border-zinc-700 relative">
                         {getAvatarIcon(user.equippedAvatar, 40, "text-zinc-400")}
-                        {user.isVip && <div className="absolute -top-2 -right-2 bg-yellow-500 text-black p-1 rounded-full border-2 border-zinc-900"><Crown size={12} className="fill-current" /></div>}
+                        {user.isVip && <div className="absolute -top-2 -right-2 bg-yellow-500 text-black p-1 rounded-full border-2 border-zinc-900"><SafeIcon icon={Crown} size={12} className="fill-current" /></div>}
                     </div>
                     <div className="flex-1 relative z-10">
                         <div className="flex items-center gap-2">
@@ -1315,11 +1347,11 @@ const MemberScreen = ({ onBack, user, onLogout }) => {
                  {/* PORTEFEUILLE */}
                 <div className="w-full grid grid-cols-2 gap-4 mb-6">
                     <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col items-center justify-center shadow-lg">
-                        <div className="text-blue-400 font-black text-xs uppercase mb-1 flex items-center gap-1"><Gem size={12}/> Jetons</div>
+                        <div className="text-blue-400 font-black text-xs uppercase mb-1 flex items-center gap-1"><SafeIcon icon={Gem} size={12}/> Jetons</div>
                         <span className="text-2xl font-mono font-black text-white">{user.wallet.gold.toLocaleString()}</span>
                     </div>
                     <div className="bg-zinc-900 border border-purple-900/30 p-4 rounded-xl flex flex-col items-center justify-center shadow-lg">
-                        <div className="text-purple-400 font-black text-xs uppercase mb-1 flex items-center gap-1"><Gem size={12}/> Gemmes</div>
+                        <div className="text-purple-400 font-black text-xs uppercase mb-1 flex items-center gap-1"><SafeIcon icon={Gem} size={12}/> Gemmes</div>
                         <span className="text-2xl font-mono font-black text-white">{user.wallet.gems.toLocaleString()}</span>
                     </div>
                 </div>
@@ -1327,7 +1359,7 @@ const MemberScreen = ({ onBack, user, onLogout }) => {
                 {/* STATISTIQUES */}
                 <div className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl mb-8">
                       <h3 className="text-xs font-black uppercase text-zinc-400 mb-6 flex items-center gap-2">
-                          <TrendingUp size={14} /> Performance Globale
+                          <SafeIcon icon={TrendingUp} size={14} /> Performance Globale
                       </h3>
                       <div className="grid grid-cols-3 gap-4 text-center mb-6">
                           <div><div className="text-3xl font-mono font-black text-white">{user.stats.played}</div><div className="text-[9px] uppercase text-zinc-500 font-bold mt-1">Jouées</div></div>
@@ -1339,7 +1371,7 @@ const MemberScreen = ({ onBack, user, onLogout }) => {
 
                 {/* RANKING MENSUEL */}
                 <div className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl mb-8">
-                    <h3 className="text-xs font-black uppercase text-zinc-400 mb-4 flex items-center gap-2"><Award size={14} /> Classement du Mois</h3>
+                    <h3 className="text-xs font-black uppercase text-zinc-400 mb-4 flex items-center gap-2"><SafeIcon icon={Award} size={14} /> Classement du Mois</h3>
                     
                     <div className="flex gap-2 mb-6 bg-zinc-950 p-1 rounded-lg">
                         <button onClick={() => setRankingTab('cochonsDonnes')} className={`flex-1 py-2 rounded text-[10px] font-black uppercase transition-all ${rankingTab === 'cochonsDonnes' ? 'bg-red-600 text-white' : 'text-zinc-500 hover:text-white'}`}>🐷 Boucher</button>
@@ -1391,7 +1423,7 @@ const RankingScreen = ({ onBack, user }) => {
 
     return (
         <div className="flex flex-col h-full p-6 relative bg-slate-950 overflow-y-auto text-white font-sans">
-            <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><ChevronLeft size={32} /></button>
+            <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><SafeIcon icon={ChevronLeft} size={32} /></button>
             <div className="flex-1 max-w-2xl mx-auto w-full pt-8 pb-12">
                 <div className="flex flex-col items-center mb-10">
                     <h2 className="text-4xl font-black uppercase tracking-tighter text-center italic">CLASSEMENT <span className="text-yellow-500">MENSUEL</span></h2>
