@@ -891,7 +891,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
     }));
     setTimeLeft(15);
     addLog({ player: 'SYSTÈME', action: `Début Partie ${partieNum}`, info: `Distrib.` });
-    if (forcedStarterId === -1 && starterTile) setTimeout(() => { playTile(starterIndex, starterTile, 'start'); }, 600);
+    if (forcedStarterId === -1 && starterTile) setTimeout(() => { playTile(starterIndex, starterTile, 'start'); }, 2000);
   };
 
   // --- BOT ENGINE AVEC DIFFICULTE ---
@@ -905,7 +905,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
         const move = getBotMove(player.hand, gameState.ends, aiLevel);
         if (move) playTile(player.id, move.tile, move.side);
         else passTurn(player.id);
-      }, 600);
+      }, 2000);
       return () => clearTimeout(timer);
     }
   }, [gameState.turnIndex, gameState.status, gameState.pendingChoice]);
