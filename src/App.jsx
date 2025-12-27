@@ -117,7 +117,8 @@ const MOCK_DB = {
     { id: 'phrase_dur', type: 'phrase', name: 'Plus Dur', text: 'Tu n\'as pas plus dur ! 💪', price: 120 },
     // GRADES / LICENCES
     { id: 'license_expert', type: 'grade', name: 'Licence Pro', text: 'Débloque le niveau Expert', price: 500 },
-    { id: 'bot_manx', type: 'legend', name: "Man'X le Président", text: 'Jouez contre la Légende (IA Stratégique)', price: 2000, icon: 'crown' }
+    { id: 'bot_manx', type: 'legend', name: "Man'X le Président", text: 'Jouez contre la Légende (IA Stratégique)', price: 2000, icon: 'crown' },
+    { id: 'bot_valou', type: 'legend', name: "Valou le Redoutable", text: 'Jouez contre la Légende (IA Agressive)', price: 3000, icon: 'crown' }
   ]
 };
 
