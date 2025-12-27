@@ -91,7 +91,7 @@ const MOCK_DB = {
   ],
   items: [
     // SKINS DOMINOS
-    { id: 'skin_classic', type: 'skin', name: 'Classique', price: 0, color: 'bg-white text-black' },
+    { id: 'skin_classic', type: 'skin', name: 'Classique', price: 0, color: 'bg-yellow-400 text-black' },
     { id: 'skin_gold', type: 'skin', name: 'MDC Gold', price: 500, color: 'bg-gradient-to-br from-yellow-300 to-yellow-600 text-black border-yellow-200' },
     { id: 'skin_neon', type: 'skin', name: 'Néon Cyber', price: 250, color: 'bg-zinc-900 text-cyan-400 border-cyan-500 shadow-[0_0_10px_#22d3ee]' },
     // TAPIS DE JEU
@@ -394,7 +394,7 @@ const DominoTile = ({ v1, v2, size = 'md', orientation = 'vertical', flipped = f
   const valB = flipped ? v1 : v2;
   let dimClass = size === 'sm' ? (isHorizontal ? 'w-10 h-5' : 'w-5 h-10') : size === 'lg' ? (isHorizontal ? 'w-18 h-9' : 'w-9 h-18') : (isHorizontal ? 'w-22 h-11' : 'w-11 h-22');
   const ringClass = isMandatory ? 'ring-2 ring-red-500 scale-110 z-20 shadow-[0_0_20px_rgba(239,68,68,0.8)]' : highlight ? 'ring-2 ring-green-500 scale-105 z-10 shadow-[0_0_15px_rgba(34,197,94,0.6)]' : 'shadow-md';
-  const skinStyle = skin.id === 'skin_classic' ? 'bg-white rounded-[2px] border border-zinc-300 text-black' : `${skin.color} rounded-[4px] border-2`;
+  const skinStyle = skin.id === 'skin_classic' ? 'bg-yellow-400 rounded-[2px] border border-black text-black' : `${skin.color} rounded-[4px] border-2`;
   return (
     <div onClick={onClick} className={`relative flex ${isHorizontal ? 'flex-row' : 'flex-col'} overflow-hidden select-none ${dimClass} ${ringClass} ${skinStyle} ${className} shrink-0 cursor-pointer`}>
       <div className={`flex-1 relative ${isHorizontal ? 'border-r' : 'border-b'} border-current/20 flex items-center justify-center`}><svg viewBox="0 0 100 100" className="w-full h-full">{renderDots(valA)}</svg></div>
