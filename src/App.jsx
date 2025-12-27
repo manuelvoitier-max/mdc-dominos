@@ -1335,6 +1335,12 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                                     <div className="flex flex-col">
                                         <span className="text-xs font-bold uppercase">{p.name}</span>
                                         {gameState.status === 'manche_over' && p.label && <span className={`text-[6px] font-black ${p.gain === -1 ? 'text-red-400' : 'text-green-400'}`}>{p.label}</span>}
+                                        {/* AJOUT : Affichage des points en main pour lisibilité en cas de boudé */}
+                                        {(gameState.status === 'partie_over' || gameState.status === 'partie_draw' || gameState.status === 'manche_over' || gameState.status === 'tournoi_over') && p.hand.length > 0 && (
+                                            <span className="text-[8px] text-zinc-500 font-mono mt-0.5">
+                                                Main: <span className="text-yellow-500 font-bold">{calculateHandPoints(p.hand)}</span> pts
+                                            </span>
+                                        )}
                                     </div>
                                 </td>
                                 {p.mancheHistory.map((score, i) => (
