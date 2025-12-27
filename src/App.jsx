@@ -528,7 +528,7 @@ const LoginScreen = ({ onLogin }) => {
                         <Logo972 className="w-10 h-10 text-white skew-x-12" />
                     </div>
                     <h1 className="text-3xl font-black text-white italic tracking-tighter uppercase">MDC <span className="text-red-600">Dominos</span></h1>
-                    <p className="text-zinc-500 text-xs uppercase tracking-widest mt-2">Le Club Freemium</p>
+                    <p className="text-zinc-500 text-xs uppercase tracking-widest mt-2">L'excellence d'une tradition</p>
                 </div>
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4">
                     <div><label className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-1 block">Pseudo</label><input type="text" value={pseudo} onChange={e=>setPseudo(e.target.value)} className="w-full bg-black/50 border border-zinc-700 rounded p-3 text-white focus:border-red-600 focus:outline-none transition-colors" placeholder="admin" /></div>
