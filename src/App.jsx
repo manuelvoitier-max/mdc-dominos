@@ -654,7 +654,7 @@ const LoginScreen = ({ onLogin }) => {
     );
 };
 
-const HomeScreen = ({ onNavigate, user }) => {
+const HomeScreen = ({ onNavigate, user, onTournamentClick }) => {
   const modes = [ { id: 'solo', title: 'Entraînement', desc: 'Contre IA', icon: Icons.User, target: 'setup', config: { mode: 'solo' } }, { id: 'online', title: 'Partie Rapide', desc: 'Multijoueur', icon: Icons.Wifi, target: 'lobby' } ];
   return (
     <div className="flex flex-col h-full p-4 md:p-6 bg-[#09090b] relative text-white font-sans">
@@ -675,7 +675,7 @@ const HomeScreen = ({ onNavigate, user }) => {
         </div>
       </div>
       <div className="relative z-10 max-w-6xl mx-auto w-full flex flex-col h-full pb-20 overflow-y-auto custom-scrollbar">
-          <TournamentBanner onJoin={() => alert("Inscription au tournoi de 20h validée ! (Simulation)")} />
+          <TournamentBanner onJoin={onTournamentClick} />
           <div className="flex-1 flex flex-row items-stretch justify-center gap-4 w-full">
             {modes.map((mode, index) => (
               <div key={index} onClick={() => onNavigate(mode.target, mode.config)} className="group relative flex-1 min-h-[180px] bg-zinc-900 border border-zinc-800 rounded-xl cursor-pointer transition-all duration-200 ease-out hover:flex-[1.2] hover:bg-zinc-800 hover:border-red-600 hover:shadow-[0_0_30px_rgba(220,38,38,0.3)] flex flex-col items-center justify-center text-center overflow-hidden">
@@ -833,9 +833,20 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
 // ... GameScreen ... (Same as provided above)
 const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) => {
  
-  const bot1Name = config.difficulty === 'legend' ? "Man'X le Président" : config.difficulty === 'expert' ? "Chaton la tigresse" : "Chaton";
-  const bot2Name = config.difficulty === 'legend' ? "Valou le Redoutable" : config.difficulty === 'expert' ? "Olivier le blagueur" : "Olivier";
-
+  // --- GESTION ADVERSAIRES (MODIFIÉ POUR TOURNOI) ---
+  let bot1Name, bot2Name;
+  
+  // Si le tournoi nous a donné des adversaires précis, on les utilise
+  if (config.customOpponents && config.customOpponents.length === 2) {
+      bot1Name = config.customOpponents[0].pseudo;
+      bot2Name = config.customOpponents[1].pseudo;
+  } 
+  // Sinon, on garde la logique classique (Entraînement)
+  else {
+      bot1Name = config.difficulty === 'legend' ? "Man'X le Président" : config.difficulty === 'expert' ? "Chaton la tigresse" : "Chaton";
+      bot2Name = config.difficulty === 'legend' ? "Valou le Redoutable" : config.difficulty === 'expert' ? "Olivier le blagueur" : "Olivier";
+  }
+  // --------------------------------------------------
   const [gameState, setGameState] = useState({
     players: [
       { id: 0, name: user.pseudo, type: 'human', hand: [], mdcPoints: 0, wins: 0, isBoude: false, mancheHistory: [], label: null, initialMaxDouble: -1 },
@@ -1609,13 +1620,67 @@ const RankingScreen = ({ onBack, user }) => {
     );
 };
 
+/**
+ * --- MOTEUR TOURNOI (LOGIQUE) ---
+ */
+const TournamentEngine = {
+  // 1. Complète avec des Bots pour avoir un multiple de 3
+  prepareParticipants: (realPlayers) => {
+    let participants = [...realPlayers];
+    // Simulation d'autres joueurs réels pour l'exemple (sinon on est tout seul)
+    for(let i=0; i<20; i++) participants.push({ id: `random_${i}`, pseudo: `Joueur ${i}`, isBot: true, type: 'bot', score: 0 });
+    
+    const remainder = participants.length % 3;
+    if (remainder !== 0) {
+      const botsNeeded = 3 - remainder;
+      for (let i = 0; i < botsNeeded; i++) {
+        participants.push({ id: `bot_tournoi_${i}`, pseudo: `Bot T${i+1}`, isBot: true, type: 'bot', score: 0 });
+      }
+    }
+    return participants.sort(() => Math.random() - 0.5);
+  },
 
+  // 2. Crée les tables
+  createTables: (participants) => {
+    const tables = [];
+    let tableId = 1;
+    for (let i = 0; i < participants.length; i += 3) {
+      tables.push({
+        id: tableId++,
+        seats: [participants[i], participants[i+1], participants[i+2]], // [Maitre, Impair, Pair]
+        scores: [0, 0, 0] // Scores de la manche en cours
+      });
+    }
+    return tables;
+  },
+
+  // 3. Rotation (Maitre fixe, Impair monte, Pair descend)
+  rotateTables: (currentTables) => {
+    const totalTables = currentTables.length;
+    let nextTables = currentTables.map(t => ({ id: t.id, seats: [null, null, null], scores: [0,0,0] }));
+
+    currentTables.forEach((table, index) => {
+      // Seat 0 (Maitre) -> Reste
+      nextTables[index].seats[0] = table.seats[0];
+
+      // Seat 1 (Impair) -> Monte (Table + 1)
+      let nextUp = (index + 1) % totalTables;
+      nextTables[nextUp].seats[1] = table.seats[1];
+
+      // Seat 2 (Pair) -> Descend (Table - 1)
+      let nextDown = (index - 1 + totalTables) % totalTables;
+      nextTables[nextDown].seats[2] = table.seats[2];
+    });
+    return nextTables;
+  }
+};
 const App = () => {
   const [screen, setScreen] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
   const [gameConfig, setGameConfig] = useState(null);
   const [setupMode, setSetupMode] = useState('solo'); // 'solo' ou 'multi'
-
+// --- ETAT TOURNOI ---
+  const [tournament, setTournament] = useState({ active: false, registered: false, round: 1, manche: 1, tables: [], myTable: null });
   const handleLogin = (user) => { setCurrentUser(user); setScreen('home'); };
   const updateUser = (newUser) => { setCurrentUser(newUser); };
 
@@ -1640,17 +1705,83 @@ const App = () => {
       setScreen('login');
   };
 
+// --- GESTION DU TOURNOI ---
+  
+  // 1. Le joueur s'inscrit
+  const handleRegisterTournament = () => {
+    setTournament(prev => ({ ...prev, registered: true }));
+    alert("Inscription validée ! En attente du démarrage...");
+    // Simulation : Démarrage automatique après 3 secondes
+    setTimeout(startTournament, 3000);
+  };
 
+  // 2. Le tournoi commence (Génération des tables)
+  const startTournament = () => {
+    const allPlayers = [currentUser]; // Dans la vraie vie, ce serait la liste du serveur
+    const participants = TournamentEngine.prepareParticipants(allPlayers);
+    const tables = TournamentEngine.createTables(participants);
+    
+    // Trouver ma table
+    const myTable = tables.find(t => t.seats.find(s => s.id === currentUser.id));
+    
+    setTournament({ active: true, registered: true, round: 1, manche: 1, tables, myTable });
+    
+    // Lancer la partie direct
+    launchTournamentGame(myTable, 1);
+  };
+
+  // 3. Lancer une game spécifique
+  const launchTournamentGame = (table, mancheNum) => {
+    // On configure la partie pour GameScreen
+    // IMPORTANT : On passe les adversaires réels de la table
+    const opponents = table.seats.filter(s => s.id !== currentUser.id);
+    
+    // Si c'est la manche 2, on inverse les adversaires (changement de place)
+    if (mancheNum === 2) opponents.reverse(); 
+
+    setGameConfig({
+      mode: 'tournament',
+      format: 'manches',
+      target: 1, // Une manche sèche
+      stake: 0,
+      currency: 'gold',
+      difficulty: 'expert', // Tournoi = niveau relevé
+      customOpponents: opponents // On passera ça à GameScreen
+    });
+    setScreen('game');
+  };
+
+  // 4. Fin d'une manche de tournoi (appelé par onPartieEnd)
+  const handleTournamentStep = (winnerId) => {
+    if (tournament.manche === 1) {
+      alert("Fin de la Manche 1. Changement de place !");
+      setTournament(prev => ({ ...prev, manche: 2 }));
+      launchTournamentGame(tournament.myTable, 2);
+    } else {
+      alert("Fin du Tour 1 ! Rotation des tables...");
+      // Rotation
+      const nextTables = TournamentEngine.rotateTables(tournament.tables);
+      const myNewTable = nextTables.find(t => t.seats.find(s => s.id === currentUser.id));
+      
+      setTournament(prev => ({ ...prev, round: prev.round + 1, manche: 1, tables: nextTables, myTable: myNewTable }));
+      launchTournamentGame(myNewTable, 1);
+    }
+  };
   return (
     <div className="fixed inset-0 w-screen h-screen z-50 bg-[#020617] text-white overflow-hidden select-none flex justify-center items-center">
       <div className="w-full h-full lg:max-w-[900px] lg:max-h-[650px] lg:border lg:border-slate-800 lg:rounded-3xl shadow-[0_50px_100px_rgba(0,0,0,0.8)] bg-slate-950 relative overflow-hidden flex flex-col ring-1 ring-white/10 text-white">
         {screen === 'login' && <LoginScreen onLogin={handleLogin} />}
         
-        {screen === 'home' && currentUser && <HomeScreen user={currentUser} onNavigate={(s, c) => { 
-            if (s === 'setup') setSetupMode('solo'); 
-            if (c) setGameConfig(c); 
-            setScreen(s); 
-        }} />}
+        {screen === 'home' && currentUser && <HomeScreen 
+    user={currentUser} 
+    onNavigate={(s, c) => { 
+        if (s === 'setup') setSetupMode('solo'); 
+        if (c) setGameConfig(c); 
+        setScreen(s); 
+    }}
+    // AJOUT ICI :
+    onTournamentClick={handleRegisterTournament}
+/>}
         
         {screen === 'shop' && currentUser && <ShopScreen user={currentUser} onBack={() => setScreen('home')} onUpdateUser={updateUser} />}
         
