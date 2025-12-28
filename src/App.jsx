@@ -199,6 +199,26 @@ const getValouMove = (hand, ends) => {
     const validMoves = getValidMoves(hand, ends);
     if (validMoves.length === 0) return null;
 
+    // --- CORRECTION DU BUG DE DÉMARRAGE ---
+    // Si ends est null (c'est le début de la manche), on joue le plus fort sans stratégie de blocage
+    if (!ends) {
+        validMoves.sort((a, b) => {
+            const ta = a.tile;
+            const tb = b.tile;
+            const isDoubleA = ta.v1 === ta.v2;
+            const isDoubleB = tb.v1 === tb.v2;
+            
+            // Priorité absolue aux doubles pour démarrer
+            if (isDoubleA && !isDoubleB) return -1;
+            if (!isDoubleA && isDoubleB) return 1;
+            
+            // Sinon on joue le plus lourd
+            return (tb.v1 + tb.v2) - (ta.v1 + ta.v2);
+        });
+        return validMoves[0];
+    }
+    // ----------------------------------------
+
     // Analyse de la main pour connaître ses forces (fréquence des valeurs)
     const counts = {};
     hand.forEach(t => {
@@ -224,21 +244,14 @@ const getValouMove = (hand, ends) => {
         }
 
         // PRINCIPE 2 : "Garder la Main" (Poser une valeur qu'on domine)
-        // On regarde quelle valeur on laisse ouverte à l'adversaire
         const nextOpenValue = move.side === 'left' 
             ? (t.v1 === ends.left ? t.v2 : t.v1) 
             : (t.v1 === ends.right ? t.v2 : t.v1);
         
-        // Si je laisse ouvert une valeur dont j'ai beaucoup d'exemplaires en main,
-        // c'est excellent : je force le jeu et je suis sûr de pouvoir rejouer.
-        const myCountOfOpenValue = (counts[nextOpenValue] || 0) - 1; // -1 car je viens d'en jouer un
-        // Augmentation du bonus de domination pour Valou (20 -> 25)
+        // Si je laisse ouvert une valeur dont j'ai beaucoup d'exemplaires en main
+        const myCountOfOpenValue = (counts[nextOpenValue] || 0) - 1; 
         score += myCountOfOpenValue * 25; // Gros bonus stratégique agressif
 
-        // PRINCIPE 3 : "Ne pas se couper" (Éviter de jouer son dernier atout d'une couleur)
-        // Si je joue ce domino, est-ce que je perds ma dernière carte de cette valeur ?
-        // (C'est moins grave si c'est pour poser un double, déjà géré par le bonus double)
-        
         // PRINCIPE 4 : FINISSEUR
         if (hand.length === 1) score += 10000; // Priorité absolue à la victoire
 
@@ -250,7 +263,6 @@ const getValouMove = (hand, ends) => {
     
     return scoredMoves[0].move;
 };
-
 // --- LOGIQUE MAN'X (STRATEGIE AVANCEE) ---
 const getManXMove = (hand, ends) => {
     // 1. Analyse de la main (Trouver la Clé)
