@@ -1798,7 +1798,22 @@ const App = () => {
             onCreateTable={() => { setSetupMode('multi'); setScreen('setup'); }}
         />}
         
-        {screen === 'game' && <GameScreen config={gameConfig} onExit={() => setScreen('home')} onWin={handleWin} onDoubleWin={handleDoubleWin} user={currentUser} />}
+        {screen === 'game' && <GameScreen 
+            // 1. La clé force le jeu à redémarrer proprement à chaque manche
+            key={gameConfig?.mode === 'tournament' ? `tournoi-${tournament.round}-${tournament.manche}` : 'solo-game'}
+            config={gameConfig} 
+            onExit={() => {
+                // 2. Si on est en tournoi, le bouton "Quitter/Retour" lance la suite
+                if (gameConfig && gameConfig.mode === 'tournament') {
+                    handleTournamentStep();
+                } else {
+                    setScreen('home');
+                }
+            }} 
+            onWin={handleWin} 
+            onDoubleWin={handleDoubleWin} 
+            user={currentUser} 
+        />}
         {screen === 'member' && currentUser && <MemberScreen user={currentUser} onBack={() => setScreen('home')} onLogout={handleLogout} />}
         {screen === 'ranking' && currentUser && <RankingScreen user={currentUser} onBack={() => setScreen('home')} />}
       </div>
