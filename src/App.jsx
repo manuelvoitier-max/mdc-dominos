@@ -1338,7 +1338,8 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               )}
           </div>
 
-          <div className="flex-1 flex justify-center items-end gap-1 overflow-visible px-0 pointer-events-none pb-2">
+          {/* MODIFICATION ICI : justify-start pour aligner à gauche et pl-4 pour décaler un peu du chat */}
+          <div className="flex-1 flex justify-start pl-4 items-end gap-1 overflow-visible px-0 pointer-events-none pb-2">
            {humanHand.map((tile) => {
               const m = getValidMoves([tile], gameState.ends);
               const canClick = isMyTurn && m.length > 0;
