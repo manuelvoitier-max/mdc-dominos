@@ -823,6 +823,26 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
                 <div className={`relative rounded border-2 transition-all ${!stakePresets.includes(stake) ? 'bg-zinc-800 border-yellow-500' : 'bg-black/40 border-zinc-800'}`}><input type="number" placeholder="X" className={`w-full h-full bg-transparent text-center font-mono font-black text-sm focus:outline-none ${!stakePresets.includes(stake) ? 'text-yellow-500 placeholder:text-yellow-500/30' : 'text-zinc-500 hover:text-white placeholder:text-zinc-600'}`} value={!stakePresets.includes(stake) ? stake : ''} onChange={(e) => setStake(parseInt(e.target.value) || 0)} /></div>
             </div>
         </div>
+        {/* AJOUT : Choix du nombre de tours (Visible pour Admin en mode Multi/Tournoi) */}
+        {mode === 'multi' && user.role === 'admin' && (
+             <div className="w-full mb-8">
+                <label className="text-[11px] text-yellow-500 uppercase tracking-widest font-black mb-4 block text-center">
+                    <SafeIcon icon={Icons.Settings} size={10} className="inline mr-1"/> Configuration Admin : Tours
+                </label>
+                <div className="flex justify-center gap-2">
+                    {[3, 5, 7, 10].map(nb => (
+                        <button 
+                            key={nb}
+                            onClick={() => setTarget(nb)} // On utilise "target" pour stocker ça temporairement
+                            className={`w-12 h-12 rounded-lg font-black border-2 transition-all ${target === nb ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-zinc-900 border-zinc-700 text-zinc-500'}`}
+                        >
+                            {nb}
+                        </button>
+                    ))}
+                </div>
+                <p className="text-[9px] text-zinc-600 mt-2">Nombre de rotations pour le tournoi.</p>
+             </div>
+        )}
         <div className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-12">Règles : Sens Anti-horaire (Martinique)</div>
         <Button onClick={handleStart} className="w-full py-5 text-xl max-w-md mx-auto">{mode === 'multi' ? 'OUVRIR LE SALON' : 'LANCER LA PARTIE'}</Button>
       </div>
@@ -1699,7 +1719,7 @@ const TournamentEngine = {
 const TournamentScreen = ({ tournament, onStartNext, onBack }) => {
     // Tri des joueurs par score décroissant
     const sortedParticipants = [...tournament.participants].sort((a, b) => b.score - a.score);
-    const isFinished = tournament.round > 5; // 5 Tours définis
+    const isFinished = tournament.round > tournament.totalRounds; // 5 Tours définis
 
     return (
         <div className="flex flex-col h-full p-4 md:p-6 relative bg-zinc-950 overflow-y-auto text-white font-sans">
@@ -1713,7 +1733,7 @@ const TournamentScreen = ({ tournament, onStartNext, onBack }) => {
                 <div className="text-center mb-8">
                     <SafeIcon icon={Icons.Trophy} size={64} className="text-yellow-500 mx-auto mb-4 animate-bounce" />
                     <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic">
-                        {isFinished ? <span className="text-yellow-500">CLASSEMENT FINAL</span> : tournament.round === 0 ? "LISTE DES INSCRITS" : `TOUR ${tournament.round} / 5`}
+                        {isFinished ? <span className="text-yellow-500">CLASSEMENT FINAL</span> : tournament.round === 0 ? "LISTE DES INSCRITS" : `TOUR ${tournament.round} / ${tournament.totalRounds`}
                     </h2>
                     {!isFinished && tournament.round > 0 && (
                         <p className="text-zinc-400 text-sm font-bold uppercase tracking-widest mt-2">
@@ -1771,7 +1791,8 @@ const App = () => {
   const [gameConfig, setGameConfig] = useState(null);
   const [setupMode, setSetupMode] = useState('solo'); // 'solo' ou 'multi'
 
-  // --- LOGIQUE TOURNOI (MISE A JOUR 5 TOURS) ---
+  // --- LOGIQUE TOURNOI ---
+  // Ajout de "totalRounds" dans l'état
   const [tournament, setTournament] = useState({ 
       active: false, 
       registered: false, 
@@ -1779,7 +1800,8 @@ const App = () => {
       manche: 1, 
       tables: [], 
       myTable: null, 
-      participants: [] 
+      participants: [],
+      totalRounds: 5 // Valeur par défaut
   });
 
   const handleLogin = (user) => { setCurrentUser(user); setScreen('home'); };
@@ -1808,11 +1830,15 @@ const App = () => {
 
   // --- GESTION DU TOURNOI ---
    
-  // 1. Inscription
+  // 1. Inscription / Création
   const handleRegisterTournament = () => {
     const human = { ...currentUser, id: 'user_me', score: 0 }; 
     const allParticipants = TournamentEngine.prepareParticipants([human]);
     
+    // Si l'admin a défini une "target" dans le setup, on l'utilise comme nombre de tours
+    // Sinon par défaut c'est 5
+    const roundsConfigured = (currentUser.role === 'admin' && gameConfig?.target) ? gameConfig.target : 5;
+
     setTournament({ 
         active: true, 
         registered: true, 
@@ -1820,7 +1846,8 @@ const App = () => {
         manche: 1, 
         tables: [], 
         myTable: null, 
-        participants: allParticipants 
+        participants: allParticipants,
+        totalRounds: roundsConfigured // On sauvegarde la config
     });
     setScreen('tournament_standings');
   };
@@ -1900,7 +1927,7 @@ const App = () => {
         
     } else {
         // Fin Manche 2 (Fin du Tour)
-        if (tournament.round >= 5) {
+        if (tournament.round >= tournament.totalRounds) {
             // FIN DU TOURNOI
             setTournament(prev => ({ ...prev, participants: updatedParticipants, round: 6 }));
             setScreen('tournament_standings');
