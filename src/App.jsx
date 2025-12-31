@@ -433,8 +433,8 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
         }
     };
     const style = getPosStyle();
-    const bubbleStyle = position === 'bottom-right' 
-        ? "bottom-24 right-20" 
+    const bubbleStyle = position === 'bottom-right'
+        ? "bottom-24 right-20"
         : position === 'top-left' ? "top-full mt-2 left-0" : "top-full mt-2 right-0";
 
     // DÉCISION DE LA COULEUR ET DU TEXTE SELON LE MODE
@@ -459,13 +459,13 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
                 </div>
                 <div className="absolute -bottom-1 -left-1 w-5 h-5 md:w-10 md:h-10 bg-white text-black rounded-full border-2 md:border-4 border-zinc-950 flex items-center justify-center shadow-lg"><span className="font-black text-[8px] md:text-sm">{cardsCount}</span></div>
             </div>
-            
+           
             <div className={`flex flex-col ${position === 'top-left' ? 'items-start' : 'items-end'} bg-zinc-900/90 backdrop-blur-xl px-2 py-1 md:px-5 md:py-3 rounded-md md:rounded-lg border border-zinc-700 shadow-2xl min-w-[70px] md:min-w-[140px]`}>
                 <span className={`font-sans font-bold text-[8px] md:text-xs tracking-widest uppercase mb-0.5 md:mb-1 flex items-center gap-1 ${isVip ? 'text-yellow-400' : 'text-white'}`}>{isVip && <SafeIcon icon={Icons.Crown} size={8} className="md:w-3 md:h-3 text-yellow-400 fill-yellow-400" />}{name}</span>
                 <div className="flex items-center gap-2 md:gap-3">
                     <div className="flex flex-col items-center"><span className="text-[5px] md:text-[8px] text-green-500 font-black uppercase">V</span><span className="text-sm md:text-4xl leading-none font-mono font-black text-white">{wins}</span></div>
                     <div className="w-[1px] h-4 md:h-8 bg-zinc-700"></div>
-                    
+                   
                     {/* C'EST ICI QUE CA CHANGE SELON LE MODE */}
                     <div className="flex flex-col items-center">
                         <span className={`text-[5px] md:text-[8px] font-black uppercase tracking-tighter text-center ${scoreColor}`}>{scoreLabel}</span>
@@ -755,23 +755,23 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
   const [target, setTarget] = useState(3);
   const [stake, setStake] = useState(100);
   const [difficulty, setDifficulty] = useState('easy');
-  const [privacy, setPrivacy] = useState('public'); 
+  const [privacy, setPrivacy] = useState('public');
 
   const stakePresets = [50, 100, 500];
   // AJOUT : Presets pour le mode cochons (2, 3, 4)
   const targetPresets = format === 'manches' ? [1, 2, 3] : format === 'cochons' ? [2, 3, 4] : [5, 10, 15];
-  
+ 
   const hasExpertLicense = user.inventory.includes('license_expert');
   const hasManX = user.inventory.includes('bot_manx');
-  
+ 
   useEffect(() => { setTarget(format === 'manches' ? 3 : format === 'cochons' ? 2 : 15); }, [format]);
-  
-  const handleStart = () => { 
-      if (difficulty === 'expert' && !hasExpertLicense) { alert("Niveau Expert verrouillé ! Achetez la Licence Pro en boutique."); return; } 
-      if (difficulty === 'legend' && !hasManX) { alert("Niveau Légende verrouillé ! Achetez Man'X en boutique."); return; } 
-      if(target <= 0) { alert("L'objectif doit être supérieur à 0 !"); return; } 
-      if(stake <= 0) { alert("La mise doit être supérieure à 0 !"); return; } 
-      onStart({ format, target, stake, currency: 'gold', difficulty }); 
+ 
+  const handleStart = () => {
+      if (difficulty === 'expert' && !hasExpertLicense) { alert("Niveau Expert verrouillé ! Achetez la Licence Pro en boutique."); return; }
+      if (difficulty === 'legend' && !hasManX) { alert("Niveau Légende verrouillé ! Achetez Man'X en boutique."); return; }
+      if(target <= 0) { alert("L'objectif doit être supérieur à 0 !"); return; }
+      if(stake <= 0) { alert("La mise doit être supérieure à 0 !"); return; }
+      onStart({ format, target, stake, currency: 'gold', difficulty });
   };
 
   return (
@@ -779,7 +779,7 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
       <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><SafeIcon icon={Icons.ChevronLeft} size={32} /></button>
       <div className="flex-1 flex flex-col items-center max-w-lg mx-auto w-full pt-8 pb-12 text-center">
         <h2 className="text-2xl md:text-4xl font-black mb-8 uppercase tracking-tighter italic">{mode === 'multi' ? 'CRÉER' : 'CONFIG'} <span className="text-red-600">TABLE</span></h2>
-        
+       
         {/* SECTION PUBLIC/PRIVE (INTACTE) */}
         {mode === 'multi' && (
             <div className="w-full mb-8">
@@ -858,27 +858,6 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
                 <div className={`relative rounded border-2 transition-all ${!stakePresets.includes(stake) ? 'bg-zinc-800 border-yellow-500' : 'bg-black/40 border-zinc-800'}`}><input type="number" placeholder="X" className={`w-full h-full bg-transparent text-center font-mono font-black text-sm focus:outline-none ${!stakePresets.includes(stake) ? 'text-yellow-500 placeholder:text-yellow-500/30' : 'text-zinc-500 hover:text-white placeholder:text-zinc-600'}`} value={!stakePresets.includes(stake) ? stake : ''} onChange={(e) => setStake(parseInt(e.target.value) || 0)} /></div>
             </div>
         </div>
-        
-        {/* CONFIG ADMIN POUR TOURNOI */}
-        {mode === 'multi' && user.role === 'admin' && (
-             <div className="w-full mb-8">
-                <label className="text-[11px] text-yellow-500 uppercase tracking-widest font-black mb-4 block text-center">
-                    <SafeIcon icon={Icons.Settings} size={10} className="inline mr-1"/> Configuration Admin : Tours
-                </label>
-                <div className="flex justify-center gap-2">
-                    {[3, 5, 7, 10].map(nb => (
-                        <button 
-                            key={nb}
-                            onClick={() => setTarget(nb)} 
-                            className={`w-12 h-12 rounded-lg font-black border-2 transition-all ${target === nb ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-zinc-900 border-zinc-700 text-zinc-500'}`}
-                        >
-                            {nb}
-                        </button>
-                    ))}
-                </div>
-                <p className="text-[9px] text-zinc-600 mt-2">Nombre de rotations pour le tournoi.</p>
-             </div>
-        )}
         <div className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mb-12">Règles : Sens Anti-horaire (Martinique)</div>
         <Button onClick={handleStart} className="w-full py-5 text-xl max-w-md mx-auto">{mode === 'multi' ? 'OUVRIR LE SALON' : 'LANCER LA PARTIE'}</Button>
       </div>
@@ -894,7 +873,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   if (config.customOpponents && config.customOpponents.length === 2) {
       bot1Name = config.customOpponents[0].pseudo;
       bot2Name = config.customOpponents[1].pseudo;
-  } 
+  }
   else {
       bot1Name = config.difficulty === 'legend' ? "Man'X le Président" : config.difficulty === 'expert' ? "Chaton la tigresse" : "Chaton";
       bot2Name = config.difficulty === 'legend' ? "Valou le Redoutable" : config.difficulty === 'expert' ? "Olivier le blagueur" : "Olivier";
@@ -927,7 +906,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   const [adWatchedForThisWin, setAdWatchedForThisWin] = useState(false);
   const [showAdOverlay, setShowAdOverlay] = useState(false);
   const [winningInfo, setWinningInfo] = useState(null);
-  
+ 
   const boardRef = useRef(null);
   const containerRef = useRef(null);
   const paidRef = useRef(false);
@@ -993,7 +972,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               }
           }
       }
-  }, [gameState.turnIndex, gameState.status, gameState.history]); 
+  }, [gameState.turnIndex, gameState.status, gameState.history]);
 
   useEffect(() => {
     const calculateZoom = () => {
@@ -1002,17 +981,17 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           const containerWidth = containerRef.current.clientWidth;
           const boardHeight = boardRef.current.scrollHeight;
           const containerHeight = containerRef.current.clientHeight;
-          
+         
           const isLandscape = containerWidth > containerHeight;
           const safeWidth = containerWidth * (isLandscape ? 0.92 : 0.85);
-          const safeHeight = containerHeight * (isLandscape ? 0.60 : 0.60); 
-          
+          const safeHeight = containerHeight * (isLandscape ? 0.60 : 0.60);
+         
           const calculatedZoom = Math.min(safeWidth / boardWidth, safeHeight / boardHeight, 0.6);
           setZoomScale(calculatedZoom);
         }
     };
     setTimeout(calculateZoom, 50);
-  }, [gameState.board]); 
+  }, [gameState.board]);
 
   const addLog = (log) => {
     setGameState(prev => ({
@@ -1049,7 +1028,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
 
   const onAdCompleted = () => {
       setAdWatchedForThisWin(true);
-      onDoubleWin(config.stake * 3, config.currency); 
+      onDoubleWin(config.stake * 3, config.currency);
       alert("Gain Doublé !");
   };
 
@@ -1057,7 +1036,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   const startRound = (mancheNum, partieNum, forcedStarterId = -1) => {
     const allTiles = generateDominoes();
     const hands = [allTiles.slice(0, 7), allTiles.slice(7, 14), allTiles.slice(14, 21)];
-    
+   
     let starterIndex = forcedStarterId;
     let maxDTotal = -1;
     let starterTile = null;
@@ -1136,11 +1115,11 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           const maxW = Math.max(...withWins.map(p => p.wins));
           const mancheWinnerId = withWins.find(p => p.wins === maxW).id;
           const numCochons = withWins.filter(p => p.wins === 0).length;
-          
+         
           const finalMdcManche = withWins.map(p => {
               let mdcGain = p.wins;
               let label = "";
-              
+             
               if (p.id === mancheWinnerId) {
                   if (numCochons === 2) { mdcGain = 5; label = "DOUBLE COCHON !!"; }
                   else if (numCochons === 1) { mdcGain = 4; label = "COCHON !"; }
@@ -1178,7 +1157,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   const playTile = (id, tile, side) => {
     const playerName = gameState.players[id].name;
     addLog({ player: playerName, action: 'Posé', info: `[${tile.v1}|${tile.v2}]` });
-    
+   
     const isWin = gameState.players[id].hand.length === 1 && gameState.players[id].hand[0].id === tile.id;
     if (isWin) {
         setWinningInfo({ winnerId: id, winningTile: tile });
@@ -1195,7 +1174,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
         else { placed.flipped = (tile.v2 === newEnds.right); newEnds.right = placed.flipped ? tile.v1 : tile.v2; newBoard.push(placed); }
       }
       const newPlayers = prev.players.map(p => p.id === id ? { ...p, hand: p.hand.filter(h => h.id !== tile.id), isBoude: false } : p);
-      
+     
       if (newPlayers[id].hand.length === 0) {
           return {
               ...prev,
@@ -1208,7 +1187,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               mandatoryTile: null
           };
       }
-      
+     
       return { ...prev, players: newPlayers, board: newBoard, ends: newEnds, turnIndex: (prev.turnIndex + 2) % 3, pendingChoice: null, mandatoryTile: null };
     });
     setTimeLeft(15);
@@ -1221,7 +1200,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
     <div className={`fixed inset-0 w-full h-full z-50 bg-slate-950 overflow-hidden text-white font-sans ${currentBoard.style} transition-colors duration-500`}>
       {showAdOverlay && <AdOverlay onClose={() => setShowAdOverlay(false)} onReward={onAdCompleted} />}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-20 mix-blend-overlay"></div>
-      
+     
       {currentBoard.id === 'board_xmas' && (
           <div className="absolute inset-0 pointer-events-none opacity-30 flex justify-between px-10">
               <SafeIcon icon={Icons.Snowflake} className="animate-bounce text-white w-8 h-8 opacity-50" style={{animationDuration:'3s'}} />
@@ -1246,7 +1225,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               </button>
           </div>
       </div>
-      
+     
       {/* TAPIS */}
       <div className="flex-1 w-full h-full flex flex-col items-center justify-center relative pt-10 pb-[18vh]" ref={containerRef}>
           {currentBoard.id === 'board_sponsor' && (
@@ -1257,7 +1236,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                   </div>
               </div>
           )}
-          
+         
           {/* BANNIERE VICTOIRE ANIMATION */}
           {gameState.status === 'winning_animation' && winningInfo && (
             <div className="absolute inset-0 z-[250] flex flex-col items-center justify-center pointer-events-none animate-in zoom-in duration-500">
@@ -1273,34 +1252,34 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           )}
 
           {/* AVATARS PLUS PETITS ET DANS LES COINS */}
-          <PlayerAvatar 
-              name={gameState.players[1].name} 
-              isBot 
-              position="top-left" 
-              active={gameState.turnIndex === 1} 
-              cardsCount={gameState.players[1].hand.length} 
-              wins={gameState.players[1].wins} 
-              isBoude={gameState.players[1].isBoude} 
-              chatMessage={lastChatMessage?.playerId === 1 ? lastChatMessage.text : null} 
-              isVip={gameState.players[1].id === 0 ? user.isVip : false} 
-              equippedAvatar={gameState.players[1].type === 'human' ? user.equippedAvatar : gameState.players[1].name.includes('Chaton') ? 'avatar_robot' : 'avatar_smile'} 
+          <PlayerAvatar
+              name={gameState.players[1].name}
+              isBot
+              position="top-left"
+              active={gameState.turnIndex === 1}
+              cardsCount={gameState.players[1].hand.length}
+              wins={gameState.players[1].wins}
+              isBoude={gameState.players[1].isBoude}
+              chatMessage={lastChatMessage?.playerId === 1 ? lastChatMessage.text : null}
+              isVip={gameState.players[1].id === 0 ? user.isVip : false}
+              equippedAvatar={gameState.players[1].type === 'human' ? user.equippedAvatar : gameState.players[1].name.includes('Chaton') ? 'avatar_robot' : 'avatar_smile'}
               // --- AJOUTS POUR LE MODE COCHON ---
               mdcPoints={gameState.players[1].mdcPoints}
               cochons={gameState.players[1].cochonsTotal}
               isCochonMode={config.format === 'cochons'}
           />
 
-          <PlayerAvatar 
-              name={gameState.players[2].name} 
-              isBot 
-              position="top-right" 
-              active={gameState.turnIndex === 2} 
-              cardsCount={gameState.players[2].hand.length} 
-              wins={gameState.players[2].wins} 
-              isBoude={gameState.players[2].isBoude} 
-              chatMessage={lastChatMessage?.playerId === 2 ? lastChatMessage.text : null} 
-              isVip={gameState.players[2].id === 0 ? user.isVip : false} 
-              equippedAvatar={gameState.players[2].type === 'human' ? user.equippedAvatar : gameState.players[2].name.includes('Olivier') ? 'avatar_king' : 'avatar_classic'} 
+          <PlayerAvatar
+              name={gameState.players[2].name}
+              isBot
+              position="top-right"
+              active={gameState.turnIndex === 2}
+              cardsCount={gameState.players[2].hand.length}
+              wins={gameState.players[2].wins}
+              isBoude={gameState.players[2].isBoude}
+              chatMessage={lastChatMessage?.playerId === 2 ? lastChatMessage.text : null}
+              isVip={gameState.players[2].id === 0 ? user.isVip : false}
+              equippedAvatar={gameState.players[2].type === 'human' ? user.equippedAvatar : gameState.players[2].name.includes('Olivier') ? 'avatar_king' : 'avatar_classic'}
               // --- AJOUTS POUR LE MODE COCHON ---
               mdcPoints={gameState.players[2].mdcPoints}
               cochons={gameState.players[2].cochonsTotal}
@@ -1328,7 +1307,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
             ))}
         </div>
       </div>
-      
+     
       {/* MAIN JOUEUR */}
       <div className="absolute bottom-0 left-0 w-full h-[18vh] bg-gradient-to-t from-black via-black/90 to-transparent flex items-end pb-2 px-2 overflow-visible z-[100]">
           <div className="w-12 flex items-end pb-2 relative pointer-events-auto mr-2">
@@ -1338,7 +1317,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               >
                   <SafeIcon icon={Icons.MessageCircle} size={16} />
               </button>
-              
+             
               {showChat && (
                   <div className="absolute bottom-10 left-0 w-48 bg-zinc-900 border-2 border-zinc-700 rounded-xl p-2 shadow-2xl animate-in slide-in-from-bottom-2 pointer-events-auto">
                       <h3 className="text-[8px] font-black uppercase text-zinc-500 mb-1 px-2">Vos Phrases</h3>
@@ -1486,12 +1465,12 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                 </button>
 
                 {gameState.status === 'partie_over' || gameState.status === 'partie_draw' ? (
-                     <Button 
+                     <Button
                          onClick={() => startRound(
-                             gameState.currentManche, 
-                             gameState.currentPartie + 1, 
+                             gameState.currentManche,
+                             gameState.currentPartie + 1,
                              gameState.winnerId !== null ? gameState.winnerId : -1
-                         )} 
+                         )}
                          className="flex-1 py-3 text-sm text-blue-950"
                      >
                          DONNE SUIVANTE
@@ -1508,7 +1487,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                 ) : (
                     <Button onClick={onExit} className="flex-1 py-3 text-sm text-blue-200">RETOUR MENU</Button>
                 )}
-                
+               
                 <button
                     onClick={() => {
                         alert("Le tableau reste affiché. Utilisez les boutons pour continuer.");
