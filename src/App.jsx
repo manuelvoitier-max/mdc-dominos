@@ -1713,13 +1713,11 @@ const TournamentEngine = {
   }
 };
 
-/**
- * --- ECRAN TOURNOI (INTERFACE) ---
- */
-const TournamentScreen = ({ tournament, onStartNext, onBack }) => {
+// --- ECRAN TOURNOI (AVEC REGLAGES ADMIN) ---
+const TournamentScreen = ({ tournament, onStartNext, onBack, onUpdateRounds, isUserAdmin }) => {
     // Tri des joueurs par score décroissant
     const sortedParticipants = [...tournament.participants].sort((a, b) => b.score - a.score);
-    const isFinished = tournament.round > tournament.totalRounds; // 5 Tours définis
+    const isFinished = tournament.round > tournament.totalRounds; 
 
     return (
         <div className="flex flex-col h-full p-4 md:p-6 relative bg-zinc-950 overflow-y-auto text-white font-sans">
@@ -1730,11 +1728,33 @@ const TournamentScreen = ({ tournament, onStartNext, onBack }) => {
             )}
             
             <div className="flex-1 max-w-3xl mx-auto w-full pt-8 pb-12 flex flex-col">
-                <div className="text-center mb-8">
+                <div className="text-center mb-6">
                     <SafeIcon icon={Icons.Trophy} size={64} className="text-yellow-500 mx-auto mb-4 animate-bounce" />
                     <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic">
-                        {isFinished ? <span className="text-yellow-500">CLASSEMENT FINAL</span> : tournament.round === 0 ? "LISTE DES INSCRITS" : `TOUR ${tournament.round} / ${tournament.totalRounds`}
+                        {isFinished ? <span className="text-yellow-500">CLASSEMENT FINAL</span> : tournament.round === 0 ? "LISTE DES INSCRITS" : `TOUR ${tournament.round} / ${tournament.totalRounds}`}
                     </h2>
+                    
+                    {/* --- ZONE ADMIN : REGLAGE DES TOURS --- */}
+                    {isUserAdmin && tournament.round === 0 && (
+                        <div className="mt-4 bg-zinc-900 border border-yellow-500/30 p-3 rounded-xl inline-block shadow-lg animate-in slide-in-from-top-4">
+                             <div className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest mb-2 flex items-center justify-center gap-2">
+                                <SafeIcon icon={Icons.Settings} size={12}/> Admin : Durée du Tournoi
+                             </div>
+                             <div className="flex gap-2 justify-center">
+                                {[2, 3, 5, 10].map(nb => (
+                                    <button 
+                                        key={nb}
+                                        onClick={() => onUpdateRounds(nb)}
+                                        className={`px-4 py-2 rounded-lg font-black text-xs transition-all border-2 ${tournament.totalRounds === nb ? 'bg-yellow-500 text-black border-yellow-500 scale-110' : 'bg-black text-zinc-500 border-zinc-700 hover:border-zinc-500'}`}
+                                    >
+                                        {nb} Tours
+                                    </button>
+                                ))}
+                             </div>
+                        </div>
+                    )}
+                    {/* -------------------------------------- */}
+
                     {!isFinished && tournament.round > 0 && (
                         <p className="text-zinc-400 text-sm font-bold uppercase tracking-widest mt-2">
                             Manche {tournament.manche} / 2
@@ -1742,7 +1762,7 @@ const TournamentScreen = ({ tournament, onStartNext, onBack }) => {
                     )}
                 </div>
 
-                {/* LISTE DES PARTICIPANTS / CLASSEMENT */}
+                {/* LISTE DES PARTICIPANTS */}
                 <div className="flex-1 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl mb-8">
                     <div className="overflow-y-auto max-h-[50vh] custom-scrollbar p-2">
                         {sortedParticipants.map((p, i) => (
@@ -1773,7 +1793,7 @@ const TournamentScreen = ({ tournament, onStartNext, onBack }) => {
                         <Button onClick={onBack} className="w-full py-5 text-xl bg-green-600 border-green-500">RETOURNER AU MENU</Button>
                     ) : (
                         <Button onClick={onStartNext} className="w-full py-5 text-xl animate-pulse">
-                            {tournament.round === 0 ? "LANCER LE TOURNOI (5 TOURS)" : "LANCER LE MATCH SUIVANT"}
+                            {tournament.round === 0 ? `LANCER LE TOURNOI (${tournament.totalRounds} TOURS)` : "LANCER LE MATCH SUIVANT"}
                         </Button>
                     )}
                 </div>
@@ -1977,20 +1997,14 @@ const App = () => {
         {screen === 'tournament_standings' && (
             <TournamentScreen 
                 tournament={tournament} 
+                isUserAdmin={currentUser.role === 'admin'} // On dit si c'est l'admin
+                onUpdateRounds={(nb) => setTournament(prev => ({ ...prev, totalRounds: nb }))} // La fonction pour changer les tours
                 onStartNext={() => {
-                    // Clic sur "Lancer ..."
                     if (tournament.manche === 1 && tournament.round > 1) {
-                        // On lance le nouveau tour (rotation déjà calculée en amont, mais on applique ici si besoin, ou on utilise l'état courant)
-                        // Note: handleTournamentStep a déjà préparé le round+1 et manche=1.
-                        // On doit juste recréer la table si ce n'est pas fait ou lancer.
-                        // Dans notre logique handleTournamentStep, on a juste incrémenté le round.
-                        // Il faut appeler startNextRound pour générer les tables.
                         startNextRound(tournament.round);
                     } else if (tournament.round === 0) {
-                        // Premier lancement
                         startNextRound(1);
                     } else {
-                        // Manche 2
                         launchTournamentGame(tournament.myTable, 2);
                     }
                 }}
