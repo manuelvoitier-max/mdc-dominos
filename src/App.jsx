@@ -847,11 +847,22 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
       bot2Name = config.difficulty === 'legend' ? "Valou le Redoutable" : config.difficulty === 'expert' ? "Olivier le blagueur" : "Olivier";
   }
   // --------------------------------------------------
+  // Helper pour récupérer l'historique et les points totaux
+  const getInitData = (pName) => {
+      const history = (config.previousScores && config.previousScores[pName]) ? config.previousScores[pName] : [];
+      const total = history.reduce((a, b) => a + b, 0);
+      return { history, total };
+  };
+
+  const p0Data = getInitData(user.pseudo);
+  const p1Data = getInitData(bot1Name);
+  const p2Data = getInitData(bot2Name);
+
   const [gameState, setGameState] = useState({
     players: [
-      { id: 0, name: user.pseudo, type: 'human', hand: [], mdcPoints: 0, wins: 0, isBoude: false, mancheHistory: [], label: null, initialMaxDouble: -1 },
-      { id: 1, name: bot1Name, type: 'bot', hand: [], mdcPoints: 0, wins: 0, isBoude: false, mancheHistory: [], label: null, initialMaxDouble: -1 },
-      { id: 2, name: bot2Name, type: 'bot', hand: [], mdcPoints: 0, wins: 0, isBoude: false, mancheHistory: [], label: null, initialMaxDouble: -1 }
+      { id: 0, name: user.pseudo, type: 'human', hand: [], mdcPoints: p0Data.total, wins: 0, isBoude: false, mancheHistory: p0Data.history, label: null, initialMaxDouble: -1 },
+      { id: 1, name: bot1Name, type: 'bot', hand: [], mdcPoints: p1Data.total, wins: 0, isBoude: false, mancheHistory: p1Data.history, label: null, initialMaxDouble: -1 },
+      { id: 2, name: bot2Name, type: 'bot', hand: [], mdcPoints: p2Data.total, wins: 0, isBoude: false, mancheHistory: p2Data.history, label: null, initialMaxDouble: -1 }
     ],
     board: [], ends: null, turnIndex: 0, status: 'dealing', currentManche: 1, currentPartie: 1, winnerId: null, pendingChoice: null, history: [], mandatoryTile: null
   });
@@ -1412,10 +1423,16 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                      </Button>
                 ) : gameState.status === 'manche_over' ? (
                     <Button onClick={() => {
-                        setGameState(prev => ({ ...prev, players: prev.players.map(p => ({ ...p, wins: 0, label: null })), mancheScoreMDC: null }));
-                        startRound(gameState.currentManche + 1, 1);
-                    }} className="flex-1 py-3 text-sm text-blue-950">MANCHE SUIVANTE</Button>
-                ) : (
+        // Si c'est un tournoi, on sort pour laisser App gérer la manche 2
+        if (config.mode === 'tournament') {
+            onExit(gameState.players); // <--- C'EST ICI LE SECRET : on envoie les joueurs
+        } else {
+            // Logique classique (Mode entrainement)
+            setGameState(prev => ({ ...prev, players: prev.players.map(p => ({ ...p, wins: 0, label: null })), mancheScoreMDC: null }));
+            startRound(gameState.currentManche + 1, 1);
+        }
+    }} className="flex-1 py-3 text-sm text-blue-950">MANCHE SUIVANTE</Button>
+) : (
                     <Button onClick={onExit} className="flex-1 py-3 text-sm text-blue-200">RETOUR MENU</Button>
                 )}
                 
@@ -1730,41 +1747,45 @@ const App = () => {
     launchTournamentGame(myTable, 1);
   };
 
-  // 3. Lancer une game spécifique
-  const launchTournamentGame = (table, mancheNum) => {
-    // On configure la partie pour GameScreen
-    // IMPORTANT : On passe les adversaires réels de la table
-    const opponents = table.seats.filter(s => s.id !== currentUser.id);
-    
-    // Si c'est la manche 2, on inverse les adversaires (changement de place)
-    if (mancheNum === 2) opponents.reverse(); 
+  // 3. Lancer une manche (Modifié pour accepter l'historique des scores)
+  const launchTournamentGame = (table, mancheNum, previousScores = null) => {
+    let opponents = table.seats.filter(s => s.id !== currentUser.id);
+    if (mancheNum === 2) opponents = [...opponents].reverse(); 
 
     setGameConfig({
       mode: 'tournament',
       format: 'manches',
-      target: 1, // Une manche sèche
+      target: 1, 
       stake: 0,
       currency: 'gold',
-      difficulty: 'expert', // Tournoi = niveau relevé
-      customOpponents: opponents // On passera ça à GameScreen
+      difficulty: 'expert',
+      customOpponents: opponents,
+      previousScores: previousScores // <--- ON PASSE LES SCORES ICI
     });
     setScreen('game');
   };
 
-  // 4. Fin d'une manche de tournoi (appelé par onPartieEnd)
-  const handleTournamentStep = (winnerId) => {
+  // 4. Étape suivante (Modifié pour récupérer les scores de la GameScreen)
+  const handleTournamentStep = (playersData) => {
     if (tournament.manche === 1) {
       alert("Fin de la Manche 1. Changement de place !");
+      
+      // On sauvegarde l'historique des scores par nom de joueur
+      const scoresMap = {};
+      if (playersData) {
+          playersData.forEach(p => { scoresMap[p.name] = p.mancheHistory; });
+      }
+
       setTournament(prev => ({ ...prev, manche: 2 }));
-      launchTournamentGame(tournament.myTable, 2);
+      // On relance avec les scores sauvegardés
+      launchTournamentGame(tournament.myTable, 2, scoresMap); 
     } else {
-      alert("Fin du Tour 1 ! Rotation des tables...");
-      // Rotation
+      alert("Fin du Tour ! Rotation des tables...");
       const nextTables = TournamentEngine.rotateTables(tournament.tables);
       const myNewTable = nextTables.find(t => t.seats.find(s => s.id === currentUser.id));
       
       setTournament(prev => ({ ...prev, round: prev.round + 1, manche: 1, tables: nextTables, myTable: myNewTable }));
-      launchTournamentGame(myNewTable, 1);
+      launchTournamentGame(myNewTable, 1, null); // Nouveau tour = scores à zéro
     }
   };
   return (
@@ -1802,14 +1823,13 @@ const App = () => {
             // 1. La clé force le jeu à redémarrer proprement à chaque manche
             key={gameConfig?.mode === 'tournament' ? `tournoi-${tournament.round}-${tournament.manche}` : 'solo-game'}
             config={gameConfig} 
-            onExit={() => {
-                // 2. Si on est en tournoi, le bouton "Quitter/Retour" lance la suite
+            onExit={(playersData) => { // <--- On récupère les données ici
                 if (gameConfig && gameConfig.mode === 'tournament') {
-                    handleTournamentStep();
+                    handleTournamentStep(playersData); // <--- Et on les envoie là
                 } else {
                     setScreen('home');
                 }
-            }} 
+            }}
             onWin={handleWin} 
             onDoubleWin={handleDoubleWin} 
             user={currentUser} 
