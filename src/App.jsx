@@ -991,7 +991,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           const safeHeight = containerHeight * (isLandscape ? 0.60 : 0.55); 
           
           // On garde la limite max à 0.6 pour ne pas que ce soit trop gros au début
-          const calculatedZoom = Math.min(safeWidth / boardWidth, safeHeight / boardHeight, 0.7);
+          const calculatedZoom = Math.min(safeWidth / boardWidth, safeHeight / boardHeight, 0.8);
           setZoomScale(calculatedZoom);
         }
     };
