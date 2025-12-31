@@ -1692,68 +1692,151 @@ const TournamentEngine = {
     return nextTables;
   }
 };
+// --- NOUVEAU COMPOSANT : INTERFACE TOURNOI ---
+const TournamentScreen = ({ tournament, onStartNext, onBack }) => {
+    // Tri des joueurs par score décroissant
+    const sortedParticipants = [...tournament.participants].sort((a, b) => b.score - a.score);
+    const isFinished = tournament.round > 5; // 5 Tours définis
+
+    return (
+        <div className="flex flex-col h-full p-4 md:p-6 relative bg-zinc-950 overflow-y-auto text-white font-sans">
+            {!isFinished && (
+                <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10">
+                    <SafeIcon icon={Icons.ChevronLeft} size={32} />
+                </button>
+            )}
+            
+            <div className="flex-1 max-w-3xl mx-auto w-full pt-8 pb-12 flex flex-col">
+                <div className="text-center mb-8">
+                    <SafeIcon icon={Icons.Trophy} size={64} className="text-yellow-500 mx-auto mb-4 animate-bounce" />
+                    <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic">
+                        {isFinished ? <span className="text-yellow-500">CLASSEMENT FINAL</span> : tournament.round === 0 ? "LISTE DES INSCRITS" : `TOUR ${tournament.round} / 5`}
+                    </h2>
+                    {!isFinished && tournament.round > 0 && (
+                        <p className="text-zinc-400 text-sm font-bold uppercase tracking-widest mt-2">
+                            Manche {tournament.manche} / 2
+                        </p>
+                    )}
+                </div>
+
+                {/* LISTE DES PARTICIPANTS / CLASSEMENT */}
+                <div className="flex-1 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl mb-8">
+                    <div className="overflow-y-auto max-h-[50vh] custom-scrollbar p-2">
+                        {sortedParticipants.map((p, i) => (
+                            <div key={p.id} className={`flex items-center justify-between p-4 rounded-xl mb-2 ${i === 0 ? 'bg-gradient-to-r from-yellow-900/40 to-black border border-yellow-500/50' : 'bg-black/20 border border-white/5'}`}>
+                                <div className="flex items-center gap-4">
+                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${i === 0 ? 'bg-yellow-500 text-black' : 'bg-zinc-800 text-zinc-500'}`}>
+                                        {i + 1}
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className={`font-black uppercase ${p.id === 'user_me' ? 'text-green-400' : 'text-white'}`}>
+                                            {p.pseudo} {p.id === 'user_me' && '(Moi)'}
+                                        </span>
+                                        {tournament.round > 0 && <span className="text-[10px] text-zinc-500 uppercase font-bold">Table {Math.floor(i/3) + 1}</span>}
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-2xl font-mono font-black text-yellow-500">{p.score}</span>
+                                    <span className="text-[10px] text-zinc-600 block uppercase font-bold">Points</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* BOUTON D'ACTION */}
+                <div className="mt-auto">
+                    {isFinished ? (
+                        <Button onClick={onBack} className="w-full py-5 text-xl bg-green-600 border-green-500">RETOURNER AU MENU</Button>
+                    ) : (
+                        <Button onClick={onStartNext} className="w-full py-5 text-xl animate-pulse">
+                            {tournament.round === 0 ? "LANCER LE TOURNOI (5 TOURS)" : "LANCER LE MATCH SUIVANT"}
+                        </Button>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
 const App = () => {
   const [screen, setScreen] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
   const [gameConfig, setGameConfig] = useState(null);
   const [setupMode, setSetupMode] = useState('solo'); // 'solo' ou 'multi'
-// --- ETAT TOURNOI ---
-  const [tournament, setTournament] = useState({ active: false, registered: false, round: 1, manche: 1, tables: [], myTable: null });
-  const handleLogin = (user) => { setCurrentUser(user); setScreen('home'); };
-  const updateUser = (newUser) => { setCurrentUser(newUser); };
+// --- LOGIQUE TOURNOI (MISE A JOUR 5 TOURS) ---
+  // round 0 = Lobby d'attente
+  const [tournament, setTournament] = useState({ 
+      active: false, 
+      registered: false, 
+      round: 0, 
+      manche: 1, 
+      tables: [], 
+      myTable: null, 
+      participants: [] // On stocke tous les joueurs ici pour le classement global
+  });
 
-  const handleStartGame = (cfg) => {
-      if (currentUser.wallet.gold < cfg.stake) { alert("Pas assez d'or ! Regardez une pub en boutique pour en gagner."); return; }
-      updateUser({ ...currentUser, wallet: { ...currentUser.wallet, gold: currentUser.wallet.gold - cfg.stake } });
-      setGameConfig(cfg);
-      setScreen('game');
-  };
-
-  const handleWin = (amount, currency) => {
-      updateUser({ ...currentUser, wallet: { ...currentUser.wallet, [currency]: currentUser.wallet[currency] + amount } });
-      alert(`Gagné ! +${amount} ${currency}`);
-  };
-  
-  const handleDoubleWin = (amount, currency) => {
-       updateUser({ ...currentUser, wallet: { ...currentUser.wallet, [currency]: currentUser.wallet[currency] + amount } });
-  };
-  
-  const handleLogout = () => {
-      setCurrentUser(null);
-      setScreen('login');
-  };
-
-// --- GESTION DU TOURNOI ---
-  
-  // 1. Le joueur s'inscrit
+  // 1. Inscription (Va vers l'écran Lobby)
   const handleRegisterTournament = () => {
-    setTournament(prev => ({ ...prev, registered: true }));
-    alert("Inscription validée ! En attente du démarrage...");
-    // Simulation : Démarrage automatique après 3 secondes
-    setTimeout(startTournament, 3000);
+    // On prépare les participants dès l'inscription
+    // On force l'ID du joueur humain à 'user_me' pour le retrouver facilement
+    const human = { ...currentUser, id: 'user_me', score: 0 }; 
+    const allParticipants = TournamentEngine.prepareParticipants([human]);
+    
+    setTournament({ 
+        active: true, 
+        registered: true, 
+        round: 0, 
+        manche: 1, 
+        tables: [], 
+        myTable: null, 
+        participants: allParticipants 
+    });
+    setScreen('tournament_standings'); // On affiche la liste
   };
 
-  // 2. Le tournoi commence (Génération des tables)
-  const startTournament = () => {
-    const allPlayers = [currentUser]; // Dans la vraie vie, ce serait la liste du serveur
-    const participants = TournamentEngine.prepareParticipants(allPlayers);
-    const tables = TournamentEngine.createTables(participants);
-    
-    // Trouver ma table
-    const myTable = tables.find(t => t.seats.find(s => s.id === currentUser.id));
-    
-    setTournament({ active: true, registered: true, round: 1, manche: 1, tables, myTable });
-    
-    // Lancer la partie direct
-    launchTournamentGame(myTable, 1);
+  // 2. Fonction intermédiaire pour lancer la suite depuis l'écran de classement
+  const handleContinueTournament = () => {
+      if (tournament.round === 0) {
+          // DÉMARRAGE DU TOUR 1
+          startNextRound(1);
+      } else {
+          // SUITE DU JEU
+          launchTournamentGame(tournament.myTable, tournament.manche);
+      }
   };
 
-  // 3. Lancer une manche (Modifié pour accepter l'historique des scores)
+  // Helper pour initialiser un Round (Tour)
+  const startNextRound = (roundNum) => {
+      // Si Round 1, on crée les tables, sinon on fait la rotation
+      let nextTables;
+      if (roundNum === 1) {
+          nextTables = TournamentEngine.createTables(tournament.participants);
+      } else {
+          nextTables = TournamentEngine.rotateTables(tournament.tables);
+      }
+      
+      const myNewTable = nextTables.find(t => t.seats.find(s => s.id === 'user_me')); // On cherche l'ID fixe
+      
+      setTournament(prev => ({ 
+          ...prev, 
+          round: roundNum, 
+          manche: 1, 
+          tables: nextTables, 
+          myTable: myNewTable 
+      }));
+      
+      // On lance directement la partie après la mise en place
+      launchTournamentGame(myNewTable, 1);
+  };
+
+  // 3. Lancer une manche
   const launchTournamentGame = (table, mancheNum, previousScores = null) => {
-    let opponents = table.seats.filter(s => s.id !== currentUser.id);
+    // Attention: l'ID du user est maintenant 'user_me' dans le tournoi
+    let opponents = table.seats.filter(s => s.id !== 'user_me');
     if (mancheNum === 2) opponents = [...opponents].reverse(); 
 
     setGameConfig({
+      gameId: Date.now(),
       mode: 'tournament',
       format: 'manches',
       target: 1, 
@@ -1761,32 +1844,66 @@ const App = () => {
       currency: 'gold',
       difficulty: 'expert',
       customOpponents: opponents,
-      previousScores: previousScores // <--- ON PASSE LES SCORES ICI
+      previousScores: previousScores 
     });
     setScreen('game');
   };
 
-  // 4. Étape suivante (Modifié pour récupérer les scores de la GameScreen)
+  // 4. Fin d'une manche (Appelé par GameScreen)
+  // C'est ici qu'on met à jour le classement GLOBAL
   const handleTournamentStep = (playersData) => {
-    if (tournament.manche === 1) {
-      alert("Fin de la Manche 1. Changement de place !");
-      
-      // On sauvegarde l'historique des scores par nom de joueur
-      const scoresMap = {};
-      if (playersData) {
-          playersData.forEach(p => { scoresMap[p.name] = p.mancheHistory; });
-      }
+    // A. Mise à jour des scores globaux dans la liste des participants
+    let updatedParticipants = [...tournament.participants];
+    
+    if (playersData) {
+        playersData.forEach(pData => {
+            // On cherche le joueur dans la liste globale par son nom (pseudo) car les ID peuvent varier entre Game et App
+            const participantIndex = updatedParticipants.findIndex(p => p.pseudo === pData.name);
+            if (participantIndex !== -1) {
+                // On ajoute les points gagnés dans cette manche au score total du tournoi
+                updatedParticipants[participantIndex].score += pData.mdcPoints; 
+            }
+        });
+        
+        // Simulation : On donne des points aléatoires aux autres tables pour rendre le classement vivant
+        updatedParticipants = updatedParticipants.map(p => {
+            if (!playersData.find(pd => pd.name === p.pseudo)) {
+                // Si ce n'est pas un joueur de ma table, il gagne entre 0 et 3 points au hasard
+                return { ...p, score: p.score + Math.floor(Math.random() * 4) };
+            }
+            return p;
+        });
+    }
 
-      setTournament(prev => ({ ...prev, manche: 2 }));
-      // On relance avec les scores sauvegardés
-      launchTournamentGame(tournament.myTable, 2, scoresMap); 
+    // B. Logique de progression (Manche -> Tour -> Fin)
+    if (tournament.manche === 1) {
+        // Fin Manche 1 -> On sauvegarde, on reste sur la table, MAIS on passe par l'écran de classement
+        setTournament(prev => ({ 
+            ...prev, 
+            participants: updatedParticipants,
+            manche: 2 
+        }));
+        setScreen('tournament_standings'); // On montre les scores intermédiaires
+        
     } else {
-      alert("Fin du Tour ! Rotation des tables...");
-      const nextTables = TournamentEngine.rotateTables(tournament.tables);
-      const myNewTable = nextTables.find(t => t.seats.find(s => s.id === currentUser.id));
-      
-      setTournament(prev => ({ ...prev, round: prev.round + 1, manche: 1, tables: nextTables, myTable: myNewTable }));
-      launchTournamentGame(myNewTable, 1, null); // Nouveau tour = scores à zéro
+        // Fin Manche 2 (Fin du Tour)
+        if (tournament.round >= 5) {
+            // FIN DU TOURNOI
+            setTournament(prev => ({ ...prev, participants: updatedParticipants, round: 6 })); // 6 = Fini
+            setScreen('tournament_standings');
+        } else {
+            // PASSAGE AU TOUR SUIVANT
+            setTournament(prev => ({ 
+                ...prev, 
+                participants: updatedParticipants,
+                round: prev.round + 1, // On incrémente le round ici pour l'affichage, mais le startNextRound se fera au clic
+                manche: 1
+            }));
+            // On ne lance pas startNextRound tout de suite, on attend le clic sur "Lancer Tour X"
+            // Mais il faut préparer la rotation pour le bouton "Continuer"
+            // Pour simplifier : on met juste à jour l'écran, le bouton appellera startNextRound via handleContinueTournament
+             setScreen('tournament_standings');
+        }
     }
   };
   return (
@@ -1819,18 +1936,33 @@ const App = () => {
             onJoinTable={(cfg) => handleStartGame(cfg)} 
             onCreateTable={() => { setSetupMode('multi'); setScreen('setup'); }}
         />}
-        
+        {screen === 'tournament_standings' && (
+            <TournamentScreen 
+                tournament={tournament} 
+                onStartNext={() => {
+                    // Si on vient de finir un tour (manche était 2, passée à 1 pour le prochain round)
+                    // On doit déclencher la rotation réelle
+                    if (tournament.manche === 1 && tournament.round > 1) {
+                        startNextRound(tournament.round);
+                    } else {
+                        // Sinon c'est juste la manche 2 de la même table
+                        launchTournamentGame(tournament.myTable, 2);
+                    }
+                }}
+                onBack={() => setScreen('home')}
+            />
+        )}
         {screen === 'game' && <GameScreen 
-            // 1. La clé force le jeu à redémarrer proprement à chaque manche
-            key={gameConfig?.mode === 'tournament' ? `tournoi-${tournament.round}-${tournament.manche}` : 'solo-game'}
+            // CORRECTION : On utilise le gameId unique pour être SÛR que ça recharge
+            key={gameConfig?.gameId || 'solo-game'} 
             config={gameConfig} 
-            onExit={(playersData) => { // <--- On récupère les données ici
+            onExit={(playersData) => {
                 if (gameConfig && gameConfig.mode === 'tournament') {
-                    handleTournamentStep(playersData); // <--- Et on les envoie là
+                    handleTournamentStep(playersData);
                 } else {
                     setScreen('home');
                 }
-            }}
+            }} 
             onWin={handleWin} 
             onDoubleWin={handleDoubleWin} 
             user={currentUser} 
