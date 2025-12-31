@@ -974,6 +974,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
       }
   }, [gameState.turnIndex, gameState.status, gameState.history]);
 
+  // Zoom Optimisé (CORRIGÉ : Marges de sécurité augmentées et dépendances complètes)
   useEffect(() => {
     const calculateZoom = () => {
         if (boardRef.current && containerRef.current) {
@@ -981,17 +982,20 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           const containerWidth = containerRef.current.clientWidth;
           const boardHeight = boardRef.current.scrollHeight;
           const containerHeight = containerRef.current.clientHeight;
-         
+          
           const isLandscape = containerWidth > containerHeight;
-          const safeWidth = containerWidth * (isLandscape ? 0.92 : 0.85);
-          const safeHeight = containerHeight * (isLandscape ? 0.60 : 0.60);
-         
+          // MODIF : On réduit un peu (0.92 -> 0.85) pour laisser une marge de sécurité sur les bords
+          const safeWidth = containerWidth * (isLandscape ? 0.85 : 0.85);
+          const safeHeight = containerHeight * (isLandscape ? 0.60 : 0.55); 
+          
+          // Le zoom ne peut jamais dépasser 0.6 (taille de base) pour ne pas être énorme au début
           const calculatedZoom = Math.min(safeWidth / boardWidth, safeHeight / boardHeight, 0.6);
           setZoomScale(calculatedZoom);
         }
     };
+    // On force le calcul après un court délai pour laisser le DOM s'étendre
     setTimeout(calculateZoom, 50);
-  }, [gameState.board]);
+  }, [gameState.board, gameState.turnIndex]); // Ajout de turnIndex pour forcer le recalcul à chaque tour
 
   const addLog = (log) => {
     setGameState(prev => ({
@@ -1286,7 +1290,8 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               isCochonMode={config.format === 'cochons'}
           />
           <div className="w-full h-full flex items-center justify-center pointer-events-none relative z-10">
-            <div ref={boardRef} className="flex items-center justify-center origin-center drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] whitespace-nowrap" style={{ transform: `scale(${zoomScale})`, transition: 'transform 0.5s ease-out' }}>
+            {/* MODIFICATION : Ajout de 'w-max' pour que la div prenne sa vraie largeur réelle */}
+            <div ref={boardRef} className="flex items-center justify-center origin-center drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] whitespace-nowrap w-max" style={{ transform: `scale(${zoomScale})`, transition: 'transform 0.5s ease-out' }}>
                 {gameState.board.map((tile, i) => (
                     <DominoTile
                         key={i}
