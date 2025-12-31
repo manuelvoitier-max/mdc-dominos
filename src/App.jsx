@@ -749,21 +749,32 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
   const [target, setTarget] = useState(3);
   const [stake, setStake] = useState(100);
   const [difficulty, setDifficulty] = useState('easy');
-  const [privacy, setPrivacy] = useState('public'); // AJOUT: État pour la confidentialité du salon
+  const [privacy, setPrivacy] = useState('public'); 
 
   const stakePresets = [50, 100, 500];
-  const targetPresets = format === 'manches' ? [1, 2, 3] : [5, 10, 15];
+  // AJOUT : Presets pour le mode cochons (2, 3, 4)
+  const targetPresets = format === 'manches' ? [1, 2, 3] : format === 'cochons' ? [2, 3, 4] : [5, 10, 15];
+  
   const hasExpertLicense = user.inventory.includes('license_expert');
   const hasManX = user.inventory.includes('bot_manx');
-  useEffect(() => { setTarget(format === 'manches' ? 3 : 15); }, [format]);
-  const handleStart = () => { if (difficulty === 'expert' && !hasExpertLicense) { alert("Niveau Expert verrouillé ! Achetez la Licence Pro en boutique."); return; } if (difficulty === 'legend' && !hasManX) { alert("Niveau Légende verrouillé ! Achetez Man'X en boutique."); return; } if(target <= 0) { alert("L'objectif doit être supérieur à 0 !"); return; } if(stake <= 0) { alert("La mise doit être supérieure à 0 !"); return; } onStart({ format, target, stake, currency: 'gold', difficulty }); };
+  
+  useEffect(() => { setTarget(format === 'manches' ? 3 : format === 'cochons' ? 2 : 15); }, [format]);
+  
+  const handleStart = () => { 
+      if (difficulty === 'expert' && !hasExpertLicense) { alert("Niveau Expert verrouillé ! Achetez la Licence Pro en boutique."); return; } 
+      if (difficulty === 'legend' && !hasManX) { alert("Niveau Légende verrouillé ! Achetez Man'X en boutique."); return; } 
+      if(target <= 0) { alert("L'objectif doit être supérieur à 0 !"); return; } 
+      if(stake <= 0) { alert("La mise doit être supérieure à 0 !"); return; } 
+      onStart({ format, target, stake, currency: 'gold', difficulty }); 
+  };
+
   return (
     <div className="flex flex-col h-full p-4 md:p-6 relative bg-zinc-950 overflow-y-auto text-white text-center font-sans">
       <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><SafeIcon icon={Icons.ChevronLeft} size={32} /></button>
       <div className="flex-1 flex flex-col items-center max-w-lg mx-auto w-full pt-8 pb-12 text-center">
         <h2 className="text-2xl md:text-4xl font-black mb-8 uppercase tracking-tighter italic">{mode === 'multi' ? 'CRÉER' : 'CONFIG'} <span className="text-red-600">TABLE</span></h2>
-       
-        {/* AJOUT: Section Configuration Salon (Public/Privé) */}
+        
+        {/* SECTION PUBLIC/PRIVE (INTACTE) */}
         {mode === 'multi' && (
             <div className="w-full mb-8">
                 <label className="text-[11px] text-zinc-500 uppercase tracking-widest font-black mb-4 block text-center">Confidentialité du Salon</label>
@@ -802,20 +813,38 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
                 <button onClick={() => setDifficulty('legend')} className={`p-3 rounded-lg border-2 flex-1 min-w-[80px] text-xs font-black uppercase transition-all relative overflow-hidden ${difficulty === 'legend' ? 'bg-yellow-600 border-yellow-400 text-black shadow-[0_0_15px_rgba(234,179,8,0.5)]' : 'bg-zinc-900 border-zinc-700 text-zinc-500'}`}>Légende {!hasManX && (<div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[1px]"><SafeIcon icon={Icons.Lock} size={16} className="text-white" /></div>)}</button>
             </div>
         </div>
+
+        {/* FORMAT DE JEU AVEC LE BOUTON COCHONS */}
         <div className="w-full mb-8">
             <label className="text-[11px] text-zinc-500 uppercase tracking-widest font-black mb-4 block text-center">Format de jeu</label>
-            <div className="grid grid-cols-2 gap-4 w-full max-w-md mx-auto">
-                <button onClick={() => setFormat('manches')} className={`p-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${format === 'manches' ? 'bg-zinc-800 border-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}><span className="font-black tracking-widest">MANCHES</span><span className="text-[10px]">Le premier à X victoires</span></button>
-                <button onClick={() => setFormat('points')} className={`p-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${format === 'points' ? 'bg-zinc-800 border-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}><span className="font-black tracking-widest">SCORE</span><span className="text-[10px]">Le premier à X points</span></button>
+            <div className="grid grid-cols-3 gap-2 w-full max-w-md mx-auto">
+                <button onClick={() => setFormat('manches')} className={`p-2 py-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${format === 'manches' ? 'bg-zinc-800 border-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}>
+                    <span className="font-black tracking-widest text-[10px]">MANCHES</span>
+                    <span className="text-[8px] leading-tight">Premier à X vict.</span>
+                </button>
+                <button onClick={() => setFormat('points')} className={`p-2 py-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${format === 'points' ? 'bg-zinc-800 border-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}>
+                    <span className="font-black tracking-widest text-[10px]">SCORE</span>
+                    <span className="text-[8px] leading-tight">Premier à X pts</span>
+                </button>
+                {/* NOUVEAU BOUTON COCHONS */}
+                <button onClick={() => setFormat('cochons')} className={`p-2 py-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${format === 'cochons' ? 'bg-zinc-800 border-pink-500 text-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}>
+                    <span className="text-xl leading-none">🐷</span>
+                    <span className="font-black tracking-widest text-[10px]">COCHONS</span>
+                    <span className="text-[8px] leading-tight">Objectif X Cochons</span>
+                </button>
             </div>
         </div>
+
         <div className="w-full mb-8">
-            <label className="text-[11px] text-zinc-500 uppercase tracking-widest font-black mb-4 block text-center">{format === 'manches' ? 'Nombre de manches gagnantes' : 'Score à atteindre (MDC)'}</label>
+            <label className="text-[11px] text-zinc-500 uppercase tracking-widest font-black mb-4 block text-center">
+                {format === 'manches' ? 'Nombre de manches gagnantes' : format === 'cochons' ? 'Nombre de cochons à atteindre' : 'Score à atteindre (MDC)'}
+            </label>
             <div className="flex justify-between gap-3 max-w-md mx-auto">
                 {targetPresets.map(v => ( <button key={v} onClick={() => setTarget(v)} className={`flex-1 py-4 rounded border-2 font-mono font-black text-lg transition-all ${target === v ? 'bg-white text-black border-white' : 'bg-black/40 border-zinc-800 text-zinc-500 hover:text-white'}`}>{v}</button> ))}
                 <div className={`flex-1 relative rounded border-2 transition-all ${!targetPresets.includes(target) ? 'bg-white border-white' : 'bg-black/40 border-zinc-800'}`}><input type="number" placeholder="X" className={`w-full h-full bg-transparent text-center font-mono font-black text-lg focus:outline-none ${!targetPresets.includes(target) ? 'text-black placeholder:text-black/30' : 'text-zinc-500 hover:text-white placeholder:text-zinc-600'}`} value={!targetPresets.includes(target) ? target : ''} onChange={(e) => setTarget(parseInt(e.target.value) || 0)} /></div>
             </div>
         </div>
+
         <div className="w-full mb-8">
             <label className="text-[11px] text-zinc-500 uppercase tracking-widest font-black mb-4 block text-center">Mise par partie (Monnaie Virtuelle)</label>
             <div className="grid grid-cols-4 gap-3 max-w-md mx-auto">
@@ -823,7 +852,8 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
                 <div className={`relative rounded border-2 transition-all ${!stakePresets.includes(stake) ? 'bg-zinc-800 border-yellow-500' : 'bg-black/40 border-zinc-800'}`}><input type="number" placeholder="X" className={`w-full h-full bg-transparent text-center font-mono font-black text-sm focus:outline-none ${!stakePresets.includes(stake) ? 'text-yellow-500 placeholder:text-yellow-500/30' : 'text-zinc-500 hover:text-white placeholder:text-zinc-600'}`} value={!stakePresets.includes(stake) ? stake : ''} onChange={(e) => setStake(parseInt(e.target.value) || 0)} /></div>
             </div>
         </div>
-        {/* AJOUT : Choix du nombre de tours (Visible pour Admin en mode Multi/Tournoi) */}
+        
+        {/* CONFIG ADMIN POUR TOURNOI */}
         {mode === 'multi' && user.role === 'admin' && (
              <div className="w-full mb-8">
                 <label className="text-[11px] text-yellow-500 uppercase tracking-widest font-black mb-4 block text-center">
@@ -831,9 +861,9 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
                 </label>
                 <div className="flex justify-center gap-2">
                     {[3, 5, 7, 10].map(nb => (
-                        <button
+                        <button 
                             key={nb}
-                            onClick={() => setTarget(nb)} // On utilise "target" pour stocker ça temporairement
+                            onClick={() => setTarget(nb)} 
                             className={`w-12 h-12 rounded-lg font-black border-2 transition-all ${target === nb ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-zinc-900 border-zinc-700 text-zinc-500'}`}
                         >
                             {nb}
@@ -853,21 +883,17 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
 // ... GameScreen ... (Same as provided above)
 const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) => {
  
-  // --- GESTION ADVERSAIRES (MODIFIÉ POUR TOURNOI) ---
+  // --- GESTION ADVERSAIRES ---
   let bot1Name, bot2Name;
- 
-  // Si le tournoi nous a donné des adversaires précis, on les utilise
   if (config.customOpponents && config.customOpponents.length === 2) {
       bot1Name = config.customOpponents[0].pseudo;
       bot2Name = config.customOpponents[1].pseudo;
-  }
-  // Sinon, on garde la logique classique (Entraînement)
+  } 
   else {
       bot1Name = config.difficulty === 'legend' ? "Man'X le Président" : config.difficulty === 'expert' ? "Chaton la tigresse" : "Chaton";
       bot2Name = config.difficulty === 'legend' ? "Valou le Redoutable" : config.difficulty === 'expert' ? "Olivier le blagueur" : "Olivier";
   }
-  // --------------------------------------------------
-  // Helper pour récupérer l'historique et les points totaux
+
   const getInitData = (pName) => {
       const history = (config.previousScores && config.previousScores[pName]) ? config.previousScores[pName] : [];
       const total = history.reduce((a, b) => a + b, 0);
@@ -880,36 +906,31 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
 
   const [gameState, setGameState] = useState({
     players: [
-      { id: 0, name: user.pseudo, type: 'human', hand: [], mdcPoints: p0Data.total, wins: 0, isBoude: false, mancheHistory: p0Data.history, label: null, initialMaxDouble: -1 },
-      { id: 1, name: bot1Name, type: 'bot', hand: [], mdcPoints: p1Data.total, wins: 0, isBoude: false, mancheHistory: p1Data.history, label: null, initialMaxDouble: -1 },
-      { id: 2, name: bot2Name, type: 'bot', hand: [], mdcPoints: p2Data.total, wins: 0, isBoude: false, mancheHistory: p2Data.history, label: null, initialMaxDouble: -1 }
+      // AJOUT DE 'cochonsTotal' POUR TOUS
+      { id: 0, name: user.pseudo, type: 'human', hand: [], mdcPoints: p0Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p0Data.history, label: null, initialMaxDouble: -1 },
+      { id: 1, name: bot1Name, type: 'bot', hand: [], mdcPoints: p1Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p1Data.history, label: null, initialMaxDouble: -1 },
+      { id: 2, name: bot2Name, type: 'bot', hand: [], mdcPoints: p2Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p2Data.history, label: null, initialMaxDouble: -1 }
     ],
     board: [], ends: null, turnIndex: 0, status: 'dealing', currentManche: 1, currentPartie: 1, winnerId: null, pendingChoice: null, history: [], mandatoryTile: null
   });
 
   const [timeLeft, setTimeLeft] = useState(15);
-  const [zoomScale, setZoomScale] = useState(0.6); // MODIFICATION: Zoom initial plus petit (0.6) pour éviter le débordement
+  const [zoomScale, setZoomScale] = useState(0.6);
   const [showChat, setShowChat] = useState(false);
   const [lastChatMessage, setLastChatMessage] = useState(null);
   const [adWatchedForThisWin, setAdWatchedForThisWin] = useState(false);
   const [showAdOverlay, setShowAdOverlay] = useState(false);
-  const [winningInfo, setWinningInfo] = useState(null); // { winnerId, winningTile }
- 
-  // MODIFICATION: Suppression complète de la logique d'orientation forcée
- 
+  const [winningInfo, setWinningInfo] = useState(null);
+  
   const boardRef = useRef(null);
   const containerRef = useRef(null);
   const paidRef = useRef(false);
 
-  // RECUPERATION DES PHRASES POSSEDEES
   const ownedPhrases = MOCK_DB.items.filter(i => i.type === 'phrase' && user.inventory.includes(i.id));
-
-  // RÉCUPÉRATION DU BOARD ÉQUIPÉ
   const currentBoard = MOCK_DB.items.find(i => i.id === user.equippedBoard) || MOCK_DB.items.find(i => i.id === 'board_classic');
 
   useEffect(() => { startRound(1, 1); }, []);
 
-  // Timer & Auto-Pass
   useEffect(() => {
     let timer;
     if (gameState.status === 'playing' && timeLeft > 0 && !gameState.pendingChoice) {
@@ -923,18 +944,16 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
     return () => clearInterval(timer);
   }, [timeLeft, gameState.status, gameState.pendingChoice, gameState.turnIndex]);
 
-  // Handle winning animation transition
   useEffect(() => {
       if (gameState.status === 'winning_animation') {
           const t = setTimeout(() => {
-             setGameState(prev => resolvePartieEnd(prev, prev.players, prev.winnerId));
-             setWinningInfo(null);
-          }, 3000); // 3 seconds banner display
+              setGameState(prev => resolvePartieEnd(prev, prev.players, prev.winnerId));
+              setWinningInfo(null);
+          }, 3000);
           return () => clearTimeout(t);
       }
   }, [gameState.status]);
 
-  // Détection Boudé Humain
   useEffect(() => {
     if (gameState.status === 'playing' && gameState.turnIndex === 0) {
       const moves = getValidMoves(gameState.players[0].hand, gameState.ends);
@@ -945,7 +964,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
     }
   }, [gameState.turnIndex, gameState.ends, gameState.status, gameState.board.length, gameState.mandatoryTile]);
 
-  // Paiement Victoire
   useEffect(() => {
       if (gameState.status === 'tournoi_over' && gameState.winnerId === 0 && !paidRef.current) {
           paidRef.current = true;
@@ -953,29 +971,24 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
       }
   }, [gameState.status, gameState.winnerId]);
 
-  // EFFET: Taunt Man'X quand il bloque un joueur
   useEffect(() => {
       if (gameState.status === 'playing' && gameState.history.length > 0) {
           const currentId = gameState.turnIndex;
-          const prevId = (currentId + 1) % 3; // Joueur précédent (Sens anti-horaire)
+          const prevId = (currentId + 1) % 3;
           const prevPlayer = gameState.players[prevId];
           const lastLog = gameState.history[0];
 
-          // Vérifier si le dernier coup était joué par Man'X et était un placement de domino
           if (prevPlayer.name.includes("Man'X") && lastLog.player === prevPlayer.name && lastLog.action === 'Posé') {
               const currentPlayer = gameState.players[currentId];
               const moves = getValidMoves(currentPlayer.hand, gameState.ends);
-             
-              // Si le joueur actuel est bloqué (mais a des dominos)
               if (moves.length === 0 && currentPlayer.hand.length > 0) {
                   setLastChatMessage({ playerId: prevId, text: "I fèw mal Doudou !" });
-                  setTimeout(() => setLastChatMessage(null), 4000); // 4s pour bien lire
+                  setTimeout(() => setLastChatMessage(null), 4000);
               }
           }
       }
-  }, [gameState.turnIndex, gameState.status, gameState.history]);
+  }, [gameState.turnIndex, gameState.status, gameState.history]); 
 
-  // Zoom Optimisé pour Paysage Mobile (Bord à bord)
   useEffect(() => {
     const calculateZoom = () => {
         if (boardRef.current && containerRef.current) {
@@ -983,20 +996,17 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           const containerWidth = containerRef.current.clientWidth;
           const boardHeight = boardRef.current.scrollHeight;
           const containerHeight = containerRef.current.clientHeight;
-         
-          // MODIFICATION: Facteurs de sécurité augmentés pour utiliser plus d'espace (95% largeur)
+          
           const isLandscape = containerWidth > containerHeight;
           const safeWidth = containerWidth * (isLandscape ? 0.92 : 0.85);
-          const safeHeight = containerHeight * (isLandscape ? 0.60 : 0.60);
-         
-          // MODIFICATION: On limite le zoom max à 0.6 pour que ça ne soit jamais "trop gros" au départ
+          const safeHeight = containerHeight * (isLandscape ? 0.60 : 0.60); 
+          
           const calculatedZoom = Math.min(safeWidth / boardWidth, safeHeight / boardHeight, 0.6);
           setZoomScale(calculatedZoom);
         }
     };
-    // On appelle le zoom dès le montage et à chaque changement de plateau
     setTimeout(calculateZoom, 50);
-  }, [gameState.board]);
+  }, [gameState.board]); 
 
   const addLog = (log) => {
     setGameState(prev => ({
@@ -1013,7 +1023,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
-        // Tente de mettre l'élément racine en plein écran pour couvrir tout le mobile
         document.documentElement.requestFullscreen().catch((e) => {
             console.log("Erreur plein écran:", e);
         });
@@ -1034,7 +1043,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
 
   const onAdCompleted = () => {
       setAdWatchedForThisWin(true);
-      onDoubleWin(config.stake * 3, config.currency); // Re-pay the winning amount
+      onDoubleWin(config.stake * 3, config.currency); 
       alert("Gain Doublé !");
   };
 
@@ -1042,7 +1051,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   const startRound = (mancheNum, partieNum, forcedStarterId = -1) => {
     const allTiles = generateDominoes();
     const hands = [allTiles.slice(0, 7), allTiles.slice(7, 14), allTiles.slice(14, 21)];
-   
+    
     let starterIndex = forcedStarterId;
     let maxDTotal = -1;
     let starterTile = null;
@@ -1071,14 +1080,11 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
     if (forcedStarterId === -1 && starterTile) setTimeout(() => { playTile(starterIndex, starterTile, 'start'); }, 2000);
   };
 
-  // --- BOT ENGINE AVEC DIFFICULTE ---
   useEffect(() => {
     if (gameState.status !== 'playing' || gameState.pendingChoice) return;
     const player = gameState.players[gameState.turnIndex];
     if (player.type === 'bot') {
       const timer = setTimeout(() => {
-        // Valou utilise son IA spécifique 'valou_legend', les autres suivent la difficulté globale
-        // Confirmation : Valou est bien détecté ici et forcé en mode redoutable
         const aiLevel = player.name.includes("Valou") ? 'valou_legend' : (config.difficulty || 'easy');
         const move = getBotMove(player.hand, gameState.ends, aiLevel);
         if (move) playTile(player.id, move.tile, move.side);
@@ -1110,6 +1116,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
     setTimeLeft(15);
   };
 
+  // --- LOGIQUE FIN DE PARTIE & COCHONS ---
   const resolvePartieEnd = (prevState, currentPlayers, winnerId) => {
       const winnerName = currentPlayers[winnerId].name;
       addLog({ player: winnerName, action: 'GAGNE LA PARTIE', type: 'success' });
@@ -1123,19 +1130,41 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           const maxW = Math.max(...withWins.map(p => p.wins));
           const mancheWinnerId = withWins.find(p => p.wins === maxW).id;
           const numCochons = withWins.filter(p => p.wins === 0).length;
+          
           const finalMdcManche = withWins.map(p => {
               let mdcGain = p.wins;
               let label = "";
+              
               if (p.id === mancheWinnerId) {
                   if (numCochons === 2) { mdcGain = 5; label = "DOUBLE COCHON !!"; }
                   else if (numCochons === 1) { mdcGain = 4; label = "COCHON !"; }
               } else if (p.wins === 0) { mdcGain = -1; label = "COCHON PRIS (-1)"; }
-              return { ...p, mdcTotal: p.mdcPoints + mdcGain, gain: mdcGain, label, mancheHistory: [...p.mancheHistory, mdcGain] };
+
+              // LOGIQUE SPECIALE COCHONS
+              let newCochonsTotal = p.cochonsTotal || 0;
+              if (config.format === 'cochons' && p.id === mancheWinnerId) {
+                  if (mdcGain === 5) {
+                      newCochonsTotal += 2;
+                      label = "2 COCHONS DONNÉS !";
+                  } else if (mdcGain === 4) {
+                      newCochonsTotal += 1;
+                      label = "1 COCHON DONNÉ !";
+                  } else {
+                      label = "Pas de cochon...";
+                  }
+              }
+
+              return { ...p, mdcPoints: p.mdcPoints + mdcGain, cochonsTotal: newCochonsTotal, gain: mdcGain, label, mancheHistory: [...p.mancheHistory, mdcGain] };
           });
-          const updatedGlobalPlayers = finalMdcManche.map(p => ({ ...p, mdcPoints: p.mdcTotal }));
-          // CORRECTION : En mode tournoi, on force le statut "manche_over" pour afficher le bon bouton
-          const isTournoiFini = config.mode === 'tournament' ? false : (config.format === 'manches' ? prevState.currentManche >= config.target : updatedGlobalPlayers.some(p => p.mdcPoints >= config.target));
-          return { ...prevState, players: updatedGlobalPlayers, status: isTournoiFini ? 'tournoi_over' : 'manche_over', winnerId, mancheScoreMDC: finalMdcManche };
+
+          // VERIFICATION VICTOIRE
+          let isTournoiFini = false;
+          if (config.mode === 'tournament') isTournoiFini = false;
+          else if (config.format === 'cochons') isTournoiFini = finalMdcManche.some(p => p.cochonsTotal >= config.target);
+          else if (config.format === 'manches') isTournoiFini = prevState.currentManche >= config.target;
+          else isTournoiFini = finalMdcManche.some(p => p.mdcPoints >= config.target);
+
+          return { ...prevState, players: finalMdcManche, status: isTournoiFini ? 'tournoi_over' : 'manche_over', winnerId, mancheScoreMDC: finalMdcManche };
       }
       return { ...prevState, players: withWins, status: 'partie_over', winnerId };
   };
@@ -1143,8 +1172,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   const playTile = (id, tile, side) => {
     const playerName = gameState.players[id].name;
     addLog({ player: playerName, action: 'Posé', info: `[${tile.v1}|${tile.v2}]` });
-   
-    // Detect win before state update to set side-effect state
+    
     const isWin = gameState.players[id].hand.length === 1 && gameState.players[id].hand[0].id === tile.id;
     if (isWin) {
         setWinningInfo({ winnerId: id, winningTile: tile });
@@ -1161,9 +1189,8 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
         else { placed.flipped = (tile.v2 === newEnds.right); newEnds.right = placed.flipped ? tile.v1 : tile.v2; newBoard.push(placed); }
       }
       const newPlayers = prev.players.map(p => p.id === id ? { ...p, hand: p.hand.filter(h => h.id !== tile.id), isBoude: false } : p);
-     
+      
       if (newPlayers[id].hand.length === 0) {
-          // Instead of resolving immediately, go to animation state
           return {
               ...prev,
               players: newPlayers,
@@ -1175,7 +1202,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               mandatoryTile: null
           };
       }
-     
+      
       return { ...prev, players: newPlayers, board: newBoard, ends: newEnds, turnIndex: (prev.turnIndex + 2) % 3, pendingChoice: null, mandatoryTile: null };
     });
     setTimeLeft(15);
@@ -1186,12 +1213,9 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
 
   return (
     <div className={`fixed inset-0 w-full h-full z-50 bg-slate-950 overflow-hidden text-white font-sans ${currentBoard.style} transition-colors duration-500`}>
-      {/* OVERLAY ORIENTATION PORTRAIT - SUPPRIMÉ */}
-
       {showAdOverlay && <AdOverlay onClose={() => setShowAdOverlay(false)} onReward={onAdCompleted} />}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-20 mix-blend-overlay"></div>
-     
-      {/* EFFET NEIGE SI NOEL */}
+      
       {currentBoard.id === 'board_xmas' && (
           <div className="absolute inset-0 pointer-events-none opacity-30 flex justify-between px-10">
               <SafeIcon icon={Icons.Snowflake} className="animate-bounce text-white w-8 h-8 opacity-50" style={{animationDuration:'3s'}} />
@@ -1200,39 +1224,36 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           </div>
       )}
 
-      {/* HEADER COMPACTE (h-10) MODIFIÉ: Absolute pour gain de place */}
+      {/* HEADER */}
       <div className="absolute top-0 left-0 w-full z-[60] flex justify-between items-center px-4 h-10 bg-black/40 backdrop-blur-md border-b border-white/5 shadow-2xl">
-         <Button variant="ghost" onClick={onExit} className="p-1"><SafeIcon icon={Icons.X} size={20} /></Button>
-         <div className="flex flex-col items-center">
-             {/* CHRONO REDUIT */}
-             <div className="relative text-center leading-none"><span className="text-xl font-black font-mono text-white drop-shadow-md">{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span></div>
-             <div className="text-[8px] text-zinc-400 uppercase font-black tracking-widest leading-none mt-0.5">
-                 OBJ: {config.target} {config.format === 'manches' ? 'V' : 'P'}
-             </div>
-         </div>
-         <div className="flex items-center gap-2">
-             <span className="text-[10px] text-yellow-500 font-black font-mono bg-black/50 px-2 py-0.5 rounded">{config.stake} OR</span>
-             <button onClick={toggleFullScreen} className="p-1.5 bg-black/30 rounded hover:bg-white/10 transition-colors">
-                 <SafeIcon icon={Icons.Maximize} size={16} className="text-zinc-300" />
-             </button>
-         </div>
+          <Button variant="ghost" onClick={onExit} className="p-1"><SafeIcon icon={Icons.X} size={20} /></Button>
+          <div className="flex flex-col items-center">
+              <div className="relative text-center leading-none"><span className="text-xl font-black font-mono text-white drop-shadow-md">{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span></div>
+              <div className="text-[8px] text-zinc-400 uppercase font-black tracking-widest leading-none mt-0.5">
+                  OBJ: {config.target} {config.format === 'manches' ? 'V' : config.format === 'cochons' ? '🐷' : 'P'}
+              </div>
+          </div>
+          <div className="flex items-center gap-2">
+              <span className="text-[10px] text-yellow-500 font-black font-mono bg-black/50 px-2 py-0.5 rounded">{config.stake} OR</span>
+              <button onClick={toggleFullScreen} className="p-1.5 bg-black/30 rounded hover:bg-white/10 transition-colors">
+                  <SafeIcon icon={Icons.Maximize} size={16} className="text-zinc-300" />
+              </button>
+          </div>
       </div>
-     
-      {/* TAPIS DE JEU */}
-      {/* MODIFICATION : Ajout de pt-10 et pb-[18vh] pour centrer le plateau en tenant compte des interfaces */}
+      
+      {/* TAPIS */}
       <div className="flex-1 w-full h-full flex flex-col items-center justify-center relative pt-10 pb-[18vh]" ref={containerRef}>
-         {/* SPONSOR */}
-         {currentBoard.id === 'board_sponsor' && (
-             <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30 z-0">
-                 <div className="flex flex-col items-center">
-                     <h1 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter">Rhumerie 972</h1>
-                     <p className="text-sm md:text-xl uppercase tracking-widest text-zinc-300">Sponsor Officiel</p>
-                 </div>
-             </div>
-         )}
-         
-         {/* BANNIERE VICTOIRE ANIMATION */}
-         {gameState.status === 'winning_animation' && winningInfo && (
+          {currentBoard.id === 'board_sponsor' && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30 z-0">
+                  <div className="flex flex-col items-center">
+                      <h1 className="text-4xl md:text-6xl font-black text-white uppercase tracking-tighter">Rhumerie 972</h1>
+                      <p className="text-sm md:text-xl uppercase tracking-widest text-zinc-300">Sponsor Officiel</p>
+                  </div>
+              </div>
+          )}
+          
+          {/* BANNIERE VICTOIRE ANIMATION */}
+          {gameState.status === 'winning_animation' && winningInfo && (
             <div className="absolute inset-0 z-[250] flex flex-col items-center justify-center pointer-events-none animate-in zoom-in duration-500">
                 <div className="bg-black/80 backdrop-blur-lg p-8 rounded-3xl border-4 border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.6)] flex flex-col items-center text-center">
                     <SafeIcon icon={Icons.Crown} size={64} className="text-yellow-500 mb-4 animate-bounce" />
@@ -1243,13 +1264,13 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                     </div>
                 </div>
             </div>
-         )}
+          )}
 
-         {/* AVATARS PLUS PETITS ET DANS LES COINS */}
-         <PlayerAvatar name={gameState.players[1].name} isBot position="top-left" active={gameState.turnIndex === 1} cardsCount={gameState.players[1].hand.length} mdcPoints={gameState.players[1].mdcPoints} wins={gameState.players[1].wins} isBoude={gameState.players[1].isBoude} chatMessage={lastChatMessage?.playerId === 1 ? lastChatMessage.text : null} isVip={gameState.players[1].id === 0 ? user.isVip : false} equippedAvatar={gameState.players[1].type === 'human' ? user.equippedAvatar : gameState.players[1].name.includes('Chaton') ? 'avatar_robot' : 'avatar_smile'} />
-         <PlayerAvatar name={gameState.players[2].name} isBot position="top-right" active={gameState.turnIndex === 2} cardsCount={gameState.players[2].hand.length} mdcPoints={gameState.players[2].mdcPoints} wins={gameState.players[2].wins} isBoude={gameState.players[2].isBoude} chatMessage={lastChatMessage?.playerId === 2 ? lastChatMessage.text : null} isVip={gameState.players[2].id === 0 ? user.isVip : false} equippedAvatar={gameState.players[2].type === 'human' ? user.equippedAvatar : gameState.players[2].name.includes('Olivier') ? 'avatar_king' : 'avatar_classic'} />
+          {/* AVATARS */}
+          <PlayerAvatar name={gameState.players[1].name} isBot position="top-left" active={gameState.turnIndex === 1} cardsCount={gameState.players[1].hand.length} mdcPoints={gameState.players[1].mdcPoints} wins={gameState.players[1].wins} isBoude={gameState.players[1].isBoude} chatMessage={lastChatMessage?.playerId === 1 ? lastChatMessage.text : null} isVip={gameState.players[1].id === 0 ? user.isVip : false} equippedAvatar={gameState.players[1].type === 'human' ? user.equippedAvatar : gameState.players[1].name.includes('Chaton') ? 'avatar_robot' : 'avatar_smile'} />
+          <PlayerAvatar name={gameState.players[2].name} isBot position="top-right" active={gameState.turnIndex === 2} cardsCount={gameState.players[2].hand.length} mdcPoints={gameState.players[2].mdcPoints} wins={gameState.players[2].wins} isBoude={gameState.players[2].isBoude} chatMessage={lastChatMessage?.playerId === 2 ? lastChatMessage.text : null} isVip={gameState.players[2].id === 0 ? user.isVip : false} equippedAvatar={gameState.players[2].type === 'human' ? user.equippedAvatar : gameState.players[2].name.includes('Olivier') ? 'avatar_king' : 'avatar_classic'} />
 
-         <div className="w-full h-full flex items-center justify-center pointer-events-none relative z-10">
+          <div className="w-full h-full flex items-center justify-center pointer-events-none relative z-10">
             <div ref={boardRef} className="flex items-center justify-center origin-center drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] whitespace-nowrap" style={{ transform: `scale(${zoomScale})`, transition: 'transform 0.5s ease-out' }}>
                 {gameState.board.map((tile, i) => (
                     <DominoTile
@@ -1263,71 +1284,67 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                     />
                 ))}
             </div>
-         </div>
+          </div>
 
-         <div className="absolute bottom-[20%] flex gap-6 pointer-events-none z-20">
+          <div className="absolute bottom-[20%] flex gap-6 pointer-events-none z-20">
             {gameState.players.map(p => p.isBoude && (
                 <div key={p.id} className="text-red-500 font-black text-[8px] md:text-xs uppercase tracking-widest animate-pulse bg-red-500/10 px-4 md:px-6 py-1 md:py-2 rounded-full border border-red-500/30 shadow-2xl">{p.name} BOUDÉ !!</div>
             ))}
         </div>
       </div>
-     
-      {/* MAIN JOUEUR (COMPACTE: h-[18vh]) */}
+      
+      {/* MAIN JOUEUR */}
       <div className="absolute bottom-0 left-0 w-full h-[18vh] bg-gradient-to-t from-black via-black/90 to-transparent flex items-end pb-2 px-2 overflow-visible z-[100]">
-         
-         {/* COIN BAS GAUCHE - CHAT */}
-         <div className="w-12 flex items-end pb-2 relative pointer-events-auto mr-2">
-             <button
+          <div className="w-12 flex items-end pb-2 relative pointer-events-auto mr-2">
+              <button
                 onClick={() => setShowChat(!showChat)}
                 className="bg-zinc-800 border-2 border-zinc-600 rounded-full w-8 h-8 flex items-center justify-center text-white shadow-xl hover:bg-zinc-700 active:scale-95 transition-all"
-             >
-                 <SafeIcon icon={Icons.MessageCircle} size={16} />
-             </button>
-             
-             {/* LISTE DES PHRASES */}
-             {showChat && (
-                 <div className="absolute bottom-10 left-0 w-48 bg-zinc-900 border-2 border-zinc-700 rounded-xl p-2 shadow-2xl animate-in slide-in-from-bottom-2 pointer-events-auto">
-                     <h3 className="text-[8px] font-black uppercase text-zinc-500 mb-1 px-2">Vos Phrases</h3>
-                     <div className="flex flex-col gap-1 max-h-32 overflow-y-auto custom-scrollbar">
-                         {ownedPhrases.length > 0 ? ownedPhrases.map(phrase => (
-                             <button
+              >
+                  <SafeIcon icon={Icons.MessageCircle} size={16} />
+              </button>
+              
+              {showChat && (
+                  <div className="absolute bottom-10 left-0 w-48 bg-zinc-900 border-2 border-zinc-700 rounded-xl p-2 shadow-2xl animate-in slide-in-from-bottom-2 pointer-events-auto">
+                      <h3 className="text-[8px] font-black uppercase text-zinc-500 mb-1 px-2">Vos Phrases</h3>
+                      <div className="flex flex-col gap-1 max-h-32 overflow-y-auto custom-scrollbar">
+                          {ownedPhrases.length > 0 ? ownedPhrases.map(phrase => (
+                              <button
                                 key={phrase.id}
                                 onClick={() => handleSendChat(phrase.text)}
                                 className="text-left text-[10px] font-bold text-white bg-zinc-800 hover:bg-zinc-700 p-2 rounded transition-colors border border-white/5"
-                             >
-                                 {phrase.text}
-                             </button>
-                         )) : (
-                             <div className="text-[10px] text-zinc-500 p-2 italic text-center">Aucune phrase.<br/>Allez en boutique !</div>
-                         )}
-                     </div>
-                 </div>
-             )}
-         </div>
+                              >
+                                  {phrase.text}
+                              </button>
+                          )) : (
+                              <div className="text-[10px] text-zinc-500 p-2 italic text-center">Aucune phrase.<br/>Allez en boutique !</div>
+                          )}
+                      </div>
+                  </div>
+              )}
+          </div>
 
-         <div className="flex-1 flex justify-center items-end gap-1 overflow-visible px-0 pointer-events-none pb-2">
-          {humanHand.map((tile) => {
-             const m = getValidMoves([tile], gameState.ends);
-             const canClick = isMyTurn && m.length > 0;
-             return (
-               <div key={tile.id} className="overflow-visible pointer-events-auto">
-                 <DominoTile
-                    v1={tile.v1} v2={tile.v2} size="lg" orientation="vertical" skinId={user.equippedSkin} highlight={canClick && !gameState.mandatoryTile} isMandatory={false}
-                    onClick={() => {
-                        if (gameState.mandatoryTile) return;
-                        if (canClick && m.length === 1) playTile(0, tile, m[0].side);
-                        else if (canClick && m.length > 1) setGameState(prev => ({ ...prev, pendingChoice: { tile, moves: m } }));
-                    }}
-                    className={`transform transition-all duration-300 scale-75 origin-bottom ${canClick && !gameState.mandatoryTile ? 'hover:-translate-y-4 cursor-pointer hover:scale-90 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'opacity-30 grayscale translate-y-1'}`}
-                 />
-               </div>
-             )
-          })}
-        </div>
-       
-        {/* AVATAR JOUEUR (Compact) */}
-        <div className="w-auto flex justify-end items-end pb-2 ml-2">
-           <PlayerAvatar
+          <div className="flex-1 flex justify-center items-end gap-1 overflow-visible px-0 pointer-events-none pb-2">
+           {humanHand.map((tile) => {
+              const m = getValidMoves([tile], gameState.ends);
+              const canClick = isMyTurn && m.length > 0;
+              return (
+                <div key={tile.id} className="overflow-visible pointer-events-auto">
+                  <DominoTile
+                     v1={tile.v1} v2={tile.v2} size="lg" orientation="vertical" skinId={user.equippedSkin} highlight={canClick && !gameState.mandatoryTile} isMandatory={false}
+                     onClick={() => {
+                         if (gameState.mandatoryTile) return;
+                         if (canClick && m.length === 1) playTile(0, tile, m[0].side);
+                         else if (canClick && m.length > 1) setGameState(prev => ({ ...prev, pendingChoice: { tile, moves: m } }));
+                     }}
+                     className={`transform transition-all duration-300 scale-75 origin-bottom ${canClick && !gameState.mandatoryTile ? 'hover:-translate-y-4 cursor-pointer hover:scale-90 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'opacity-30 grayscale translate-y-1'}`}
+                  />
+                </div>
+              )
+           })}
+         </div>
+         
+         <div className="w-auto flex justify-end items-end pb-2 ml-2">
+            <PlayerAvatar
                 name={user.pseudo}
                 position="bottom-right"
                 active={isMyTurn}
@@ -1338,29 +1355,28 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                 chatMessage={lastChatMessage?.playerId === 0 ? lastChatMessage.text : null}
                 isVip={user.isVip}
                 equippedAvatar={user.equippedAvatar}
-           />
-        </div>
-       
-        {gameState.pendingChoice && (
-            <div className="absolute inset-0 z-[200] bg-black/70 backdrop-blur-md flex flex-col items-center justify-center rounded-t-xl pointer-events-auto text-white">
-                <div className="bg-slate-900 border border-yellow-500/50 p-4 rounded-2xl shadow-2xl text-center text-white">
-                    <h3 className="font-black uppercase mb-4 tracking-widest text-sm">Côté ?</h3>
-                    <div className="flex gap-4">
-                        <Button onClick={() => playTile(0, gameState.pendingChoice.tile, 'left')} className="flex-1 py-3 text-xs">GAUCHE</Button>
-                        <Button onClick={() => playTile(0, gameState.pendingChoice.tile, 'right')} className="flex-1 py-3 text-xs">DROITE</Button>
-                    </div>
-                </div>
-            </div>
-        )}
+            />
+         </div>
+         
+         {gameState.pendingChoice && (
+             <div className="absolute inset-0 z-[200] bg-black/70 backdrop-blur-md flex flex-col items-center justify-center rounded-t-xl pointer-events-auto text-white">
+                 <div className="bg-slate-900 border border-yellow-500/50 p-4 rounded-2xl shadow-2xl text-center text-white">
+                     <h3 className="font-black uppercase mb-4 tracking-widest text-sm">Côté ?</h3>
+                     <div className="flex gap-4">
+                         <Button onClick={() => playTile(0, gameState.pendingChoice.tile, 'left')} className="flex-1 py-3 text-xs">GAUCHE</Button>
+                         <Button onClick={() => playTile(0, gameState.pendingChoice.tile, 'right')} className="flex-1 py-3 text-xs">DROITE</Button>
+                     </div>
+                 </div>
+             </div>
+         )}
       </div>
 
-      {/* MODAL FIN DE MANCHE / PARTIE / TOURNOI */}
+      {/* MODAL FIN DE MANCHE */}
       {(gameState.status !== 'playing' && gameState.status !== 'dealing' && gameState.status !== 'winning_animation') && (
         <div className="absolute inset-0 z-[300] bg-black/95 flex flex-col items-center justify-center p-4 text-center backdrop-blur-xl animate-in fade-in duration-500 text-white">
            <div className="bg-slate-900 border-2 border-red-700 p-4 rounded-2xl shadow-2xl max-w-lg w-full relative overflow-hidden text-white flex flex-col max-h-[85vh]">
              <div className="absolute top-0 left-0 w-full h-1 bg-red-500 shadow-[0_0_10px_#ef4444]"></div>
              
-             {/* ICONE ET TITRE */}
              <div className="mb-2">
                  {gameState.status === 'partie_draw' ? <SafeIcon icon={Icons.AlertCircle} size={32} className="text-red-500 mx-auto mb-2 animate-pulse" /> : <SafeIcon icon={Icons.Trophy} size={32} className="text-red-500 mx-auto mb-2 animate-bounce" />}
                  <h2 className="text-xl font-serif font-black uppercase tracking-tighter leading-tight">
@@ -1371,7 +1387,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                  </h2>
              </div>
 
-             {/* TABLEAU DES SCORES DÉTAILLÉ */}
              <div className="overflow-auto mb-4 bg-black/30 rounded-xl border border-white/5 text-left p-2 custom-scrollbar flex-1">
                 <table className="w-full border-collapse text-[10px]">
                     <thead>
@@ -1380,7 +1395,9 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                             {gameState.players[0].mancheHistory.map((_, i) => (
                                 <th key={i} className="p-2 text-center text-white sticky top-0 bg-black/80">M{i+1}</th>
                             ))}
-                            <th className="p-2 uppercase text-right text-red-500 sticky top-0 bg-black/80">TOTAL</th>
+                            <th className="p-2 uppercase text-right text-red-500 sticky top-0 bg-black/80">
+                                {config.format === 'cochons' ? 'COCHONS' : 'TOTAL'}
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1390,7 +1407,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                                     <div className="flex flex-col">
                                         <span className="text-xs font-bold uppercase">{p.name}</span>
                                         {gameState.status === 'manche_over' && p.label && <span className={`text-[6px] font-black ${p.gain === -1 ? 'text-red-400' : 'text-green-400'}`}>{p.label}</span>}
-                                        {/* AJOUT : Affichage des points en main pour lisibilité en cas de boudé */}
                                         {(gameState.status === 'partie_over' || gameState.status === 'partie_draw' || gameState.status === 'manche_over' || gameState.status === 'tournoi_over') && p.hand.length > 0 && (
                                             <span className="text-[8px] text-zinc-500 font-mono mt-0.5">
                                                 Main: <span className="text-yellow-500 font-bold">{calculateHandPoints(p.hand)}</span> pts
@@ -1403,14 +1419,15 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                                         {score > 0 ? `+${score}` : score}
                                     </td>
                                 ))}
-                                <td className="p-2 text-lg font-mono font-black text-yellow-500 text-right">{p.mdcPoints}</td>
+                                <td className={`p-2 text-lg font-mono font-black text-right ${config.format === 'cochons' ? 'text-pink-500' : 'text-yellow-500'}`}>
+                                    {config.format === 'cochons' ? `${p.cochonsTotal || 0} 🐷` : p.mdcPoints}
+                                </td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
              </div>
              
-             {/* Bouton Doubler Gains */}
              {gameState.status === 'tournoi_over' && gameState.winnerId === 0 && !user.isVip && !adWatchedForThisWin && (
                  <div className="mb-2">
                      <Button onClick={handleDoubleReward} variant="ad" className="w-full text-sm py-3 animate-pulse">
@@ -1419,9 +1436,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                  </div>
              )}
 
-             {/* BOUTONS D'ACTION */}
              <div className="flex gap-2 items-center">
-                {/* BOUTON SCREENSHOT */}
                 <button
                     onClick={handleScreenshot}
                     className="p-3 bg-zinc-800 rounded-xl hover:bg-zinc-700 transition-colors border border-zinc-600"
@@ -1430,34 +1445,30 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                     <SafeIcon icon={Icons.Camera} size={18} className="text-white" />
                 </button>
 
-                {/* NAVIGATION */}
                 {gameState.status === 'partie_over' || gameState.status === 'partie_draw' ? (
-                     <Button
+                     <Button 
                          onClick={() => startRound(
-                             gameState.currentManche,
-                             gameState.currentPartie + 1,
+                             gameState.currentManche, 
+                             gameState.currentPartie + 1, 
                              gameState.winnerId !== null ? gameState.winnerId : -1
-                         )}
+                         )} 
                          className="flex-1 py-3 text-sm text-blue-950"
                      >
                          DONNE SUIVANTE
                      </Button>
                 ) : gameState.status === 'manche_over' ? (
                     <Button onClick={() => {
-        // Si c'est un tournoi, on sort pour laisser App gérer la manche 2
-        if (config.mode === 'tournament') {
-            onExit(gameState.players); // <--- C'EST ICI LE SECRET : on envoie les joueurs
-        } else {
-            // Logique classique (Mode entrainement)
-            setGameState(prev => ({ ...prev, players: prev.players.map(p => ({ ...p, wins: 0, label: null })), mancheScoreMDC: null }));
-            startRound(gameState.currentManche + 1, 1);
-        }
-    }} className="flex-1 py-3 text-sm text-blue-950">MANCHE SUIVANTE</Button>
-) : (
+                        if (config.mode === 'tournament') {
+                            onExit(gameState.players);
+                        } else {
+                            setGameState(prev => ({ ...prev, players: prev.players.map(p => ({ ...p, wins: 0, label: null })), mancheScoreMDC: null }));
+                            startRound(gameState.currentManche + 1, 1);
+                        }
+                    }} className="flex-1 py-3 text-sm text-blue-950">MANCHE SUIVANTE</Button>
+                ) : (
                     <Button onClick={onExit} className="flex-1 py-3 text-sm text-blue-200">RETOUR MENU</Button>
                 )}
-               
-                {/* FERMER */}
+                
                 <button
                     onClick={() => {
                         alert("Le tableau reste affiché. Utilisez les boutons pour continuer.");
