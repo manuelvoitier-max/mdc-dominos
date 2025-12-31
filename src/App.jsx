@@ -423,22 +423,24 @@ const getAvatarIcon = (avatarId, size = 36, className = "") => {
     return <SafeIcon icon={IconComponent} size={size} className={className} />;
 };
 
-const PlayerAvatar = ({ name, active, isBot, position, cardsCount, mdcPoints, wins, isBoude, chatMessage, isVip, equippedAvatar }) => {
+const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude, chatMessage, isVip, equippedAvatar, mdcPoints, cochons, isCochonMode }) => {
     const getPosStyle = () => {
         switch(position) {
-          case 'top-left': return { top: '2px', left: '2px', flexDirection: 'row' }; // Marges réduites mobile
+          case 'top-left': return { top: '2px', left: '2px', flexDirection: 'row' };
           case 'top-right': return { top: '2px', right: '2px', flexDirection: 'row-reverse' };
           case 'bottom-right': return { bottom: '2px', right: '2px', flexDirection: 'row-reverse' };
           default: return {};
         }
     };
     const style = getPosStyle();
-    // Correct ternary operator usage
-    const bubbleStyle = position === 'bottom-right'
-        ? "bottom-24 right-20"
-        : position === 'top-left'
-            ? "top-full mt-2 left-0"
-            : "top-full mt-2 right-0";
+    const bubbleStyle = position === 'bottom-right' 
+        ? "bottom-24 right-20" 
+        : position === 'top-left' ? "top-full mt-2 left-0" : "top-full mt-2 right-0";
+
+    // DÉCISION DE LA COULEUR ET DU TEXTE SELON LE MODE
+    const scoreColor = isCochonMode ? 'text-pink-500' : 'text-yellow-500';
+    const scoreLabel = isCochonMode ? '🐷' : 'Pts';
+    const scoreValue = isCochonMode ? (cochons || 0) : mdcPoints;
 
     return (
         <div className={`absolute flex gap-2 md:gap-4 transition-all duration-300 items-center ${active ? 'scale-105 opacity-100 z-[100]' : 'opacity-80 scale-100'} scale-[0.65] md:scale-100 origin-${position.includes('left') ? 'top-left' : 'top-right'}`} style={style}>
@@ -451,20 +453,24 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, mdcPoints, wi
                 </div>
             )}
             <div className="relative">
-                {/* Taille réduite drastiquement sur mobile : w-10 h-10 */}
                 <div className={`w-10 h-10 md:w-24 md:h-24 rounded-full border-2 md:border-4 flex items-center justify-center bg-zinc-950 transition-all duration-500 ${active ? 'border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.5)]' : 'border-zinc-700 shadow-xl'}`}>
                     {isBot ? <SafeIcon icon={Icons.Wifi} className={`w-5 h-5 md:w-9 md:h-9 ${active ? "text-red-500" : "text-zinc-600"}`} /> : <div className={active ? "text-red-500" : "text-zinc-500"}>{getAvatarIcon(equippedAvatar, 20, "w-5 h-5 md:w-9 md:h-9")}</div>}
                     {active && <div className="absolute -top-2 -right-1 md:-top-3 md:-right-1 bg-red-600 text-white text-[6px] md:text-[9px] font-black px-1 py-0.5 rounded uppercase shadow-lg">JOUE</div>}
                 </div>
                 <div className="absolute -bottom-1 -left-1 w-5 h-5 md:w-10 md:h-10 bg-white text-black rounded-full border-2 md:border-4 border-zinc-950 flex items-center justify-center shadow-lg"><span className="font-black text-[8px] md:text-sm">{cardsCount}</span></div>
             </div>
-            {/* Panneau d'info réduit sur mobile */}
+            
             <div className={`flex flex-col ${position === 'top-left' ? 'items-start' : 'items-end'} bg-zinc-900/90 backdrop-blur-xl px-2 py-1 md:px-5 md:py-3 rounded-md md:rounded-lg border border-zinc-700 shadow-2xl min-w-[70px] md:min-w-[140px]`}>
                 <span className={`font-sans font-bold text-[8px] md:text-xs tracking-widest uppercase mb-0.5 md:mb-1 flex items-center gap-1 ${isVip ? 'text-yellow-400' : 'text-white'}`}>{isVip && <SafeIcon icon={Icons.Crown} size={8} className="md:w-3 md:h-3 text-yellow-400 fill-yellow-400" />}{name}</span>
                 <div className="flex items-center gap-2 md:gap-3">
                     <div className="flex flex-col items-center"><span className="text-[5px] md:text-[8px] text-green-500 font-black uppercase">V</span><span className="text-sm md:text-4xl leading-none font-mono font-black text-white">{wins}</span></div>
                     <div className="w-[1px] h-4 md:h-8 bg-zinc-700"></div>
-                    <div className="flex flex-col items-center"><span className="text-[5px] md:text-[8px] text-yellow-500 font-black uppercase tracking-tighter text-center">Pts</span><span className="text-sm md:text-xl leading-none font-mono font-black text-yellow-500">{mdcPoints}</span></div>
+                    
+                    {/* C'EST ICI QUE CA CHANGE SELON LE MODE */}
+                    <div className="flex flex-col items-center">
+                        <span className={`text-[5px] md:text-[8px] font-black uppercase tracking-tighter text-center ${scoreColor}`}>{scoreLabel}</span>
+                        <span className={`text-sm md:text-xl leading-none font-mono font-black ${scoreColor}`}>{scoreValue}</span>
+                    </div>
                 </div>
                 {isBoude && <div className="mt-1 text-white bg-red-600 font-black text-[6px] md:text-[10px] uppercase tracking-widest animate-pulse px-1 py-0.5 rounded">BOUDÉ !!</div>}
             </div>
@@ -1266,10 +1272,40 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
             </div>
           )}
 
-          {/* AVATARS */}
-          <PlayerAvatar name={gameState.players[1].name} isBot position="top-left" active={gameState.turnIndex === 1} cardsCount={gameState.players[1].hand.length} mdcPoints={gameState.players[1].mdcPoints} wins={gameState.players[1].wins} isBoude={gameState.players[1].isBoude} chatMessage={lastChatMessage?.playerId === 1 ? lastChatMessage.text : null} isVip={gameState.players[1].id === 0 ? user.isVip : false} equippedAvatar={gameState.players[1].type === 'human' ? user.equippedAvatar : gameState.players[1].name.includes('Chaton') ? 'avatar_robot' : 'avatar_smile'} />
-          <PlayerAvatar name={gameState.players[2].name} isBot position="top-right" active={gameState.turnIndex === 2} cardsCount={gameState.players[2].hand.length} mdcPoints={gameState.players[2].mdcPoints} wins={gameState.players[2].wins} isBoude={gameState.players[2].isBoude} chatMessage={lastChatMessage?.playerId === 2 ? lastChatMessage.text : null} isVip={gameState.players[2].id === 0 ? user.isVip : false} equippedAvatar={gameState.players[2].type === 'human' ? user.equippedAvatar : gameState.players[2].name.includes('Olivier') ? 'avatar_king' : 'avatar_classic'} />
+          {/* AVATARS PLUS PETITS ET DANS LES COINS */}
+          <PlayerAvatar 
+              name={gameState.players[1].name} 
+              isBot 
+              position="top-left" 
+              active={gameState.turnIndex === 1} 
+              cardsCount={gameState.players[1].hand.length} 
+              wins={gameState.players[1].wins} 
+              isBoude={gameState.players[1].isBoude} 
+              chatMessage={lastChatMessage?.playerId === 1 ? lastChatMessage.text : null} 
+              isVip={gameState.players[1].id === 0 ? user.isVip : false} 
+              equippedAvatar={gameState.players[1].type === 'human' ? user.equippedAvatar : gameState.players[1].name.includes('Chaton') ? 'avatar_robot' : 'avatar_smile'} 
+              // --- AJOUTS POUR LE MODE COCHON ---
+              mdcPoints={gameState.players[1].mdcPoints}
+              cochons={gameState.players[1].cochonsTotal}
+              isCochonMode={config.format === 'cochons'}
+          />
 
+          <PlayerAvatar 
+              name={gameState.players[2].name} 
+              isBot 
+              position="top-right" 
+              active={gameState.turnIndex === 2} 
+              cardsCount={gameState.players[2].hand.length} 
+              wins={gameState.players[2].wins} 
+              isBoude={gameState.players[2].isBoude} 
+              chatMessage={lastChatMessage?.playerId === 2 ? lastChatMessage.text : null} 
+              isVip={gameState.players[2].id === 0 ? user.isVip : false} 
+              equippedAvatar={gameState.players[2].type === 'human' ? user.equippedAvatar : gameState.players[2].name.includes('Olivier') ? 'avatar_king' : 'avatar_classic'} 
+              // --- AJOUTS POUR LE MODE COCHON ---
+              mdcPoints={gameState.players[2].mdcPoints}
+              cochons={gameState.players[2].cochonsTotal}
+              isCochonMode={config.format === 'cochons'}
+          />
           <div className="w-full h-full flex items-center justify-center pointer-events-none relative z-10">
             <div ref={boardRef} className="flex items-center justify-center origin-center drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] whitespace-nowrap" style={{ transform: `scale(${zoomScale})`, transition: 'transform 0.5s ease-out' }}>
                 {gameState.board.map((tile, i) => (
@@ -1343,18 +1379,22 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
            })}
          </div>
          
+         {/* AVATAR JOUEUR (Compact) */}
          <div className="w-auto flex justify-end items-end pb-2 ml-2">
             <PlayerAvatar
                 name={user.pseudo}
                 position="bottom-right"
                 active={isMyTurn}
                 cardsCount={humanHand.length}
-                mdcPoints={gameState.players[0].mdcPoints}
                 wins={gameState.players[0].wins}
                 isBoude={gameState.players[0].isBoude}
                 chatMessage={lastChatMessage?.playerId === 0 ? lastChatMessage.text : null}
                 isVip={user.isVip}
                 equippedAvatar={user.equippedAvatar}
+                // --- AJOUTS POUR LE MODE COCHON ---
+                mdcPoints={gameState.players[0].mdcPoints}
+                cochons={gameState.players[0].cochonsTotal}
+                isCochonMode={config.format === 'cochons'}
             />
          </div>
          
