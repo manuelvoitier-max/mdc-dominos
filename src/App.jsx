@@ -987,7 +987,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           
           // MODIFICATION ICI : On passe de 0.85 à 0.75 (75% de l'écran max)
           // Cela crée une "zone tampon" de 12.5% de chaque côté.
-          const safeWidth = containerWidth * (isLandscape ? 0.75 : 0.85);
+          const safeWidth = containerWidth * (isLandscape ? 0.65 : 0.70);
           const safeHeight = containerHeight * (isLandscape ? 0.60 : 0.55); 
           
           // On garde la limite max à 0.6 pour ne pas que ce soit trop gros au début
@@ -998,7 +998,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
     // On garde le délai pour laisser le temps au DOM de s'agrandir avant de mesurer
     setTimeout(calculateZoom, 50);
   }, [gameState.board, gameState.turnIndex]);
-  
+
   const addLog = (log) => {
     setGameState(prev => ({
         ...prev,
