@@ -974,7 +974,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
       }
   }, [gameState.turnIndex, gameState.status, gameState.history]);
 
-  // Zoom Optimisé (CORRIGÉ : Marges de sécurité augmentées et dépendances complètes)
+  // Zoom Optimisé (CORRIGÉ : Marges de sécurité augmentées pour éviter que le dernier domino ne sorte)
   useEffect(() => {
     const calculateZoom = () => {
         if (boardRef.current && containerRef.current) {
@@ -984,19 +984,21 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           const containerHeight = containerRef.current.clientHeight;
           
           const isLandscape = containerWidth > containerHeight;
-          // MODIF : On réduit un peu (0.92 -> 0.85) pour laisser une marge de sécurité sur les bords
-          const safeWidth = containerWidth * (isLandscape ? 0.85 : 0.85);
+          
+          // MODIFICATION ICI : On passe de 0.85 à 0.75 (75% de l'écran max)
+          // Cela crée une "zone tampon" de 12.5% de chaque côté.
+          const safeWidth = containerWidth * (isLandscape ? 0.75 : 0.85);
           const safeHeight = containerHeight * (isLandscape ? 0.60 : 0.55); 
           
-          // Le zoom ne peut jamais dépasser 0.6 (taille de base) pour ne pas être énorme au début
+          // On garde la limite max à 0.6 pour ne pas que ce soit trop gros au début
           const calculatedZoom = Math.min(safeWidth / boardWidth, safeHeight / boardHeight, 0.6);
           setZoomScale(calculatedZoom);
         }
     };
-    // On force le calcul après un court délai pour laisser le DOM s'étendre
+    // On garde le délai pour laisser le temps au DOM de s'agrandir avant de mesurer
     setTimeout(calculateZoom, 50);
-  }, [gameState.board, gameState.turnIndex]); // Ajout de turnIndex pour forcer le recalcul à chaque tour
-
+  }, [gameState.board, gameState.turnIndex]);
+  
   const addLog = (log) => {
     setGameState(prev => ({
         ...prev,
