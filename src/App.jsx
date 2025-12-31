@@ -1113,7 +1113,8 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               return { ...p, mdcTotal: p.mdcPoints + mdcGain, gain: mdcGain, label, mancheHistory: [...p.mancheHistory, mdcGain] };
           });
           const updatedGlobalPlayers = finalMdcManche.map(p => ({ ...p, mdcPoints: p.mdcTotal }));
-          const isTournoiFini = config.format === 'manches' ? prevState.currentManche >= config.target : updatedGlobalPlayers.some(p => p.mdcPoints >= config.target);
+          // CORRECTION : En mode tournoi, on force le statut "manche_over" pour afficher le bon bouton
+          const isTournoiFini = config.mode === 'tournament' ? false : (config.format === 'manches' ? prevState.currentManche >= config.target : updatedGlobalPlayers.some(p => p.mdcPoints >= config.target));
           return { ...prevState, players: updatedGlobalPlayers, status: isTournoiFini ? 'tournoi_over' : 'manche_over', winnerId, mancheScoreMDC: finalMdcManche };
       }
       return { ...prevState, players: withWins, status: 'partie_over', winnerId };
