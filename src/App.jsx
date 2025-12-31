@@ -810,9 +810,21 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
         </div>
         <div className="w-full mb-8">
             <label className="text-[11px] text-zinc-500 uppercase tracking-widest font-black mb-4 block text-center">Format de jeu</label>
-            <div className="grid grid-cols-2 gap-4 w-full max-w-md mx-auto">
-                <button onClick={() => setFormat('manches')} className={`p-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${format === 'manches' ? 'bg-zinc-800 border-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}><span className="font-black tracking-widest">MANCHES</span><span className="text-[10px]">Le premier à X victoires</span></button>
-                <button onClick={() => setFormat('points')} className={`p-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${format === 'points' ? 'bg-zinc-800 border-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}><span className="font-black tracking-widest">SCORE</span><span className="text-[10px]">Le premier à X points</span></button>
+            <div className="grid grid-cols-3 gap-2 w-full max-w-md mx-auto">
+                <button onClick={() => setFormat('manches')} className={`p-2 py-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${format === 'manches' ? 'bg-zinc-800 border-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}>
+                    <span className="font-black tracking-widest text-[10px]">MANCHES</span>
+                    <span className="text-[8px] leading-tight">Premier à X vict.</span>
+                </button>
+                <button onClick={() => setFormat('points')} className={`p-2 py-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${format === 'points' ? 'bg-zinc-800 border-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}>
+                    <span className="font-black tracking-widest text-[10px]">SCORE</span>
+                    <span className="text-[8px] leading-tight">Premier à X pts</span>
+                </button>
+                {/* BOUTON COCHONS AJOUTÉ ICI */}
+                <button onClick={() => setFormat('cochons')} className={`p-2 py-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${format === 'cochons' ? 'bg-zinc-800 border-pink-500 text-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}>
+                    <span className="text-xl leading-none">🐷</span>
+                    <span className="font-black tracking-widest text-[10px]">COCHONS</span>
+                    <span className="text-[8px] leading-tight">Obj. X Cochons</span>
+                </button>
             </div>
         </div>
         <div className="w-full mb-8">
@@ -886,7 +898,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
 
   const [gameState, setGameState] = useState({
     players: [
-      // AJOUT ICI : "cochonsTotal: 0"
       { id: 0, name: user.pseudo, type: 'human', hand: [], mdcPoints: p0Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p0Data.history, label: null, initialMaxDouble: -1 },
       { id: 1, name: bot1Name, type: 'bot', hand: [], mdcPoints: p1Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p1Data.history, label: null, initialMaxDouble: -1 },
       { id: 2, name: bot2Name, type: 'bot', hand: [], mdcPoints: p2Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p2Data.history, label: null, initialMaxDouble: -1 }
@@ -1135,19 +1146,17 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               let mdcGain = p.wins;
               let label = "";
               
-              // --- CALCUL STANDARD (Inchangé) ---
               if (p.id === mancheWinnerId) {
                   if (numCochons === 2) { mdcGain = 5; label = "DOUBLE COCHON !!"; }
                   else if (numCochons === 1) { mdcGain = 4; label = "COCHON !"; }
               } else if (p.wins === 0) { mdcGain = -1; label = "COCHON PRIS (-1)"; }
 
-              // --- AJOUT : LOGIQUE SPÉCIALE MODE "COCHONS" ---
+              // --- LOGIQUE SPÉCIALE MODE "COCHONS" ---
               let newCochonsTotal = p.cochonsTotal || 0;
               if (config.format === 'cochons' && p.id === mancheWinnerId) {
-                  // 5 pts MDC = 2 Cochons / 4 pts MDC = 1 Cochon / Sinon 0
                   if (mdcGain === 5) {
                       newCochonsTotal += 2;
-                      label = "2 COCHONS (Double) !";
+                      label = "2 COCHONS DONNÉS !";
                   } else if (mdcGain === 4) {
                       newCochonsTotal += 1;
                       label = "1 COCHON DONNÉ !";
@@ -1155,27 +1164,16 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                       label = "Pas de cochon...";
                   }
               }
-              // ----------------------------------------------
 
               return { ...p, mdcPoints: p.mdcPoints + mdcGain, cochonsTotal: newCochonsTotal, gain: mdcGain, label, mancheHistory: [...p.mancheHistory, mdcGain] };
           });
 
-          // --- VERIFICATION VICTOIRE ---
+          // Vérification de la victoire selon le format
           let isTournoiFini = false;
-          
-          if (config.mode === 'tournament') {
-              isTournoiFini = false; 
-          } 
-          else if (config.format === 'cochons') {
-              // NOUVEAU : On gagne si on atteint le nombre de cochons cible
-              isTournoiFini = finalMdcManche.some(p => p.cochonsTotal >= config.target);
-          } 
-          else if (config.format === 'manches') {
-              isTournoiFini = prevState.currentManche >= config.target;
-          } 
-          else {
-              isTournoiFini = finalMdcManche.some(p => p.mdcPoints >= config.target);
-          }
+          if (config.mode === 'tournament') isTournoiFini = false;
+          else if (config.format === 'cochons') isTournoiFini = finalMdcManche.some(p => p.cochonsTotal >= config.target);
+          else if (config.format === 'manches') isTournoiFini = prevState.currentManche >= config.target;
+          else isTournoiFini = finalMdcManche.some(p => p.mdcPoints >= config.target);
 
           return { ...prevState, players: finalMdcManche, status: isTournoiFini ? 'tournoi_over' : 'manche_over', winnerId, mancheScoreMDC: finalMdcManche };
       }
@@ -1418,7 +1416,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                 <table className="w-full border-collapse text-[10px]">
                     <thead>
                         <tr className="border-b border-white/10 text-zinc-500 font-black">
-                            <th className="p-2 uppercase text-white sticky top-0 bg-black/80">Joueur</th>
+                            <th className="p-2 uppercase text-right text-red-500 sticky top-0 bg-black/80">{config.format === 'cochons' ? 'COCHONS' : 'TOTAL'}</th>
                             {gameState.players[0].mancheHistory.map((_, i) => (
                                 <th key={i} className="p-2 text-center text-white sticky top-0 bg-black/80">M{i+1}</th>
                             ))}
