@@ -752,7 +752,7 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
   const [privacy, setPrivacy] = useState('public'); // AJOUT: État pour la confidentialité du salon
 
   const stakePresets = [50, 100, 500];
-  const targetPresets = format === 'manches' ? [1, 2, 3] : [5, 10, 15];
+  const targetPresets = format === 'manches' ? [1, 2, 3] : format === 'cochons' ? [2, 3, 4] : [5, 10, 15];
   const hasExpertLicense = user.inventory.includes('license_expert');
   const hasManX = user.inventory.includes('bot_manx');
   useEffect(() => { setTarget(format === 'manches' ? 3 : 15); }, [format]);
@@ -767,16 +767,22 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
         {mode === 'multi' && (
             <div className="w-full mb-8">
                 <label className="text-[11px] text-zinc-500 uppercase tracking-widest font-black mb-4 block text-center">Confidentialité du Salon</label>
-                <div className="grid grid-cols-2 gap-4 w-full max-w-md mx-auto mb-6">
-                    <button onClick={() => setPrivacy('public')} className={`p-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${privacy === 'public' ? 'bg-zinc-800 border-green-500 text-white shadow-[0_0_20px_rgba(34,197,94,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}>
-                        <SafeIcon icon={Icons.Wifi} size={24} />
-                        <span className="font-black tracking-widest text-xs mt-1">PUBLIC</span>
-                    </button>
-                    <button onClick={() => setPrivacy('private')} className={`p-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${privacy === 'private' ? 'bg-zinc-800 border-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}>
-                        <SafeIcon icon={Icons.Lock} size={24} />
-                        <span className="font-black tracking-widest text-xs mt-1">PRIVÉ</span>
-                    </button>
-                </div>
+                <div className="grid grid-cols-3 gap-2 w-full max-w-md mx-auto">
+            <button onClick={() => setFormat('manches')} className={`p-2 py-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${format === 'manches' ? 'bg-zinc-800 border-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}>
+                <span className="font-black tracking-widest text-[10px]">MANCHES</span>
+                <span className="text-[8px] leading-tight">Premier à X vict.</span>
+            </button>
+            <button onClick={() => setFormat('points')} className={`p-2 py-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${format === 'points' ? 'bg-zinc-800 border-red-600 text-white shadow-[0_0_15px_rgba(220,38,38,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}>
+                <span className="font-black tracking-widest text-[10px]">SCORE</span>
+                <span className="text-[8px] leading-tight">Premier à X pts</span>
+            </button>
+            {/* NOUVEAU FORMAT : COCHONS */}
+            <button onClick={() => setFormat('cochons')} className={`p-2 py-4 rounded border-2 transition-all flex flex-col items-center gap-1 ${format === 'cochons' ? 'bg-zinc-800 border-pink-500 text-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.4)]' : 'bg-black/40 border-zinc-800 text-zinc-600'}`}>
+                <span className="text-xl leading-none">🐷</span>
+                <span className="font-black tracking-widest text-[10px]">COCHONS</span>
+                <span className="text-[8px] leading-tight">Obj. X Cochons</span>
+            </button>
+        </div>
                 {privacy === 'private' && (
                     <div className="bg-zinc-900/80 border border-zinc-700 p-4 rounded-xl max-w-md mx-auto animate-in fade-in slide-in-from-top-4">
                         <div className="flex justify-between items-center mb-2">
@@ -880,9 +886,10 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
 
   const [gameState, setGameState] = useState({
     players: [
-      { id: 0, name: user.pseudo, type: 'human', hand: [], mdcPoints: p0Data.total, wins: 0, isBoude: false, mancheHistory: p0Data.history, label: null, initialMaxDouble: -1 },
-      { id: 1, name: bot1Name, type: 'bot', hand: [], mdcPoints: p1Data.total, wins: 0, isBoude: false, mancheHistory: p1Data.history, label: null, initialMaxDouble: -1 },
-      { id: 2, name: bot2Name, type: 'bot', hand: [], mdcPoints: p2Data.total, wins: 0, isBoude: false, mancheHistory: p2Data.history, label: null, initialMaxDouble: -1 }
+      // AJOUT ICI : "cochonsTotal: 0"
+      { id: 0, name: user.pseudo, type: 'human', hand: [], mdcPoints: p0Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p0Data.history, label: null, initialMaxDouble: -1 },
+      { id: 1, name: bot1Name, type: 'bot', hand: [], mdcPoints: p1Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p1Data.history, label: null, initialMaxDouble: -1 },
+      { id: 2, name: bot2Name, type: 'bot', hand: [], mdcPoints: p2Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p2Data.history, label: null, initialMaxDouble: -1 }
     ],
     board: [], ends: null, turnIndex: 0, status: 'dealing', currentManche: 1, currentPartie: 1, winnerId: null, pendingChoice: null, history: [], mandatoryTile: null
   });
@@ -1110,7 +1117,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
     setTimeLeft(15);
   };
 
-  const resolvePartieEnd = (prevState, currentPlayers, winnerId) => {
+   const resolvePartieEnd = (prevState, currentPlayers, winnerId) => {
       const winnerName = currentPlayers[winnerId].name;
       addLog({ player: winnerName, action: 'GAGNE LA PARTIE', type: 'success' });
       if (onPartieEnd) onPartieEnd(winnerId);
@@ -1123,19 +1130,57 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           const maxW = Math.max(...withWins.map(p => p.wins));
           const mancheWinnerId = withWins.find(p => p.wins === maxW).id;
           const numCochons = withWins.filter(p => p.wins === 0).length;
+          
           const finalMdcManche = withWins.map(p => {
               let mdcGain = p.wins;
               let label = "";
+              
+              // --- CALCUL STANDARD (Inchangé) ---
               if (p.id === mancheWinnerId) {
                   if (numCochons === 2) { mdcGain = 5; label = "DOUBLE COCHON !!"; }
                   else if (numCochons === 1) { mdcGain = 4; label = "COCHON !"; }
               } else if (p.wins === 0) { mdcGain = -1; label = "COCHON PRIS (-1)"; }
-              return { ...p, mdcTotal: p.mdcPoints + mdcGain, gain: mdcGain, label, mancheHistory: [...p.mancheHistory, mdcGain] };
+
+              // --- AJOUT : LOGIQUE SPÉCIALE MODE "COCHONS" ---
+              // On ne touche pas aux mdcPoints, on gère cochonsTotal à côté
+              let newCochonsTotal = p.cochonsTotal || 0;
+              if (config.format === 'cochons' && p.id === mancheWinnerId) {
+                  // 5 pts MDC = 2 Cochons / 4 pts MDC = 1 Cochon / Sinon 0
+                  if (mdcGain === 5) {
+                      newCochonsTotal += 2;
+                      label = "2 COCHONS (Double) !";
+                  } else if (mdcGain === 4) {
+                      newCochonsTotal += 1;
+                      label = "1 COCHON DONNÉ !";
+                  } else {
+                      label = "Pas de cochon...";
+                  }
+              }
+              // ----------------------------------------------
+
+              return { ...p, mdcPoints: p.mdcPoints + mdcGain, cochonsTotal: newCochonsTotal, gain: mdcGain, label, mancheHistory: [...p.mancheHistory, mdcGain] };
           });
-          const updatedGlobalPlayers = finalMdcManche.map(p => ({ ...p, mdcPoints: p.mdcTotal }));
-          // CORRECTION : En mode tournoi, on force le statut "manche_over" pour afficher le bon bouton
-          const isTournoiFini = config.mode === 'tournament' ? false : (config.format === 'manches' ? prevState.currentManche >= config.target : updatedGlobalPlayers.some(p => p.mdcPoints >= config.target));
-          return { ...prevState, players: updatedGlobalPlayers, status: isTournoiFini ? 'tournoi_over' : 'manche_over', winnerId, mancheScoreMDC: finalMdcManche };
+
+          // --- VERIFICATION VICTOIRE ---
+          let isTournoiFini = false;
+          
+          if (config.mode === 'tournament') {
+              isTournoiFini = false; // Le tournoi a sa propre logique
+          } 
+          else if (config.format === 'cochons') {
+              // NOUVEAU : On gagne si on atteint le nombre de cochons cible
+              isTournoiFini = finalMdcManche.some(p => p.cochonsTotal >= config.target);
+          } 
+          else if (config.format === 'manches') {
+              // CLASSIQUE : Nombre de manches
+              isTournoiFini = prevState.currentManche >= config.target;
+          } 
+          else {
+              // CLASSIQUE : Score aux points
+              isTournoiFini = finalMdcManche.some(p => p.mdcPoints >= config.target);
+          }
+
+          return { ...prevState, players: finalMdcManche, status: isTournoiFini ? 'tournoi_over' : 'manche_over', winnerId, mancheScoreMDC: finalMdcManche };
       }
       return { ...prevState, players: withWins, status: 'partie_over', winnerId };
   };
@@ -1380,8 +1425,9 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                             {gameState.players[0].mancheHistory.map((_, i) => (
                                 <th key={i} className="p-2 text-center text-white sticky top-0 bg-black/80">M{i+1}</th>
                             ))}
-                            <th className="p-2 uppercase text-right text-red-500 sticky top-0 bg-black/80">TOTAL</th>
-                        </tr>
+<th className="p-2 uppercase text-right text-red-500 sticky top-0 bg-black/80">
+    {config.format === 'cochons' ? 'COCHONS' : 'TOTAL'}
+</th>                        </tr>
                     </thead>
                     <tbody>
                         {gameState.players.map((p) => (
@@ -1403,7 +1449,9 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                                         {score > 0 ? `+${score}` : score}
                                     </td>
                                 ))}
-                                <td className="p-2 text-lg font-mono font-black text-yellow-500 text-right">{p.mdcPoints}</td>
+                                <td className={`p-2 text-lg font-mono font-black text-right ${config.format === 'cochons' ? 'text-pink-500' : 'text-yellow-500'}`}>
+    {config.format === 'cochons' ? `${p.cochonsTotal || 0} 🐷` : p.mdcPoints}
+</td>
                             </tr>
                         ))}
                     </tbody>
