@@ -469,7 +469,7 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
                     {/* C'EST ICI QUE CA CHANGE SELON LE MODE */}
                     <div className="flex flex-col items-center">
                         <span className={`text-[5px] md:text-[8px] font-black uppercase tracking-tighter text-center ${scoreColor}`}>{scoreLabel}</span>
-                        <span className={`text-sm md:text-xl leading-none font-mono font-black ${scoreColor}`}>{scoreValue}</span>
+                        <span className={`text-sm md:text-4xl leading-none font-mono font-black ${scoreColor}`}>{scoreValue}</span>
                     </div>
                 </div>
                 {isBoude && <div className="mt-1 text-white bg-red-600 font-black text-[6px] md:text-[10px] uppercase tracking-widest animate-pulse px-1 py-0.5 rounded">BOUDÉ !!</div>}
