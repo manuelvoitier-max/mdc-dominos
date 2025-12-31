@@ -1734,23 +1734,37 @@ const TournamentScreen = ({ tournament, onStartNext, onBack, onUpdateRounds, isU
                         {isFinished ? <span className="text-yellow-500">CLASSEMENT FINAL</span> : tournament.round === 0 ? "LISTE DES INSCRITS" : `TOUR ${tournament.round} / ${tournament.totalRounds}`}
                     </h2>
                     
-                    {/* --- ZONE ADMIN : REGLAGE DES TOURS --- */}
+                    {/* --- ZONE ADMIN : REGLAGE DES TOURS (5, 10, 15, X) --- */}
                     {isUserAdmin && tournament.round === 0 && (
                         <div className="mt-4 bg-zinc-900 border border-yellow-500/30 p-3 rounded-xl inline-block shadow-lg animate-in slide-in-from-top-4">
                              <div className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest mb-2 flex items-center justify-center gap-2">
                                 <SafeIcon icon={Icons.Settings} size={12}/> Admin : Durée du Tournoi
                              </div>
-                             <div className="flex gap-2 justify-center">
-                                {[2, 3, 5, 10].map(nb => (
+                             <div className="flex gap-2 justify-center items-center">
+                                {/* Boutons prédefinis */}
+                                {[5, 10, 15].map(nb => (
                                     <button 
                                         key={nb}
                                         onClick={() => onUpdateRounds(nb)}
                                         className={`px-4 py-2 rounded-lg font-black text-xs transition-all border-2 ${tournament.totalRounds === nb ? 'bg-yellow-500 text-black border-yellow-500 scale-110' : 'bg-black text-zinc-500 border-zinc-700 hover:border-zinc-500'}`}
                                     >
-                                        {nb} Tours
+                                        {nb}
                                     </button>
                                 ))}
+                                {/* Case X personnalisée */}
+                                <div className="relative group">
+                                    <input 
+                                        type="number" 
+                                        placeholder="X" 
+                                        className={`w-12 py-2 rounded-lg font-black text-xs text-center border-2 outline-none transition-all ${![5, 10, 15].includes(tournament.totalRounds) ? 'bg-yellow-500 text-black border-yellow-500' : 'bg-black text-white border-zinc-700 focus:border-yellow-500'}`}
+                                        onChange={(e) => {
+                                            const val = parseInt(e.target.value);
+                                            if (val > 0) onUpdateRounds(val);
+                                        }}
+                                    />
+                                </div>
                              </div>
+                             <div className="text-[9px] text-zinc-600 mt-1 italic">Tours</div>
                         </div>
                     )}
                     {/* -------------------------------------- */}
