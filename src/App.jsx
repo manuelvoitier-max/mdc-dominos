@@ -1217,8 +1217,8 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
     setGameState(prev => {
       let newBoard = [...prev.board];
       let newEnds = prev.ends ? { ...prev.ends } : { left: null, right: null };
-      let placed = { ...tile, orientation: (tile.v1 === tile.v2) ? 'vertical' : 'horizontal', flipped: false };
-
+// MODIFICATION : On ajoute 'sourcePlayerId: id' pour savoir d'où vient le domino (Animation)
+      let placed = { ...tile, orientation: (tile.v1 === tile.v2) ? 'vertical' : 'horizontal', flipped: false, sourcePlayerId: id };
       if (!prev.ends) { newBoard = [placed]; newEnds = { left: tile.v1, right: tile.v2 }; }
       else {
         if (side === 'left') { placed.flipped = (tile.v1 === newEnds.left); newEnds.left = placed.flipped ? tile.v2 : tile.v1; newBoard.unshift(placed); }
@@ -1339,17 +1339,30 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           <div className="w-full h-full flex items-center justify-center pointer-events-none relative z-10">
             {/* MODIFICATION : Ajout de 'w-max' pour que la div prenne sa vraie largeur réelle */}
             <div ref={boardRef} className="flex items-center justify-center origin-center drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] whitespace-nowrap w-max" style={{ transform: `scale(${zoomScale})`, transition: 'transform 0.5s ease-out' }}>
-                {gameState.board.map((tile, i) => (
-                    <DominoTile
-                        key={i}
-                        v1={tile.v1}
-                        v2={tile.v2}
-                        orientation={tile.orientation}
-                        flipped={tile.flipped}
-                        skinId={user.equippedSkin}
-                        className="mx-0.5 animate-in zoom-in duration-300"
-                    />
-                ))}
+                {gameState.board.map((tile, i) => {
+                    // DÉTERMINATION DE L'ANIMATION SELON LE JOUEUR
+                    // Joueur 0 (Moi/Bas) : Arrive du bas
+                    // Joueur 1 (Haut Gauche) : Arrive du haut-gauche
+                    // Joueur 2 (Haut Droite) : Arrive du haut-droite
+                    let animClass = "animate-in fade-in duration-500 ";
+                    if (tile.sourcePlayerId === 0) animClass += "slide-in-from-bottom-48"; // Vient du bas
+                    else if (tile.sourcePlayerId === 1) animClass += "slide-in-from-top-48 slide-in-from-left-48"; // Vient du coin gauche
+                    else if (tile.sourcePlayerId === 2) animClass += "slide-in-from-top-48 slide-in-from-right-48"; // Vient du coin droit
+                    else animClass += "zoom-in"; // Par défaut (début de partie)
+
+                    return (
+                        <DominoTile
+                            key={i}
+                            v1={tile.v1}
+                            v2={tile.v2}
+                            orientation={tile.orientation}
+                            flipped={tile.flipped}
+                            skinId={user.equippedSkin}
+                            // ON APPLIQUE L'ANIMATION ICI
+                            className={`mx-0.5 ${animClass}`}
+                        />
+                    );
+                })}
             </div>
           </div>
 
