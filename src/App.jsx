@@ -1363,7 +1363,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                          if (canClick && m.length === 1) playTile(0, tile, m[0].side);
                          else if (canClick && m.length > 1) setGameState(prev => ({ ...prev, pendingChoice: { tile, moves: m } }));
                      }}
-                     className={`transform transition-all duration-300 scale-110 origin-bottom ${canClick && !gameState.mandatoryTile ? 'hover:-translate-y-4 cursor-pointer hover:scale-125 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'opacity-30 grayscale translate-y-1'}`}
+                     className={`transform transition-all duration-300 scale-90 origin-bottom ${canClick && !gameState.mandatoryTile ? 'hover:-translate-y-4 cursor-pointer hover:scale-105 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'opacity-30 grayscale translate-y-1'}`}
                   />
                 </div>
               )
