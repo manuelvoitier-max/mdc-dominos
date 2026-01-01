@@ -441,7 +441,7 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
     const scoreLabel = isCochonMode ? '🐷' : 'Pts';
     const scoreValue = isCochonMode ? (cochons || 0) : mdcPoints;
 
-   return (
+    return (
         <div className={`absolute flex gap-2 md:gap-4 transition-all duration-300 items-center 
             ${(active || revealed) ? 'scale-105 opacity-100 z-[100]' : 'opacity-80 scale-100 z-20'} 
             scale-[0.65] md:scale-100 origin-${position.includes('left') ? 'top-left' : 'top-right'}`} 
@@ -465,13 +465,13 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
                 </div>
                 
                 {/* CERCLE BLANC (Compteur) */}
-                <div className="absolute -bottom-1 -left-1 w-5 h-5 md:w-10 md:h-10 bg-white text-black rounded-full border-2 md:border-4 border-zinc-950 flex items-center justify-center shadow-lg">
+                <div className="absolute -bottom-1 -left-1 w-5 h-5 md:w-10 md:h-10 bg-white text-black rounded-full border-2 md:border-4 border-zinc-950 flex items-center justify-center shadow-lg z-10">
                      <span className="font-black text-[8px] md:text-sm">{cardsCount}</span>
                 </div>
 
-                {/* MODIFICATION : Les dominos sont maintenant ICI, ancrés sous l'avatar */}
+                {/* MODIFICATION : Dominos ancrés sous l'avatar avec une marge (mt-6) pour passer sous le cercle */}
                 {revealed && hand && hand.length > 0 && (
-                    <div className="absolute top-full mt-2 left-1/2 -translate-x-1/2 z-[200] flex gap-1 bg-black/90 backdrop-blur-md p-1.5 rounded-lg border border-white/20 shadow-2xl animate-in zoom-in slide-in-from-top-2 duration-300 min-w-max">
+                    <div className="absolute top-full mt-6 left-1/2 -translate-x-1/2 z-[200] flex gap-1 bg-black/90 backdrop-blur-md p-1.5 rounded-lg border border-white/20 shadow-2xl animate-in zoom-in slide-in-from-top-2 duration-300 min-w-max">
                         {hand.map((tile, i) => (
                             <DominoTile key={i} v1={tile.v1} v2={tile.v2} size="sm" className="scale-75 origin-center" skinId="skin_classic" />
                         ))}
@@ -497,6 +497,7 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
             </div>
         </div>
     );
+};
 
             {/* MODIFICATION : Positionnement latéral pour les Bots (Gauche/Droite) */}
             {revealed && hand && hand.length > 0 && (
