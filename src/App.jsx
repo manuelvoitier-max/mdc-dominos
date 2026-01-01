@@ -463,7 +463,11 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
             <div className={`flex flex-col ${position === 'top-left' ? 'items-start' : 'items-end'} bg-zinc-900/90 backdrop-blur-xl px-2 py-1 md:px-5 md:py-3 rounded-md md:rounded-lg border border-zinc-700 shadow-2xl min-w-[70px] md:min-w-[140px]`}>
                 <span className={`font-sans font-bold text-[8px] md:text-xs tracking-widest uppercase mb-0.5 md:mb-1 flex items-center gap-1 ${isVip ? 'text-yellow-400' : 'text-white'}`}>{isVip && <SafeIcon icon={Icons.Crown} size={8} className="md:w-3 md:h-3 text-yellow-400 fill-yellow-400" />}{name}</span>
                 <div className="flex items-center gap-2 md:gap-3">
-                    <div className="flex flex-col items-center"><span className="text-[5px] md:text-[8px] text-green-500 font-black uppercase">V</span><span className="text-sm md:text-4xl leading-none font-mono font-black text-green-500">{wins}</span></div>
+                    <div className="flex flex-col items-center">
+                        {/* MODIFICATION : text-green-500 -> text-lime-400 (Vert Fluo) */}
+                        <span className="text-[5px] md:text-[8px] text-lime-400 font-black uppercase">V</span>
+                        <span className="text-sm md:text-4xl leading-none font-mono font-black text-lime-400">{wins}</span>
+                    </div>
                     <div className="w-[1px] h-4 md:h-8 bg-zinc-700"></div>
                    
                     {/* C'EST ICI QUE CA CHANGE SELON LE MODE */}
