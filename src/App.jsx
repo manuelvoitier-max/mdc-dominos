@@ -1193,14 +1193,19 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   };
 
   const playTile = (id, tile, side) => {
-    // MODIFICATION : Lien Google fiable (Pop.mp3) + Volume à 1.0 (Max)
-    const clacSound = new Audio('https://codeskulptor-demos.commondatastorage.googleapis.com/pang/pop.mp3');
-    clacSound.volume = 1.0; 
-    // On force le chargement et on log l'erreur si le navigateur bloque
-    clacSound.play().catch((e) => console.log("Son bloqué par le navigateur:", e));
-    const playerName = gameState.players[id].name;
-    addLog({ player: playerName, action: 'Posé', info: `[${tile.v1}|${tile.v2}]` });
+    // MODIFICATION : Son "Tile Select" court et rapide (Format MP3 compatible mobile)
+    // On recrée l'objet à chaque fois pour permettre la superposition rapide des sons
+    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-tile-player-select-2793.mp3');
+    audio.volume = 0.8;
     
+    // Promesse de lecture sécurisée pour éviter les erreurs "The play() request was interrupted"
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+        playPromise.catch(error => {
+            // Silencieux sur les erreurs d'autoplay (normal tant que l'utilisateur n'a pas cliqué)
+            console.log("Audio playback prevented:", error);
+        });
+    }
     // ... Le reste de la fonction reste STRICTEMENT identique ...
     const isWin = gameState.players[id].hand.length === 1 && gameState.players[id].hand[0].id === tile.id;
     if (isWin) {
