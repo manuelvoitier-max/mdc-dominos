@@ -1526,7 +1526,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
       </div>
 
       {/* MODAL FIN DE MANCHE */}
-      {(gameState.status !== 'playing' && gameState.status !== 'dealing' && gameState.status !== 'winning_animation') && (
+      {(gameState.status !== 'playing' && gameState.status !== 'dealing' && gameState.status !== 'winning_animation' && gameState.status !== 'revealing') && (
         <div className="absolute inset-0 z-[300] bg-black/95 flex flex-col items-center justify-center p-4 text-center backdrop-blur-xl animate-in fade-in duration-500 text-white">
            <div className="bg-slate-900 border-2 border-red-700 p-4 rounded-2xl shadow-2xl max-w-lg w-full relative overflow-hidden text-white flex flex-col max-h-[85vh]">
              <div className="absolute top-0 left-0 w-full h-1 bg-red-500 shadow-[0_0_10px_#ef4444]"></div>
