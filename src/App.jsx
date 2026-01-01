@@ -1193,13 +1193,11 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   };
 
   const playTile = (id, tile, side) => {
-    // --- AJOUT SONORISATION (Effet "Clac" Domino) ---
-    // On crée un son temporaire à chaque coup. 
-    // Tu peux remplacer l'URL par un fichier local plus tard si tu veux.
-    const clacSound = new Audio('https://www.soundjay.com/misc/sounds/switch-1.mp3');
-    clacSound.volume = 0.5; // Volume modéré
-    clacSound.play().catch((e) => { /* Ignorer les erreurs d'autoplay si pas d'interaction */ });
-
+    // MODIFICATION : Lien Google fiable (Pop.mp3) + Volume à 1.0 (Max)
+    const clacSound = new Audio('https://codeskulptor-demos.commondatastorage.googleapis.com/pang/pop.mp3');
+    clacSound.volume = 1.0; 
+    // On force le chargement et on log l'erreur si le navigateur bloque
+    clacSound.play().catch((e) => console.log("Son bloqué par le navigateur:", e));
     const playerName = gameState.players[id].name;
     addLog({ player: playerName, action: 'Posé', info: `[${tile.v1}|${tile.v2}]` });
     
