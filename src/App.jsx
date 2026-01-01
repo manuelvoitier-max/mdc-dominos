@@ -426,8 +426,8 @@ const getAvatarIcon = (avatarId, size = 36, className = "") => {
 const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude, chatMessage, isVip, equippedAvatar, mdcPoints, cochons, isCochonMode }) => {
     const getPosStyle = () => {
         switch(position) {
-          case 'top-left': return { top: '2px', left: '2px', flexDirection: 'row' };
-          case 'top-right': return { top: '2px', right: '2px', flexDirection: 'row-reverse' };
+          case 'top-left': return { top: '50px', left: '2px', flexDirection: 'row' };
+          case 'top-right': return { top: '50px', right: '2px', flexDirection: 'row-reverse' };
           case 'bottom-right': return { bottom: '2px', right: '2px', flexDirection: 'row-reverse' };
           default: return {};
         }
@@ -1312,7 +1312,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
             </div>
           </div>
 
-          <div className="absolute bottom-[35%] flex gap-6 pointer-events-none z-20">
+          <div className="absolute bottom-[30%] flex gap-6 pointer-events-none z-20">
             {gameState.players.map(p => p.isBoude && (
                 <div key={p.id} className="text-red-500 font-black text-[8px] md:text-xs uppercase tracking-widest animate-pulse bg-red-500/10 px-4 md:px-6 py-1 md:py-2 rounded-full border border-red-500/30 shadow-2xl">{p.name} BOUDÉ !!</div>
             ))}
