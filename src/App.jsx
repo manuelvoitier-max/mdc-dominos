@@ -974,6 +974,16 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
     return () => clearInterval(timer);
   }, [timeLeft, gameState.status, gameState.pendingChoice, gameState.turnIndex]);
 
+  // NOUVEAU : Gère le délai de 1.5s entre la fin du jeu et l'apparition de la bannière victoire
+  useEffect(() => {
+      if (gameState.status === 'revealing') {
+          const t = setTimeout(() => {
+              setGameState(prev => ({ ...prev, status: 'winning_animation' }));
+          }, 1500); // 1.5 secondes pour voir les dominos adverses
+          return () => clearTimeout(t);
+      }
+  }, [gameState.status]);
+
   useEffect(() => {
       if (gameState.status === 'winning_animation') {
           const t = setTimeout(() => {
@@ -1247,7 +1257,8 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               players: newPlayers,
               board: newBoard,
               ends: newEnds,
-              status: 'winning_animation',
+              // MODIFICATION : On passe en 'revealing' au lieu de 'winning_animation'
+              status: 'revealing', 
               winnerId: id,
               pendingChoice: null,
               mandatoryTile: null
@@ -1352,7 +1363,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               isCochonMode={config.format === 'cochons'}
               // AJOUTER CECI :
               hand={gameState.players[1].hand}
-              revealed={gameState.status !== 'playing' && gameState.status !== 'dealing' && gameState.status !== 'winning_animation'}
+              revealed={gameState.status !== 'playing' && gameState.status !== 'dealing' }
           />
 
           <PlayerAvatar
@@ -1372,7 +1383,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               isCochonMode={config.format === 'cochons'}
               // AJOUTER CECI :
               hand={gameState.players[2].hand}
-              revealed={gameState.status !== 'playing' && gameState.status !== 'dealing' && gameState.status !== 'winning_animation'}
+              revealed={gameState.status !== 'playing' && gameState.status !== 'dealing' }
           />
           {/* ZONE PLATEAU (CORRIGÉE : Alignement Flexbox restauré) */}
           <div className="w-full h-full flex items-center justify-center pointer-events-none relative z-10">
