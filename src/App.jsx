@@ -1312,7 +1312,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
             </div>
           </div>
 
-          <div className="absolute bottom-[20%] flex gap-6 pointer-events-none z-20">
+          <div className="absolute bottom-[35%] flex gap-6 pointer-events-none z-20">
             {gameState.players.map(p => p.isBoude && (
                 <div key={p.id} className="text-red-500 font-black text-[8px] md:text-xs uppercase tracking-widest animate-pulse bg-red-500/10 px-4 md:px-6 py-1 md:py-2 rounded-full border border-red-500/30 shadow-2xl">{p.name} BOUDÉ !!</div>
             ))}
