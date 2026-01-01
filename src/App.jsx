@@ -423,7 +423,7 @@ const getAvatarIcon = (avatarId, size = 36, className = "") => {
     return <SafeIcon icon={IconComponent} size={size} className={className} />;
 };
 
-const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude, chatMessage, isVip, equippedAvatar, mdcPoints, cochons, isCochonMode }) => {
+const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude, chatMessage, isVip, equippedAvatar, mdcPoints, cochons, isCochonMode, hand, revealed }) => {
     const getPosStyle = () => {
         switch(position) {
           case 'top-left': return { top: '40px', left: '2px', flexDirection: 'row' };
@@ -437,13 +437,13 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
         ? "bottom-24 right-20"
         : position === 'top-left' ? "top-full mt-2 left-0" : "top-full mt-2 right-0";
 
-    // DÉCISION DE LA COULEUR ET DU TEXTE SELON LE MODE
     const scoreColor = isCochonMode ? 'text-pink-500' : 'text-yellow-500';
     const scoreLabel = isCochonMode ? '🐷' : 'Pts';
     const scoreValue = isCochonMode ? (cochons || 0) : mdcPoints;
 
     return (
         <div className={`absolute flex gap-2 md:gap-4 transition-all duration-300 items-center ${active ? 'scale-105 opacity-100 z-[100]' : 'opacity-80 scale-100'} scale-[0.65] md:scale-100 origin-${position.includes('left') ? 'top-left' : 'top-right'}`} style={style}>
+            {/* BULLE DE CHAT */}
             {chatMessage && (
                 <div className={`absolute ${bubbleStyle} z-[150] animate-in slide-in-from-bottom-2 fade-in duration-300 w-max`}>
                     <div className="bg-white text-black font-black text-xs md:text-sm px-3 py-2 rounded-xl shadow-2xl border-2 border-black relative max-w-[150px] md:max-w-[200px] text-center uppercase tracking-tight">
@@ -452,25 +452,31 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
                     </div>
                 </div>
             )}
+
+            {/* AVATAR + COMPTEUR */}
             <div className="relative">
                 <div className={`w-10 h-10 md:w-24 md:h-24 rounded-full border-2 md:border-4 flex items-center justify-center bg-zinc-950 transition-all duration-500 ${active ? 'border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.5)]' : 'border-zinc-700 shadow-xl'}`}>
                     {isBot ? <SafeIcon icon={Icons.Wifi} className={`w-5 h-5 md:w-9 md:h-9 ${active ? "text-red-500" : "text-zinc-600"}`} /> : <div className={active ? "text-red-500" : "text-zinc-500"}>{getAvatarIcon(equippedAvatar, 20, "w-5 h-5 md:w-9 md:h-9")}</div>}
                     {active && <div className="absolute -top-2 -right-1 md:-top-3 md:-right-1 bg-red-600 text-white text-[6px] md:text-[9px] font-black px-1 py-0.5 rounded uppercase shadow-lg">JOUE</div>}
                 </div>
-                <div className="absolute -bottom-1 -left-1 w-5 h-5 md:w-10 md:h-10 bg-white text-black rounded-full border-2 md:border-4 border-zinc-950 flex items-center justify-center shadow-lg"><span className="font-black text-[8px] md:text-sm">{cardsCount}</span></div>
+                
+                {/* SI PAS RÉVÉLÉ : Affiche le Compteur rond classique */}
+                {!revealed && (
+                    <div className="absolute -bottom-1 -left-1 w-5 h-5 md:w-10 md:h-10 bg-white text-black rounded-full border-2 md:border-4 border-zinc-950 flex items-center justify-center shadow-lg">
+                        <span className="font-black text-[8px] md:text-sm">{cardsCount}</span>
+                    </div>
+                )}
             </div>
-           
+            
+            {/* PANNEAU NOM + SCORE */}
             <div className={`flex flex-col ${position === 'top-left' ? 'items-start' : 'items-end'} bg-zinc-900/90 backdrop-blur-xl px-2 py-1 md:px-5 md:py-3 rounded-md md:rounded-lg border border-zinc-700 shadow-2xl min-w-[70px] md:min-w-[140px]`}>
                 <span className={`font-sans font-bold text-[8px] md:text-xs tracking-widest uppercase mb-0.5 md:mb-1 flex items-center gap-1 ${isVip ? 'text-yellow-400' : 'text-white'}`}>{isVip && <SafeIcon icon={Icons.Crown} size={8} className="md:w-3 md:h-3 text-yellow-400 fill-yellow-400" />}{name}</span>
                 <div className="flex items-center gap-2 md:gap-3">
                     <div className="flex flex-col items-center">
-                        {/* MODIFICATION : text-green-500 -> text-lime-400 (Vert Fluo) */}
                         <span className="text-[5px] md:text-[8px] text-lime-400 font-black uppercase">V</span>
                         <span className="text-sm md:text-4xl leading-none font-mono font-black text-lime-400">{wins}</span>
                     </div>
                     <div className="w-[1px] h-4 md:h-8 bg-zinc-700"></div>
-                   
-                    {/* C'EST ICI QUE CA CHANGE SELON LE MODE */}
                     <div className="flex flex-col items-center">
                         <span className={`text-[5px] md:text-[8px] font-black uppercase tracking-tighter text-center ${scoreColor}`}>{scoreLabel}</span>
                         <span className={`text-sm md:text-4xl leading-none font-mono font-black ${scoreColor}`}>{scoreValue}</span>
@@ -478,6 +484,15 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
                 </div>
                 {isBoude && <div className="mt-1 text-white bg-red-600 font-black text-[6px] md:text-[10px] uppercase tracking-widest animate-pulse px-1 py-0.5 rounded">BOUDÉ !!</div>}
             </div>
+
+            {/* NOUVEAU : AFFICHAGE DE LA MAIN EN FIN DE PARTIE */}
+            {revealed && hand && hand.length > 0 && (
+                <div className={`absolute ${position.includes('top') ? 'top-full mt-4' : 'bottom-full mb-4'} left-1/2 -translate-x-1/2 z-[200] flex gap-1 bg-black/80 backdrop-blur-md p-2 rounded-xl border border-white/10 shadow-2xl animate-in zoom-in slide-in-from-top-2 duration-300`}>
+                    {hand.map((tile, i) => (
+                        <DominoTile key={i} v1={tile.v1} v2={tile.v2} size="sm" className="scale-75 origin-center" skinId="skin_classic" />
+                    ))}
+                </div>
+            )}
         </div>
     );
 };
@@ -1335,6 +1350,9 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               mdcPoints={gameState.players[1].mdcPoints}
               cochons={gameState.players[1].cochonsTotal}
               isCochonMode={config.format === 'cochons'}
+              // AJOUTER CECI :
+              hand={gameState.players[1].hand}
+              revealed={gameState.status !== 'playing' && gameState.status !== 'dealing' && gameState.status !== 'winning_animation'}
           />
 
           <PlayerAvatar
@@ -1352,6 +1370,9 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               mdcPoints={gameState.players[2].mdcPoints}
               cochons={gameState.players[2].cochonsTotal}
               isCochonMode={config.format === 'cochons'}
+              // AJOUTER CECI :
+              hand={gameState.players[2].hand}
+              revealed={gameState.status !== 'playing' && gameState.status !== 'dealing' && gameState.status !== 'winning_animation'}
           />
           {/* ZONE PLATEAU (CORRIGÉE : Alignement Flexbox restauré) */}
           <div className="w-full h-full flex items-center justify-center pointer-events-none relative z-10">
