@@ -1217,8 +1217,8 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
     setGameState(prev => {
       let newBoard = [...prev.board];
       let newEnds = prev.ends ? { ...prev.ends } : { left: null, right: null };
-// MODIFICATION : On ajoute 'sourcePlayerId: id' pour savoir d'où vient le domino (Animation)
-      let placed = { ...tile, orientation: (tile.v1 === tile.v2) ? 'vertical' : 'horizontal', flipped: false, sourcePlayerId: id };
+// MODIFICATION : On ajoute 'placedAt: Date.now()' pour forcer le rafraîchissement de l'animation
+      let placed = { ...tile, orientation: (tile.v1 === tile.v2) ? 'vertical' : 'horizontal', flipped: false, sourcePlayerId: id, placedAt: Date.now() };
       if (!prev.ends) { newBoard = [placed]; newEnds = { left: tile.v1, right: tile.v2 }; }
       else {
         if (side === 'left') { placed.flipped = (tile.v1 === newEnds.left); newEnds.left = placed.flipped ? tile.v2 : tile.v1; newBoard.unshift(placed); }
@@ -1341,24 +1341,28 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
             <div ref={boardRef} className="flex items-center justify-center origin-center drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] whitespace-nowrap w-max" style={{ transform: `scale(${zoomScale})`, transition: 'transform 0.5s ease-out' }}>
                 {gameState.board.map((tile, i) => {
                     // DÉTERMINATION DE L'ANIMATION SELON LE JOUEUR
-                    // Joueur 0 (Moi/Bas) : Arrive du bas
-                    // Joueur 1 (Haut Gauche) : Arrive du haut-gauche
-                    // Joueur 2 (Haut Droite) : Arrive du haut-droite
-                    let animClass = "animate-in fade-in duration-500 ";
-                    if (tile.sourcePlayerId === 0) animClass += "slide-in-from-bottom-48"; // Vient du bas
-                    else if (tile.sourcePlayerId === 1) animClass += "slide-in-from-top-48 slide-in-from-left-48"; // Vient du coin gauche
-                    else if (tile.sourcePlayerId === 2) animClass += "slide-in-from-top-48 slide-in-from-right-48"; // Vient du coin droit
-                    else animClass += "zoom-in"; // Par défaut (début de partie)
+                    // On utilise 'translate' direct pour être sûr que ça bouge
+                    let animClass = "transition-all duration-700 ease-out "; // Durée augmentée à 700ms
+                    
+                    // L'animation se joue uniquement si le domino vient d'être posé (moins de 1s)
+                    const isNew = (Date.now() - (tile.placedAt || 0)) < 1000;
+                    
+                    if (isNew) {
+                        if (tile.sourcePlayerId === 0) animClass += "animate-in slide-in-from-bottom-[300px] fade-in"; // VIENT DE LOIN EN BAS
+                        else if (tile.sourcePlayerId === 1) animClass += "animate-in slide-in-from-top-[300px] slide-in-from-left-[300px] fade-in"; // VIENT DE LOIN HAUT-GAUCHE
+                        else if (tile.sourcePlayerId === 2) animClass += "animate-in slide-in-from-top-[300px] slide-in-from-right-[300px] fade-in"; // VIENT DE LOIN HAUT-DROITE
+                    }
 
                     return (
                         <DominoTile
-                            key={i}
+                            // MODIFICATION : On utilise tile.id comme clé pour que React suive bien l'objet
+                            key={tile.id} 
                             v1={tile.v1}
                             v2={tile.v2}
                             orientation={tile.orientation}
                             flipped={tile.flipped}
                             skinId={user.equippedSkin}
-                            // ON APPLIQUE L'ANIMATION ICI
+                            // ON APPLIQUE L'ANIMATION RENFORCÉE
                             className={`mx-0.5 ${animClass}`}
                         />
                     );
