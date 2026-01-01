@@ -485,17 +485,21 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
                 {isBoude && <div className="mt-1 text-white bg-red-600 font-black text-[6px] md:text-[10px] uppercase tracking-widest animate-pulse px-1 py-0.5 rounded">BOUDÉ !!</div>}
             </div>
 
-            {/* NOUVEAU : AFFICHAGE DE LA MAIN EN FIN DE PARTIE */}
+            {/* MODIFICATION : Positionnement latéral pour les Bots (Gauche/Droite) */}
             {revealed && hand && hand.length > 0 && (
-                <div className={`absolute ${position.includes('top') ? 'top-full mt-4' : 'bottom-full mb-4'} left-1/2 -translate-x-1/2 z-[200] flex gap-1 bg-black/80 backdrop-blur-md p-2 rounded-xl border border-white/10 shadow-2xl animate-in zoom-in slide-in-from-top-2 duration-300`}>
+                <div className={`absolute z-[200] flex gap-1 bg-black/80 backdrop-blur-md p-2 rounded-xl border border-white/10 shadow-2xl animate-in zoom-in duration-300
+                    ${position === 'top-left' 
+                        ? 'left-full ml-4 top-1/2 -translate-y-1/2' // Bot 1 : À sa droite, centré verticalement
+                        : position === 'top-right' 
+                            ? 'right-full mr-4 top-1/2 -translate-y-1/2' // Bot 2 : À sa gauche, centré verticalement
+                            : 'bottom-full mb-4 left-1/2 -translate-x-1/2' // Joueur : Au dessus (inchangé)
+                    }
+                `}>
                     {hand.map((tile, i) => (
                         <DominoTile key={i} v1={tile.v1} v2={tile.v2} size="sm" className="scale-75 origin-center" skinId="skin_classic" />
                     ))}
                 </div>
             )}
-        </div>
-    );
-};
 
 // ... TournamentBanner, AdOverlay ...
 const TournamentBanner = ({ onJoin }) => {
@@ -979,7 +983,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
       if (gameState.status === 'revealing') {
           const t = setTimeout(() => {
               setGameState(prev => ({ ...prev, status: 'winning_animation' }));
-          }, 1500); // 1.5 secondes pour voir les dominos adverses
+          }, 2000); // 2.0 secondes pour voir les dominos adverses
           return () => clearTimeout(t);
       }
   }, [gameState.status]);
