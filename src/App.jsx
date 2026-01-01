@@ -1193,14 +1193,21 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   };
 
   const playTile = (id, tile, side) => {
+    // --- AJOUT SONORISATION (Effet "Clac" Domino) ---
+    // On crée un son temporaire à chaque coup. 
+    // Tu peux remplacer l'URL par un fichier local plus tard si tu veux.
+    const clacSound = new Audio('https://www.soundjay.com/misc/sounds/switch-1.mp3');
+    clacSound.volume = 0.5; // Volume modéré
+    clacSound.play().catch((e) => { /* Ignorer les erreurs d'autoplay si pas d'interaction */ });
+
     const playerName = gameState.players[id].name;
     addLog({ player: playerName, action: 'Posé', info: `[${tile.v1}|${tile.v2}]` });
-   
+    
+    // ... Le reste de la fonction reste STRICTEMENT identique ...
     const isWin = gameState.players[id].hand.length === 1 && gameState.players[id].hand[0].id === tile.id;
     if (isWin) {
         setWinningInfo({ winnerId: id, winningTile: tile });
     }
-
     setGameState(prev => {
       let newBoard = [...prev.board];
       let newEnds = prev.ends ? { ...prev.ends } : { left: null, right: null };
