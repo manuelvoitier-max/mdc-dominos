@@ -1340,31 +1340,40 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
             {/* MODIFICATION : Ajout de 'w-max' pour que la div prenne sa vraie largeur réelle */}
             <div ref={boardRef} className="flex items-center justify-center origin-center drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] whitespace-nowrap w-max" style={{ transform: `scale(${zoomScale})`, transition: 'transform 0.5s ease-out' }}>
                 {gameState.board.map((tile, i) => {
-                    // DÉTERMINATION DE L'ANIMATION SELON LE JOUEUR
-                    // On utilise 'translate' direct pour être sûr que ça bouge
-                    let animClass = "transition-all duration-700 ease-out "; // Durée augmentée à 700ms
-                    
-                    // L'animation se joue uniquement si le domino vient d'être posé (moins de 1s)
+                    // 1. On définit si c'est un nouveau domino (posé il y a moins d'1 seconde)
                     const isNew = (Date.now() - (tile.placedAt || 0)) < 1000;
                     
+                    // 2. On définit le nom de l'animation CSS selon le joueur
+                    let animName = "";
                     if (isNew) {
-                        if (tile.sourcePlayerId === 0) animClass += "animate-in slide-in-from-bottom-[300px] fade-in"; // VIENT DE LOIN EN BAS
-                        else if (tile.sourcePlayerId === 1) animClass += "animate-in slide-in-from-top-[300px] slide-in-from-left-[300px] fade-in"; // VIENT DE LOIN HAUT-GAUCHE
-                        else if (tile.sourcePlayerId === 2) animClass += "animate-in slide-in-from-top-[300px] slide-in-from-right-[300px] fade-in"; // VIENT DE LOIN HAUT-DROITE
+                        if (tile.sourcePlayerId === 0) animName = "enterFromBottom";
+                        else if (tile.sourcePlayerId === 1) animName = "enterFromTopLeft";
+                        else if (tile.sourcePlayerId === 2) animName = "enterFromTopRight";
                     }
 
                     return (
-                        <DominoTile
-                            // MODIFICATION : On utilise tile.id comme clé pour que React suive bien l'objet
-                            key={tile.id} 
-                            v1={tile.v1}
-                            v2={tile.v2}
-                            orientation={tile.orientation}
-                            flipped={tile.flipped}
-                            skinId={user.equippedSkin}
-                            // ON APPLIQUE L'ANIMATION RENFORCÉE
-                            className={`mx-0.5 ${animClass}`}
-                        />
+                        <div key={tile.id} className="mx-0.5 relative">
+                            {/* INJECTION DES STYLES D'ANIMATION (CSS PUR) */}
+                            {isNew && (
+                                <style>{`
+                                    @keyframes enterFromBottom { 0% { transform: translateY(50vh) scale(1.5); opacity: 0; } 100% { transform: translateY(0) scale(1); opacity: 1; } }
+                                    @keyframes enterFromTopLeft { 0% { transform: translate(-50vw, -50vh) scale(0.5); opacity: 0; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+                                    @keyframes enterFromTopRight { 0% { transform: translate(50vw, -50vh) scale(0.5); opacity: 0; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+                                `}</style>
+                            )}
+                            
+                            {/* LE DOMINO AVEC L'ANIMATION APPLIQUÉE SUR UNE DIV WRAPPER */}
+                            <div style={isNew ? { animation: `${animName} 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards` } : {}}>
+                                <DominoTile
+                                    v1={tile.v1}
+                                    v2={tile.v2}
+                                    orientation={tile.orientation}
+                                    flipped={tile.flipped}
+                                    skinId={user.equippedSkin}
+                                    className="shadow-xl" // Ombre pour détacher du fond
+                                />
+                            </div>
+                        </div>
                     );
                 })}
             </div>
