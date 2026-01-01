@@ -426,8 +426,8 @@ const getAvatarIcon = (avatarId, size = 36, className = "") => {
 const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude, chatMessage, isVip, equippedAvatar, mdcPoints, cochons, isCochonMode }) => {
     const getPosStyle = () => {
         switch(position) {
-          case 'top-left': return { top: '50px', left: '2px', flexDirection: 'row' };
-          case 'top-right': return { top: '50px', right: '2px', flexDirection: 'row-reverse' };
+          case 'top-left': return { top: '40px', left: '2px', flexDirection: 'row' };
+          case 'top-right': return { top: '40px', right: '2px', flexDirection: 'row-reverse' };
           case 'bottom-right': return { bottom: '2px', right: '2px', flexDirection: 'row-reverse' };
           default: return {};
         }
