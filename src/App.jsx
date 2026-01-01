@@ -1336,44 +1336,51 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               cochons={gameState.players[2].cochonsTotal}
               isCochonMode={config.format === 'cochons'}
           />
+          {/* ZONE PLATEAU (CORRIGÉE : Alignement Flexbox restauré) */}
           <div className="w-full h-full flex items-center justify-center pointer-events-none relative z-10">
-            {/* MODIFICATION : Ajout de 'w-max' pour que la div prenne sa vraie largeur réelle */}
+            
+            {/* Définition des animations (CSS) */}
+            <style>{`
+                @keyframes slideFromBottom { 
+                    0% { transform: translateY(300px) scale(1.5); opacity: 0; } 
+                    100% { transform: translateY(0) scale(1); opacity: 1; } 
+                }
+                @keyframes slideFromTopLeft { 
+                    0% { transform: translate(-300px, -300px) scale(0.5); opacity: 0; } 
+                    100% { transform: translate(0, 0) scale(1); opacity: 1; } 
+                }
+                @keyframes slideFromTopRight { 
+                    0% { transform: translate(300px, -300px) scale(0.5); opacity: 0; } 
+                    100% { transform: translate(0, 0) scale(1); opacity: 1; } 
+                }
+                .anim-p0 { animation: slideFromBottom 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+                .anim-p1 { animation: slideFromTopLeft 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+                .anim-p2 { animation: slideFromTopRight 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+            `}</style>
+
             <div ref={boardRef} className="flex items-center justify-center origin-center drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] whitespace-nowrap w-max" style={{ transform: `scale(${zoomScale})`, transition: 'transform 0.5s ease-out' }}>
                 {gameState.board.map((tile, i) => {
-                    // 1. On définit si c'est un nouveau domino (posé il y a moins d'1 seconde)
                     const isNew = (Date.now() - (tile.placedAt || 0)) < 1000;
                     
-                    // 2. On définit le nom de l'animation CSS selon le joueur
-                    let animName = "";
+                    let animClass = "";
+                    // On applique l'animation et un z-index élevé pour passer devant
                     if (isNew) {
-                        if (tile.sourcePlayerId === 0) animName = "enterFromBottom";
-                        else if (tile.sourcePlayerId === 1) animName = "enterFromTopLeft";
-                        else if (tile.sourcePlayerId === 2) animName = "enterFromTopRight";
+                        if (tile.sourcePlayerId === 0) animClass = "anim-p0 z-50";
+                        else if (tile.sourcePlayerId === 1) animClass = "anim-p1 z-50";
+                        else if (tile.sourcePlayerId === 2) animClass = "anim-p2 z-50";
                     }
 
                     return (
-                        <div key={tile.id} className="mx-0.5 relative">
-                            {/* INJECTION DES STYLES D'ANIMATION (CSS PUR) */}
-                            {isNew && (
-                                <style>{`
-                                    @keyframes enterFromBottom { 0% { transform: translateY(50vh) scale(1.5); opacity: 0; } 100% { transform: translateY(0) scale(1); opacity: 1; } }
-                                    @keyframes enterFromTopLeft { 0% { transform: translate(-50vw, -50vh) scale(0.5); opacity: 0; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
-                                    @keyframes enterFromTopRight { 0% { transform: translate(50vw, -50vh) scale(0.5); opacity: 0; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
-                                `}</style>
-                            )}
-                            
-                            {/* LE DOMINO AVEC L'ANIMATION APPLIQUÉE SUR UNE DIV WRAPPER */}
-                            <div style={isNew ? { animation: `${animName} 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards` } : {}}>
-                                <DominoTile
-                                    v1={tile.v1}
-                                    v2={tile.v2}
-                                    orientation={tile.orientation}
-                                    flipped={tile.flipped}
-                                    skinId={user.equippedSkin}
-                                    className="shadow-xl" // Ombre pour détacher du fond
-                                />
-                            </div>
-                        </div>
+                        <DominoTile
+                            key={tile.id}
+                            v1={tile.v1}
+                            v2={tile.v2}
+                            orientation={tile.orientation}
+                            flipped={tile.flipped}
+                            skinId={user.equippedSkin}
+                            // L'animation est appliquée directement ici, sans casser le flex
+                            className={`mx-0.5 ${animClass}`}
+                        />
                     );
                 })}
             </div>
