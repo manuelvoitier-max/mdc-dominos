@@ -1193,18 +1193,18 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   };
 
   const playTile = (id, tile, side) => {
-    // MODIFICATION : Son "Tile Select" court et rapide (Format MP3 compatible mobile)
-    // On recrée l'objet à chaque fois pour permettre la superposition rapide des sons
-    const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-tile-player-select-2793.mp3');
-    audio.volume = 0.8;
+    // MODIFICATION : Son "Clac" plus réaliste (type domino sur table)
+    // Source fiable Google (Wood Plank Flick) qui ressemble beaucoup à un domino
+    const audio = new Audio('https://actions.google.com/sounds/v1/impacts/wood_plank_flick.ogg');
     
-    // Promesse de lecture sécurisée pour éviter les erreurs "The play() request was interrupted"
+    // ASTUCE DE PRO : On change légèrement la vitesse (entre 0.9 et 1.1) à chaque coup
+    // pour que le son ne soit jamais exactement le même (effet naturel)
+    audio.playbackRate = 0.9 + Math.random() * 0.2;
+    audio.volume = 1.0;
+    
     const playPromise = audio.play();
     if (playPromise !== undefined) {
-        playPromise.catch(error => {
-            // Silencieux sur les erreurs d'autoplay (normal tant que l'utilisateur n'a pas cliqué)
-            console.log("Audio playback prevented:", error);
-        });
+        playPromise.catch(error => { console.log("Audio bloqué:", error); });
     }
     const playerName = gameState.players[id].name;
     addLog({ player: playerName, action: 'Posé', info: `[${tile.v1}|${tile.v2}]` });
