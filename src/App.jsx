@@ -1206,6 +1206,9 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
             console.log("Audio playback prevented:", error);
         });
     }
+    const playerName = gameState.players[id].name;
+    addLog({ player: playerName, action: 'Posé', info: `[${tile.v1}|${tile.v2}]` });
+    
     // ... Le reste de la fonction reste STRICTEMENT identique ...
     const isWin = gameState.players[id].hand.length === 1 && gameState.players[id].hand[0].id === tile.id;
     if (isWin) {
