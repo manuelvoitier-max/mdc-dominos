@@ -982,7 +982,8 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   useEffect(() => {
       if (gameState.status === 'tournoi_over' && gameState.winnerId === 0 && !paidRef.current) {
           paidRef.current = true;
-          onWin(config.stake * 3, config.currency);
+          // MODIFICATION : Le gain est égal à la MISE multipliée par le NOMBRE DE JOUEURS (ex: 100 * 3 = 300)
+          onWin(config.stake * gameState.players.length, config.currency);
       }
   }, [gameState.status, gameState.winnerId]);
 
@@ -1064,7 +1065,8 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
 
   const onAdCompleted = () => {
       setAdWatchedForThisWin(true);
-      onDoubleWin(config.stake * 3, config.currency);
+      // MODIFICATION : On ajoute le montant du pot une 2ème fois pour doubler le gain total
+      onDoubleWin(config.stake * gameState.players.length, config.currency);
       alert("Gain Doublé !");
   };
 
