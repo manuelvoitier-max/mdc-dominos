@@ -1237,7 +1237,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
       </div>
      
       {/* TAPIS */}
-      <div className="flex-1 w-full h-full flex flex-col items-center justify-center relative pt-15 pb-[18vh]" ref={containerRef}>
+      <div className="flex-1 w-full h-full flex flex-col items-center justify-center relative pt-32 pb-[25vh]" ref={containerRef}>
           {currentBoard.id === 'board_sponsor' && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30 z-0">
                   <div className="flex flex-col items-center">
