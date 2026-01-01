@@ -697,21 +697,21 @@ const HomeScreen = ({ onNavigate, user, onTournamentClick }) => {
             ))}
           </div>
       </div>
-      {/* BAS : BOUTONS SECONDAIRES (Optimisé Mobile) */}
-      <div className="absolute bottom-6 w-full px-2 md:px-10 flex justify-around items-end z-20">
+      {/* BAS : BOUTONS SECONDAIRES (CORRIGÉ : onNavigate + z-50) */}
+      <div className="absolute bottom-6 w-full px-2 md:px-10 flex justify-around items-end z-50 pointer-events-auto">
         
         {/* PROFIL (Gauche) */}
-        <button onClick={() => setView('profile')} className="flex flex-col items-center gap-1 group">
-           <div className="w-12 h-12 md:w-16 md:h-16 bg-zinc-900 border border-zinc-700 rounded-2xl flex items-center justify-center group-hover:border-white transition-all shadow-lg">
+        <button onClick={() => onNavigate('profile')} className="flex flex-col items-center gap-1 group cursor-pointer">
+           <div className="w-12 h-12 md:w-16 md:h-16 bg-zinc-900 border border-zinc-700 rounded-2xl flex items-center justify-center group-hover:border-white transition-all shadow-lg active:scale-95">
               <SafeIcon icon={Icons.User} className="text-zinc-400 group-hover:text-white transition-colors" size={20} />
            </div>
            <span className="text-[9px] md:text-xs font-black uppercase tracking-widest text-zinc-500 group-hover:text-white">Profil</span>
         </button>
 
-        {/* BOUTIQUE (Centre - Réduit pour mobile) */}
-        <button onClick={() => setView('shop')} className="relative -top-2 group">
+        {/* BOUTIQUE (Centre) */}
+        <button onClick={() => onNavigate('shop')} className="relative -top-2 group cursor-pointer">
             <div className="absolute inset-0 bg-yellow-500 rounded-full blur opacity-20 group-hover:opacity-40 animate-pulse"></div>
-            <div className="w-16 h-16 md:w-24 md:h-24 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full border-4 border-black shadow-2xl flex items-center justify-center relative z-10 transform group-hover:scale-110 transition-all duration-300">
+            <div className="w-16 h-16 md:w-24 md:h-24 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-full border-4 border-black shadow-2xl flex items-center justify-center relative z-10 transform group-hover:scale-110 transition-all duration-300 active:scale-95">
                 <SafeIcon icon={Icons.ShoppingBag} className="text-black w-6 h-6 md:w-10 md:h-10" />
             </div>
             <div className="absolute -bottom-6 md:-bottom-8 left-1/2 -translate-x-1/2 bg-black/80 backdrop-blur px-2 md:px-3 py-1 rounded-full border border-yellow-500/30 whitespace-nowrap">
@@ -720,8 +720,8 @@ const HomeScreen = ({ onNavigate, user, onTournamentClick }) => {
         </button>
 
         {/* CLASSEMENT (Droite) */}
-        <button onClick={() => setView('leaderboard')} className="flex flex-col items-center gap-1 group">
-           <div className="w-12 h-12 md:w-16 md:h-16 bg-zinc-900 border border-zinc-700 rounded-2xl flex items-center justify-center group-hover:border-white transition-all shadow-lg">
+        <button onClick={() => onNavigate('leaderboard')} className="flex flex-col items-center gap-1 group cursor-pointer">
+           <div className="w-12 h-12 md:w-16 md:h-16 bg-zinc-900 border border-zinc-700 rounded-2xl flex items-center justify-center group-hover:border-white transition-all shadow-lg active:scale-95">
               <SafeIcon icon={Icons.Trophy} className="text-zinc-400 group-hover:text-white transition-colors" size={20} />
            </div>
            <span className="text-[9px] md:text-xs font-black uppercase tracking-widest text-zinc-500 group-hover:text-white">RANG</span>
