@@ -1526,8 +1526,12 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
       </div>
 
       {/* MODAL FIN DE MANCHE */}
-      {(gameState.status !== 'playing' && gameState.status !== 'dealing' && gameState.status !== 'winning_animation' && gameState.status !== 'revealing') && (
-        <div className="absolute inset-0 z-[300] bg-black/95 flex flex-col items-center justify-center p-4 text-center backdrop-blur-xl animate-in fade-in duration-500 text-white">
+      {/* 1. On affiche le modal UNIQUEMENT si la partie est officiellement terminée (plus de 'revealing' ni d'animation) */}
+      {['manche_over', 'partie_over', 'partie_draw', 'tournoi_over'].includes(gameState.status) && (
+        
+        // 2. Fond transparent (bg-black/40) pour voir les dominos adverses en arrière-plan
+        <div className="absolute inset-0 z-[300] bg-black/40 flex flex-col items-center justify-center p-4 text-center backdrop-blur-sm animate-in fade-in duration-500 text-white">
+           
            <div className="bg-slate-900 border-2 border-red-700 p-4 rounded-2xl shadow-2xl max-w-lg w-full relative overflow-hidden text-white flex flex-col max-h-[85vh]">
              <div className="absolute top-0 left-0 w-full h-1 bg-red-500 shadow-[0_0_10px_#ef4444]"></div>
              
@@ -1622,9 +1626,11 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                 ) : (
                     <Button onClick={onExit} className="flex-1 py-3 text-sm text-blue-200">RETOUR MENU</Button>
                 )}
-               
+                
                 <button
                     onClick={() => {
+                        // Astuce : On cache juste le modal visuellement si l'utilisateur veut voir le plateau
+                        // Mais dans cette version React simple, on peut juste utiliser une alerte ou laisser comme ça.
                         alert("Le tableau reste affiché. Utilisez les boutons pour continuer.");
                     }}
                     className="p-3 bg-zinc-800 rounded-xl hover:bg-red-900/50 transition-colors border border-zinc-600 text-red-400"
@@ -1636,9 +1642,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
            </div>
         </div>
       )}
-    </div>
-  );
-};
 
 const MemberScreen = ({ onBack, user, onLogout }) => {
     const winRate = user.stats.played > 0 ? ((user.stats.won / user.stats.played) * 100).toFixed(1) : "0.0";
