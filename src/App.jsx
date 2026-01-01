@@ -697,10 +697,36 @@ const HomeScreen = ({ onNavigate, user, onTournamentClick }) => {
             ))}
           </div>
       </div>
-      <div className="absolute bottom-6 left-0 right-0 z-20 flex justify-center items-center gap-6">
-        <Button onClick={() => onNavigate('member')} variant="secondary" className="px-6 py-3 text-sm border-2 border-zinc-600 hover:border-white"><SafeIcon icon={Icons.User} size={16} className="mr-2"/> PROFIL</Button>
-        <Button onClick={() => onNavigate('shop')} variant="shop" className="px-8 py-4 text-base border-2 border-purple-500 hover:border-purple-300 text-white font-black scale-110 shadow-2xl"><SafeIcon icon={Icons.ShoppingBag} size={20} className="mr-2"/> BOUTIQUE</Button>
-        <Button onClick={() => onNavigate('ranking')} variant="secondary" className="px-6 py-3 text-sm border-2 border-zinc-600 hover:border-white"><SafeIcon icon={Icons.TrendingUp} size={16} className="mr-2"/> RANK</Button>
+      {/* BAS : BOUTONS TAILLE AJUSTÉE (Mobile: Compact / PC: Normal) */}
+      <div className="absolute bottom-6 w-full px-2 z-20 flex justify-center items-end gap-2 md:gap-6 pointer-events-none">
+        
+        {/* BOUTON PROFIL (Gauche) - Redirige vers 'member' */}
+        <Button 
+            onClick={() => onNavigate('member')} 
+            variant="secondary" 
+            className="pointer-events-auto flex-1 max-w-[100px] md:max-w-none px-0 md:px-6 py-3 text-[10px] md:text-sm border-2 border-zinc-600 hover:border-white whitespace-nowrap"
+        >
+            <SafeIcon icon={Icons.User} size={16} className="mr-1 md:mr-2"/> PROFIL
+        </Button>
+
+        {/* BOUTON BOUTIQUE (Centre) - Redirige vers 'shop' - Un peu plus gros */}
+        <Button 
+            onClick={() => onNavigate('shop')} 
+            variant="shop" 
+            className="pointer-events-auto flex-[1.4] max-w-[150px] md:max-w-none px-1 md:px-8 py-4 text-xs md:text-base border-2 border-purple-500 hover:border-purple-300 text-white font-black shadow-2xl whitespace-nowrap mb-1"
+        >
+            <SafeIcon icon={Icons.ShoppingBag} size={18} className="mr-1 md:mr-2"/> BOUTIQUE
+        </Button>
+
+        {/* BOUTON RANK (Droite) - Redirige vers 'ranking' */}
+        <Button 
+            onClick={() => onNavigate('ranking')} 
+            variant="secondary" 
+            className="pointer-events-auto flex-1 max-w-[100px] md:max-w-none px-0 md:px-6 py-3 text-[10px] md:text-sm border-2 border-zinc-600 hover:border-white whitespace-nowrap"
+        >
+            <SafeIcon icon={Icons.TrendingUp} size={16} className="mr-1 md:mr-2"/> RANK
+        </Button>
+
       </div>
     </div>
   );
