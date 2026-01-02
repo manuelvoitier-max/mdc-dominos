@@ -1,14 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client';
 
-// Remplace bien par ton lien Ngrok actuel (vérifie qu'il n'a pas changé !)
-const NGROK_URL = "https://werner-atelic-subaveragely.ngrok-free.dev"; 
+// Remplace par TON lien Render (celui que tu viens de copier)
+const socket = io.connect("https://serveur-domino-xxxx.onrender.com");
 
-const socket = io.connect(NGROK_URL, {
-    extraHeaders: {
-        "ngrok-skip-browser-warning": "true"
-    }
-});
 /**
  * --- ICONES SVG INTEGREES (Stable & Autonome) ---
  */
