@@ -1260,19 +1260,36 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           </div>
       )}
 
-      {/* HEADER */}
-      <div className="absolute top-0 left-0 w-full z-[60] flex justify-between items-center px-4 h-10 bg-black/40 backdrop-blur-md border-b border-white/5 shadow-2xl">
-          <Button variant="ghost" onClick={onExit} className="p-1"><SafeIcon icon={Icons.X} size={20} /></Button>
-          <div className="flex flex-col items-center">
-              <div className="relative text-center leading-none"><span className="text-xl font-black font-mono text-white drop-shadow-md">{timeLeft < 10 ? `0${timeLeft}` : timeLeft}</span></div>
-              <div className="text-[8px] text-zinc-400 uppercase font-black tracking-widest leading-none mt-0.5">
-                  OBJ: {config.target} {config.format === 'manches' ? 'V' : config.format === 'cochons' ? '🐷' : 'P'}
-              </div>
+      {/* HEADER (Objectif déplacé à droite pour meilleure visibilité) */}
+      <div className="absolute top-0 left-0 w-full z-[60] flex justify-between items-center px-4 h-12 bg-black/40 backdrop-blur-md border-b border-white/5 shadow-2xl">
+         
+          {/* GAUCHE : Quitter */}
+          <Button variant="ghost" onClick={onExit} className="p-1"><SafeIcon icon={Icons.X} size={24} /></Button>
+         
+          {/* CENTRE : Timer Seul (Plus gros et centré) */}
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
+              <span className="text-3xl font-black font-mono text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-widest">
+                  {timeLeft < 10 ? `0${timeLeft}` : timeLeft}
+              </span>
           </div>
+
+          {/* DROITE : Objectif + Mise + Plein écran */}
           <div className="flex items-center gap-2">
-              <span className="text-[10px] text-yellow-500 font-black font-mono bg-black/50 px-2 py-0.5 rounded">{config.stake} OR</span>
-              <button onClick={toggleFullScreen} className="p-1.5 bg-black/30 rounded hover:bg-white/10 transition-colors">
-                  <SafeIcon icon={Icons.Maximize} size={16} className="text-zinc-300" />
+             
+              {/* NOUVEL EMPLACEMENT : Objectif (Badge Bleu/Visible) */}
+              <div className="flex flex-col items-end mr-1 bg-blue-900/40 px-2 py-1 rounded border border-blue-500/30">
+                  <span className="text-[8px] text-blue-200 font-bold uppercase leading-none mb-0.5">Objectif</span>
+                  <span className="text-xs font-black text-white leading-none">
+                      {config.target} {config.format === 'manches' ? 'VICT.' : config.format === 'cochons' ? '🐷' : 'PTS'}
+                  </span>
+              </div>
+
+              <span className="text-[10px] text-yellow-500 font-black font-mono bg-black/50 px-2 py-1.5 rounded border border-yellow-500/30 shadow-inner">
+                  {config.stake} OR
+              </span>
+             
+              <button onClick={toggleFullScreen} className="p-2 bg-black/30 rounded hover:bg-white/10 transition-colors border border-white/5">
+                  <SafeIcon icon={Icons.Maximize} size={18} className="text-zinc-300" />
               </button>
           </div>
       </div>
