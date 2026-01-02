@@ -423,34 +423,7 @@ const getAvatarIcon = (avatarId, size = 36, className = "") => {
     return <SafeIcon icon={IconComponent} size={size} className={className} />;
 };
 
-const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude, chatMessage, isVip, equippedAvatar, mdcPoints, cochons, isCochonMode, hand, revealed }) => {
-    
-    // --- ZONE DE RÉGLAGE MANUEL DU POSITIONNEMENT DES DOMINOS ---
-    let handPositionClass = "";
-
-    if (position === 'top-left') {
-        // BOT 1 (Haut Gauche - Chaton)
-        // 'left-35' : Aligné à gauche de l'avatar
-        // 'mt-6' : Descend de 24px (pour passer sous le cercle)
-        // Tu peux mettre 'left-[-10px]' pour décaler vers la gauche ou 'left-[10px]' vers la droite
-        handPositionClass = "top-full mt-6 left-[-0px]"; 
-    } 
-    else if (position === 'top-right') {
-        // BOT 2 (Haut Droite - Valou)
-        // 'right-0' : Aligné à DROITE de l'avatar (IMPORTANT pour ne pas sortir de l'écran)
-        // 'mt-6' : Descend de 24px
-        // Tu peux mettre 'right-[-20px]' pour le coller encore plus au bord droit
-        handPositionClass = "top-full mt-6 right-[-0px]"; 
-    } 
-    else {
-        // JOUEUR (Bas - Toi)
-        // 'bottom-full' : Au dessus de l'avatar
-        // 'mb-6' : Monte de 24px
-        // 'left-1/2 -translate-x-1/2' : Parfaitement centré
-        handPositionClass = "bottom-full mb-6 left-1/2 -translate-x-1/2";
-    }
-    // ------------------------------------------------------------
-
+const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude, chatMessage, isVip, equippedAvatar, mdcPoints, cochons, isCochonMode }) => {
     const getPosStyle = () => {
         switch(position) {
           case 'top-left': return { top: '40px', left: '2px', flexDirection: 'row' };
@@ -460,19 +433,17 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
         }
     };
     const style = getPosStyle();
-    
-    const bubbleStyle = position === 'bottom-right' ? "bottom-24 right-20" : position === 'top-left' ? "top-full mt-2 left-0" : "top-full mt-2 right-0";
+    const bubbleStyle = position === 'bottom-right'
+        ? "bottom-24 right-20"
+        : position === 'top-left' ? "top-full mt-2 left-0" : "top-full mt-2 right-0";
+
+    // DÉCISION DE LA COULEUR ET DU TEXTE SELON LE MODE
     const scoreColor = isCochonMode ? 'text-pink-500' : 'text-yellow-500';
     const scoreLabel = isCochonMode ? '🐷' : 'Pts';
     const scoreValue = isCochonMode ? (cochons || 0) : mdcPoints;
 
     return (
-        <div className={`absolute flex gap-2 md:gap-4 transition-all duration-300 items-center 
-            ${(active || revealed) ? 'scale-105 opacity-100 z-[100]' : 'opacity-80 scale-100 z-20'} 
-            scale-[0.65] md:scale-100 origin-${position.includes('left') ? 'top-left' : 'top-right'}`} 
-            style={style}
-        >
-            {/* BULLE DE CHAT */}
+        <div className={`absolute flex gap-2 md:gap-4 transition-all duration-300 items-center ${active ? 'scale-105 opacity-100 z-[100]' : 'opacity-80 scale-100'} scale-[0.65] md:scale-100 origin-${position.includes('left') ? 'top-left' : 'top-right'}`} style={style}>
             {chatMessage && (
                 <div className={`absolute ${bubbleStyle} z-[150] animate-in slide-in-from-bottom-2 fade-in duration-300 w-max`}>
                     <div className="bg-white text-black font-black text-xs md:text-sm px-3 py-2 rounded-xl shadow-2xl border-2 border-black relative max-w-[150px] md:max-w-[200px] text-center uppercase tracking-tight">
@@ -481,40 +452,25 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
                     </div>
                 </div>
             )}
-
-            {/* ZONE CENTRALE : AVATAR + COMPTEUR + DOMINOS */}
-            <div className="relative flex flex-col items-center">
-                
-                {/* 1. L'Avatar */}
+            <div className="relative">
                 <div className={`w-10 h-10 md:w-24 md:h-24 rounded-full border-2 md:border-4 flex items-center justify-center bg-zinc-950 transition-all duration-500 ${active ? 'border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.5)]' : 'border-zinc-700 shadow-xl'}`}>
                     {isBot ? <SafeIcon icon={Icons.Wifi} className={`w-5 h-5 md:w-9 md:h-9 ${active ? "text-red-500" : "text-zinc-600"}`} /> : <div className={active ? "text-red-500" : "text-zinc-500"}>{getAvatarIcon(equippedAvatar, 20, "w-5 h-5 md:w-9 md:h-9")}</div>}
                     {active && <div className="absolute -top-2 -right-1 md:-top-3 md:-right-1 bg-red-600 text-white text-[6px] md:text-[9px] font-black px-1 py-0.5 rounded uppercase shadow-lg">JOUE</div>}
                 </div>
-                
-                {/* 2. Le Compteur */}
-                <div className="absolute -bottom-1 -left-1 w-5 h-5 md:w-10 md:h-10 bg-white text-black rounded-full border-2 md:border-4 border-zinc-950 flex items-center justify-center shadow-lg z-10">
-                     <span className="font-black text-[8px] md:text-sm">{cardsCount}</span>
-                </div>
-
-                {/* 3. Les Dominos Révélés (POSITIONNÉS AVEC TA VARIABLE MANUELLE) */}
-                {revealed && hand && hand.length > 0 && (
-                    <div className={`absolute z-[200] flex gap-1 bg-black/90 backdrop-blur-md p-1.5 rounded-lg border border-white/20 shadow-2xl animate-in zoom-in slide-in-from-top-2 duration-300 min-w-max ${handPositionClass}`}>
-                        {hand.map((tile, i) => (
-                            <DominoTile key={i} v1={tile.v1} v2={tile.v2} size="sm" className="scale-75 origin-center" skinId="skin_classic" />
-                        ))}
-                    </div>
-                )}
+                <div className="absolute -bottom-1 -left-1 w-5 h-5 md:w-10 md:h-10 bg-white text-black rounded-full border-2 md:border-4 border-zinc-950 flex items-center justify-center shadow-lg"><span className="font-black text-[8px] md:text-sm">{cardsCount}</span></div>
             </div>
-            
-            {/* PANNEAU NOM + SCORE */}
+           
             <div className={`flex flex-col ${position === 'top-left' ? 'items-start' : 'items-end'} bg-zinc-900/90 backdrop-blur-xl px-2 py-1 md:px-5 md:py-3 rounded-md md:rounded-lg border border-zinc-700 shadow-2xl min-w-[70px] md:min-w-[140px]`}>
                 <span className={`font-sans font-bold text-[8px] md:text-xs tracking-widest uppercase mb-0.5 md:mb-1 flex items-center gap-1 ${isVip ? 'text-yellow-400' : 'text-white'}`}>{isVip && <SafeIcon icon={Icons.Crown} size={8} className="md:w-3 md:h-3 text-yellow-400 fill-yellow-400" />}{name}</span>
                 <div className="flex items-center gap-2 md:gap-3">
                     <div className="flex flex-col items-center">
+                        {/* MODIFICATION : text-green-500 -> text-lime-400 (Vert Fluo) */}
                         <span className="text-[5px] md:text-[8px] text-lime-400 font-black uppercase">V</span>
                         <span className="text-sm md:text-4xl leading-none font-mono font-black text-lime-400">{wins}</span>
                     </div>
                     <div className="w-[1px] h-4 md:h-8 bg-zinc-700"></div>
+                   
+                    {/* C'EST ICI QUE CA CHANGE SELON LE MODE */}
                     <div className="flex flex-col items-center">
                         <span className={`text-[5px] md:text-[8px] font-black uppercase tracking-tighter text-center ${scoreColor}`}>{scoreLabel}</span>
                         <span className={`text-sm md:text-4xl leading-none font-mono font-black ${scoreColor}`}>{scoreValue}</span>
@@ -525,22 +481,6 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
         </div>
     );
 };
-
-            {/* MODIFICATION : Positionnement latéral pour les Bots (Gauche/Droite) */}
-            {revealed && hand && hand.length > 0 && (
-                <div className={`absolute z-[200] flex gap-1 bg-black/80 backdrop-blur-md p-2 rounded-xl border border-white/10 shadow-2xl animate-in zoom-in duration-300
-                    ${position === 'top-left' 
-                        ? 'left-full ml-4 top-1/2 -translate-y-1/2' // Bot 1 : À sa droite, centré verticalement
-                        : position === 'top-right' 
-                            ? 'right-full mr-4 top-1/2 -translate-y-1/2' // Bot 2 : À sa gauche, centré verticalement
-                            : 'bottom-full mb-4 left-1/2 -translate-x-1/2' // Joueur : Au dessus (inchangé)
-                    }
-                `}>
-                    {hand.map((tile, i) => (
-                        <DominoTile key={i} v1={tile.v1} v2={tile.v2} size="sm" className="scale-75 origin-center" skinId="skin_classic" />
-                    ))}
-                </div>
-            )}
 
 // ... TournamentBanner, AdOverlay ...
 const TournamentBanner = ({ onJoin }) => {
@@ -759,29 +699,29 @@ const HomeScreen = ({ onNavigate, user, onTournamentClick }) => {
       </div>
       {/* BAS : BOUTONS TAILLE AJUSTÉE (Mobile: Compact / PC: Normal) */}
       <div className="absolute bottom-6 w-full px-2 z-20 flex justify-center items-end gap-2 md:gap-6 pointer-events-none">
-        
+       
         {/* BOUTON PROFIL (Gauche) - Redirige vers 'member' */}
-        <Button 
-            onClick={() => onNavigate('member')} 
-            variant="secondary" 
+        <Button
+            onClick={() => onNavigate('member')}
+            variant="secondary"
             className="pointer-events-auto flex-1 max-w-[100px] md:max-w-none px-0 md:px-6 py-3 text-[10px] md:text-sm border-2 border-zinc-600 hover:border-white whitespace-nowrap"
         >
             <SafeIcon icon={Icons.User} size={16} className="mr-1 md:mr-2"/> PROFIL
         </Button>
 
         {/* BOUTON BOUTIQUE (Centre) - Redirige vers 'shop' - Un peu plus gros */}
-        <Button 
-            onClick={() => onNavigate('shop')} 
-            variant="shop" 
+        <Button
+            onClick={() => onNavigate('shop')}
+            variant="shop"
             className="pointer-events-auto flex-[1.4] max-w-[150px] md:max-w-none px-1 md:px-8 py-4 text-xs md:text-base border-2 border-purple-500 hover:border-purple-300 text-white font-black shadow-2xl whitespace-nowrap mb-1"
         >
             <SafeIcon icon={Icons.ShoppingBag} size={18} className="mr-1 md:mr-2"/> BOUTIQUE
         </Button>
 
         {/* BOUTON RANK (Droite) - Redirige vers 'ranking' */}
-        <Button 
-            onClick={() => onNavigate('ranking')} 
-            variant="secondary" 
+        <Button
+            onClick={() => onNavigate('ranking')}
+            variant="secondary"
             className="pointer-events-auto flex-1 max-w-[100px] md:max-w-none px-0 md:px-6 py-3 text-[10px] md:text-sm border-2 border-zinc-600 hover:border-white whitespace-nowrap"
         >
             <SafeIcon icon={Icons.TrendingUp} size={16} className="mr-1 md:mr-2"/> RANK
@@ -1018,16 +958,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
     }
     return () => clearInterval(timer);
   }, [timeLeft, gameState.status, gameState.pendingChoice, gameState.turnIndex]);
-
-  // NOUVEAU : Gère le délai de 1.5s entre la fin du jeu et l'apparition de la bannière victoire
-  useEffect(() => {
-      if (gameState.status === 'revealing') {
-          const t = setTimeout(() => {
-              setGameState(prev => ({ ...prev, status: 'winning_animation' }));
-          }, 2000); // 2.0 secondes pour voir les dominos adverses
-          return () => clearTimeout(t);
-      }
-  }, [gameState.status]);
 
   useEffect(() => {
       if (gameState.status === 'winning_animation') {
@@ -1266,19 +1196,19 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
     // MODIFICATION : Son "Clac" plus réaliste (type domino sur table)
     // Source fiable Google (Wood Plank Flick) qui ressemble beaucoup à un domino
     const audio = new Audio('https://actions.google.com/sounds/v1/impacts/wood_plank_flick.ogg');
-    
+   
     // ASTUCE DE PRO : On change légèrement la vitesse (entre 0.9 et 1.1) à chaque coup
     // pour que le son ne soit jamais exactement le même (effet naturel)
     audio.playbackRate = 0.9 + Math.random() * 0.2;
     audio.volume = 1.0;
-    
+   
     const playPromise = audio.play();
     if (playPromise !== undefined) {
         playPromise.catch(error => { console.log("Audio bloqué:", error); });
     }
     const playerName = gameState.players[id].name;
     addLog({ player: playerName, action: 'Posé', info: `[${tile.v1}|${tile.v2}]` });
-    
+   
     // ... Le reste de la fonction reste STRICTEMENT identique ...
     const isWin = gameState.players[id].hand.length === 1 && gameState.players[id].hand[0].id === tile.id;
     if (isWin) {
@@ -1302,8 +1232,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               players: newPlayers,
               board: newBoard,
               ends: newEnds,
-              // MODIFICATION : On passe en 'revealing' au lieu de 'winning_animation'
-              status: 'revealing', 
+              status: 'winning_animation',
               winnerId: id,
               pendingChoice: null,
               mandatoryTile: null
@@ -1333,10 +1262,10 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
 
       {/* HEADER (Objectif déplacé à droite pour meilleure visibilité) */}
       <div className="absolute top-0 left-0 w-full z-[60] flex justify-between items-center px-4 h-12 bg-black/40 backdrop-blur-md border-b border-white/5 shadow-2xl">
-          
+         
           {/* GAUCHE : Quitter */}
           <Button variant="ghost" onClick={onExit} className="p-1"><SafeIcon icon={Icons.X} size={24} /></Button>
-          
+         
           {/* CENTRE : Timer Seul (Plus gros et centré) */}
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
               <span className="text-3xl font-black font-mono text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-widest">
@@ -1346,7 +1275,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
 
           {/* DROITE : Objectif + Mise + Plein écran */}
           <div className="flex items-center gap-2">
-              
+             
               {/* NOUVEL EMPLACEMENT : Objectif (Badge Bleu/Visible) */}
               <div className="flex flex-col items-end mr-1 bg-blue-900/40 px-2 py-1 rounded border border-blue-500/30">
                   <span className="text-[8px] text-blue-200 font-bold uppercase leading-none mb-0.5">Objectif</span>
@@ -1358,7 +1287,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               <span className="text-[10px] text-yellow-500 font-black font-mono bg-black/50 px-2 py-1.5 rounded border border-yellow-500/30 shadow-inner">
                   {config.stake} OR
               </span>
-              
+             
               <button onClick={toggleFullScreen} className="p-2 bg-black/30 rounded hover:bg-white/10 transition-colors border border-white/5">
                   <SafeIcon icon={Icons.Maximize} size={18} className="text-zinc-300" />
               </button>
@@ -1406,9 +1335,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               mdcPoints={gameState.players[1].mdcPoints}
               cochons={gameState.players[1].cochonsTotal}
               isCochonMode={config.format === 'cochons'}
-              // AJOUTER CECI :
-              hand={gameState.players[1].hand}
-              revealed={gameState.status !== 'playing' && gameState.status !== 'dealing' }
           />
 
           <PlayerAvatar
@@ -1426,26 +1352,23 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               mdcPoints={gameState.players[2].mdcPoints}
               cochons={gameState.players[2].cochonsTotal}
               isCochonMode={config.format === 'cochons'}
-              // AJOUTER CECI :
-              hand={gameState.players[2].hand}
-              revealed={gameState.status !== 'playing' && gameState.status !== 'dealing' }
           />
           {/* ZONE PLATEAU (CORRIGÉE : Alignement Flexbox restauré) */}
           <div className="w-full h-full flex items-center justify-center pointer-events-none relative z-10">
-            
+           
             {/* Définition des animations (CSS) */}
             <style>{`
-                @keyframes slideFromBottom { 
-                    0% { transform: translateY(300px) scale(1.5); opacity: 0; } 
-                    100% { transform: translateY(0) scale(1); opacity: 1; } 
+                @keyframes slideFromBottom {
+                    0% { transform: translateY(300px) scale(1.5); opacity: 0; }
+                    100% { transform: translateY(0) scale(1); opacity: 1; }
                 }
-                @keyframes slideFromTopLeft { 
-                    0% { transform: translate(-300px, -300px) scale(0.5); opacity: 0; } 
-                    100% { transform: translate(0, 0) scale(1); opacity: 1; } 
+                @keyframes slideFromTopLeft {
+                    0% { transform: translate(-300px, -300px) scale(0.5); opacity: 0; }
+                    100% { transform: translate(0, 0) scale(1); opacity: 1; }
                 }
-                @keyframes slideFromTopRight { 
-                    0% { transform: translate(300px, -300px) scale(0.5); opacity: 0; } 
-                    100% { transform: translate(0, 0) scale(1); opacity: 1; } 
+                @keyframes slideFromTopRight {
+                    0% { transform: translate(300px, -300px) scale(0.5); opacity: 0; }
+                    100% { transform: translate(0, 0) scale(1); opacity: 1; }
                 }
                 .anim-p0 { animation: slideFromBottom 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
                 .anim-p1 { animation: slideFromTopLeft 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
@@ -1455,7 +1378,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
             <div ref={boardRef} className="flex items-center justify-center origin-center drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] whitespace-nowrap w-max" style={{ transform: `scale(${zoomScale})`, transition: 'transform 0.5s ease-out' }}>
                 {gameState.board.map((tile, i) => {
                     const isNew = (Date.now() - (tile.placedAt || 0)) < 1000;
-                    
+                   
                     let animClass = "";
                     // On applique l'animation et un z-index élevé pour passer devant
                     if (isNew) {
@@ -1571,12 +1494,8 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
       </div>
 
       {/* MODAL FIN DE MANCHE */}
-      {/* 1. On affiche le modal UNIQUEMENT si la partie est officiellement terminée (plus de 'revealing' ni d'animation) */}
-      {['manche_over', 'partie_over', 'partie_draw', 'tournoi_over'].includes(gameState.status) && (
-        
-        // 2. Fond transparent (bg-black/40) pour voir les dominos adverses en arrière-plan
-        <div className="absolute inset-0 z-[300] bg-black/40 flex flex-col items-center justify-center p-4 text-center backdrop-blur-sm animate-in fade-in duration-500 text-white">
-           
+      {(gameState.status !== 'playing' && gameState.status !== 'dealing' && gameState.status !== 'winning_animation') && (
+        <div className="absolute inset-0 z-[300] bg-black/95 flex flex-col items-center justify-center p-4 text-center backdrop-blur-xl animate-in fade-in duration-500 text-white">
            <div className="bg-slate-900 border-2 border-red-700 p-4 rounded-2xl shadow-2xl max-w-lg w-full relative overflow-hidden text-white flex flex-col max-h-[85vh]">
              <div className="absolute top-0 left-0 w-full h-1 bg-red-500 shadow-[0_0_10px_#ef4444]"></div>
              
@@ -1671,11 +1590,9 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                 ) : (
                     <Button onClick={onExit} className="flex-1 py-3 text-sm text-blue-200">RETOUR MENU</Button>
                 )}
-                
+               
                 <button
                     onClick={() => {
-                        // Astuce : On cache juste le modal visuellement si l'utilisateur veut voir le plateau
-                        // Mais dans cette version React simple, on peut juste utiliser une alerte ou laisser comme ça.
                         alert("Le tableau reste affiché. Utilisez les boutons pour continuer.");
                     }}
                     className="p-3 bg-zinc-800 rounded-xl hover:bg-red-900/50 transition-colors border border-zinc-600 text-red-400"
@@ -1687,6 +1604,9 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
            </div>
         </div>
       )}
+    </div>
+  );
+};
 
 const MemberScreen = ({ onBack, user, onLogout }) => {
     const winRate = user.stats.played > 0 ? ((user.stats.won / user.stats.played) * 100).toFixed(1) : "0.0";
