@@ -91,6 +91,20 @@ const MOCK_DB = {
       equippedBoard: 'board_classic',
       equippedAvatar: 'avatar_classic',
       stats: { played: 10, won: 2, cochonsDonnes: 1, cochonsPris: 8, points: 45 }
+    },
+    // --- NOUVEAU JOUEUR ---
+    {
+      id: 3,
+      pseudo: "joueur1",
+      password: "123",
+      role: "user",
+      isVip: false,
+      wallet: { gold: 1000, gems: 50 },
+      inventory: ['skin_classic', 'board_classic', 'avatar_smile'],
+      equippedSkin: 'skin_classic',
+      equippedBoard: 'board_classic',
+      equippedAvatar: 'avatar_smile',
+      stats: { played: 0, won: 0, cochonsDonnes: 0, cochonsPris: 0, points: 0 }
     }
   ],
   items: [
