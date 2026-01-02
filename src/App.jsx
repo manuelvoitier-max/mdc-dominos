@@ -563,6 +563,7 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable, socket }) => {
             
             // Si on est bien dans la liste, on lance la partie
             onJoinTable({
+                mode: 'multi', // <--- AJOUTE CETTE LIGNE OBLIGATOIREMENT !
                 format: table.format.toLowerCase() === 'manches' ? 'manches' : 'points',
                 target: table.max,
                 stake: table.stake,
