@@ -31,24 +31,21 @@ const generateDominoes = () => {
 };
 
 const passerAuTourSuivant = () => {
+    // Sens du jeu : Anti-horaire (Antilles)
     turnIndex = (turnIndex + 2) % 3; 
+    
     const currentPlayer = players[turnIndex];
     if (!currentPlayer) return;
 
-    if (currentPlayer.type === 'bot') {
-        setTimeout(() => jouerBot(turnIndex), 1500);
-    } else {
-        io.emit('your_turn', { playerIndex: turnIndex });
-    }
-};
+    console.log(`👉 C'est au tour de ${currentPlayer.name} (Joueur ${turnIndex})`);
 
-const jouerBot = (botId) => {
-    // Logique Bot simplifiée pour le test
-    io.emit('player_boude', { playerId: botId });
-    passerAuTourSuivant();
+    // On prévient tout le monde de qui doit jouer
+    // Le frontend de celui qui doit jouer débloquera ses dominos
+    io.emit('your_turn', { playerIndex: turnIndex });
 };
 
 const appliquerCoup = (tile, side, playerId) => {
+    // Sécurité : Est-ce que ce domino est déjà posé ?
     if (board.find(d => d.id === tile.id)) return;
     
     let placed = { ...tile, placedAt: Date.now(), sourcePlayerId: playerId };
@@ -67,60 +64,78 @@ const appliquerCoup = (tile, side, playerId) => {
             board.push(placed);
         }
     }
+    
+    // Retirer le domino de la main du joueur
     players[playerId].hand = players[playerId].hand.filter(d => d.id !== tile.id);
+    
+    // Mise à jour du plateau pour tout le monde
     io.emit('board_update', { board, ends, turnIndex: (turnIndex + 2) % 3 });
+    
     passerAuTourSuivant();
 };
 
 io.on('connection', (socket) => {
-    console.log(`🔌 Nouveau: ${socket.id}`);
+    console.log(`🔌 Nouveau client connecté : ${socket.id}`);
 
     socket.on('join_game', (pseudo) => {
-        if (gameStarted) return; // Trop tard
+        if (gameStarted) {
+            console.log(`⛔ Refus connexion ${pseudo} : Partie déjà en cours.`);
+            return; 
+        }
 
-        // Eviter les doublons
+        // On évite les doublons (si le joueur clique deux fois)
         if (!players.find(p => p.id === socket.id)) {
+            // On ajoute un HUMAIN
             players.push({ id: socket.id, name: pseudo, type: 'human', hand: [] });
-            console.log(`👤 ${pseudo} a rejoint. Total Humains: ${players.length}`);
+            console.log(`👤 ${pseudo} a rejoint. Total: ${players.length}/3`);
         }
         
+        // On envoie la liste des joueurs en salle d'attente
         io.emit('update_players', players);
 
-        // Si 2 joueurs sont là
-        const humains = players.filter(p => p.type === 'human');
-        if (humains.length === 2 && !gameStarted) {
+        // --- DÉMARRAGE À 3 JOUEURS ---
+        if (players.length === 3 && !gameStarted) {
             gameStarted = true;
-            console.log("✅ 2 JOUEURS ! LANCEMENT...");
+            console.log("✅ 3 JOUEURS PRÉSENTS ! DISTRIBUTION...");
             
-            // On ajoute LE SEUL ET UNIQUE BOT
-            players.push({ id: 'bot_olivier', name: 'Olivier (Bot)', type: 'bot', hand: [] });
-
+            // On attend 1 seconde pour que tout le monde voie "3/3 joueurs"
             setTimeout(() => {
                 const deck = generateDominoes();
+                
+                // Distribution aux 3 Humains
                 players[0].hand = deck.slice(0, 7);
                 players[1].hand = deck.slice(7, 14);
                 players[2].hand = deck.slice(14, 21);
+                // Le reste (pioche) est ignoré pour l'instant
 
+                // Envoi des mains à chaque joueur personnellement
                 players.forEach((p, index) => {
-                    if (p.type === 'human') {
-                        io.to(p.id).emit('game_start', { 
-                            hand: p.hand, turnIndex: 0, myIndex: index 
-                        });
-                    }
+                    io.to(p.id).emit('game_start', { 
+                        hand: p.hand, 
+                        turnIndex: 0, // Le joueur 0 commence toujours (le premier connecté)
+                        myIndex: index 
+                    });
                 });
+                
+                console.log("🎮 PARTIE LANCÉE (3 HUMAINS)");
             }, 1000);
         }
     });
 
     socket.on('disconnect', () => {
+        console.log(`❌ Départ : ${socket.id}`);
         if (!gameStarted) {
+            // Si la partie n'a pas commencé, on libère la place
             players = players.filter(p => p.id !== socket.id);
             io.emit('update_players', players);
         }
+        // Si la partie a commencé, on garde le joueur "fantôme" pour ne pas planter le jeu des autres
     });
 
     socket.on('play_move', (data) => {
+        // Vérification : Est-ce bien au tour de ce joueur ?
         if (players[turnIndex] && players[turnIndex].id === socket.id) {
+            console.log(`🎲 ${players[turnIndex].name} joue [${data.tile.v1}|${data.tile.v2}]`);
             appliquerCoup(data.tile, data.side, turnIndex);
         }
     });
@@ -128,5 +143,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-    console.log(`⚡ SERVEUR FINAL V3 (SANS CHATON) PRÊT !`);
+    console.log(`⚡ SERVEUR 3 JOUEURS PRÊT (Port ${PORT})`);
 });
