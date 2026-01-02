@@ -28,50 +28,64 @@ const generateDominoes = () => {
     return dominoes.sort(() => Math.random() - 0.5);
 };
 
-let players = []; 
+// --- MÉMOIRE DU JEU ---
+let players = [];
+let board = [];      // Le plateau commun
+let ends = null;     // Les extrémités { left, right }
+let turnIndex = 0;   // À qui le tour ?
 
 io.on('connection', (socket) => {
     console.log(`🔌 Connecté : ${socket.id}`);
 
-    // 1. Un joueur rejoint
+    // 1. REJOINDRE
     socket.on('join_game', (pseudo) => {
-        // Pour l'instant, on nettoie tout pour tester seul
-        players = []; 
-        
+        // Reset pour le test (on efface tout quand qqn arrive)
+        players = []; board = []; ends = null; turnIndex = 0;
+
         const newPlayer = { id: socket.id, name: pseudo, hand: [] };
         players.push(newPlayer);
-        console.log(`${pseudo} a rejoint la table.`);
         
-        // On prévient le joueur qu'il est bien inscrit
         socket.emit('update_players', players);
 
-        // TEST : On lance la partie TOUT DE SUITE avec des bots simulés
-        setTimeout(() => {
-            console.log("🎮 Lancement de la partie !");
-            startGame();
-        }, 1000);
+        // Lancement immédiat pour le test
+        setTimeout(() => startGame(), 500);
     });
 
-    // Fonction pour démarrer et distribuer
     const startGame = () => {
         const deck = generateDominoes();
-        
-        // On prend le joueur réel (Toi)
-        const realPlayer = players[0];
-        
-        // On découpe le jeu : 7 pour toi
-        const hand = deck.slice(0, 7);
-        
-        // On envoie TA main spécifique
-        io.to(realPlayer.id).emit('game_start', {
-            hand: hand,
-            turnIndex: 0 // C'est au premier joueur de jouer
-        });
+        const hand = deck.slice(0, 7); // 7 dominos pour le joueur
+        // On envoie la main et le plateau vide
+        io.emit('game_start', { hand: hand, turnIndex: 0, board: [] });
     };
 
-    socket.on('disconnect', () => {
-        console.log(`❌ Déconnexion : ${socket.id}`);
-        players = players.filter(p => p.id !== socket.id);
+    // 2. JOUER UN COUP (Le cœur du jeu)
+    socket.on('play_move', (data) => {
+        // data = { tile, side, playerId }
+        console.log(`Coup reçu : [${data.tile.v1}|${data.tile.v2}] côté ${data.side}`);
+
+        // --- LOGIQUE DE POSE (Simplifiée pour le test) ---
+        // On prépare le domino (orientation, etc.)
+        let placed = { ...data.tile, placedAt: Date.now(), sourcePlayerId: 0 }; // 0 car tu es le seul vrai joueur
+        
+        // Mise à jour des extrémités (Server Side Logic)
+        if (board.length === 0) {
+            board = [placed];
+            ends = { left: data.tile.v1, right: data.tile.v2 };
+        } else {
+            if (data.side === 'left') {
+                // On inverse si besoin pour que ça colle
+                if (placed.v1 !== ends.left) { let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp; } 
+                ends.left = placed.v1; // La nouvelle extrémité gauche est le bout libre du domino
+                board.unshift(placed); // Ajout au début
+            } else {
+                if (placed.v1 !== ends.right) { let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp; }
+                ends.right = placed.v2;
+                board.push(placed); // Ajout à la fin
+            }
+        }
+
+        // On renvoie le NOUVEAU plateau à tout le monde
+        io.emit('board_update', { board, ends, turnIndex: 1 }); // On passe le tour au bot (fictif)
     });
 });
 

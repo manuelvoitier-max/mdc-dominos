@@ -1248,6 +1248,20 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   };
 
   const playTile = (id, tile, side) => {
+    // --- MODE MULTIJOUEUR ---
+    if (config && config.mode === 'multi') {
+        console.log("Envoi du coup au serveur...", tile);
+        // On envoie l'ordre au serveur
+        socket.emit('play_move', { 
+            tile: tile, 
+            side: side, 
+            playerId: id 
+        });
+        
+        // ET C'EST TOUT ! On ne fait pas de setGameState ici.
+        // On attend que le serveur nous réponde pour bouger le domino.
+        return; 
+    }
     // MODIFICATION : Son "Clac" plus réaliste (type domino sur table)
     // Source fiable Google (Wood Plank Flick) qui ressemble beaucoup à un domino
     const audio = new Audio('https://actions.google.com/sounds/v1/impacts/wood_plank_flick.ogg');
