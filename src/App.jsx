@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import io from 'socket.io-client'; // <--- AJOUTE CETTE LIGNE
+import io from 'socket.io-client';
 
-// Connexion au serveur Labo (Ton ordinateur local)
-const socket = io.connect("https://werner-atelic-subaveragely.ngrok-free.dev"); // <--- AJOUTE CETTE LIGNE
+// Remplace bien par ton lien Ngrok actuel (vérifie qu'il n'a pas changé !)
+const NGROK_URL = "https://werner-atelic-subaveragely.ngrok-free.dev"; 
 
+const socket = io.connect(NGROK_URL, {
+    extraHeaders: {
+        "ngrok-skip-browser-warning": "true"
+    }
+});
 /**
  * --- ICONES SVG INTEGREES (Stable & Autonome) ---
  */
