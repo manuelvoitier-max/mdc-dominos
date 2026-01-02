@@ -1305,16 +1305,42 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               </div>
           )}
          
-          {/* BANNIERE VICTOIRE ANIMATION */}
+          {/* BANNIERE VICTOIRE ANIMATION (AVEC MAINS ADVERSES) */}
           {gameState.status === 'winning_animation' && winningInfo && (
             <div className="absolute inset-0 z-[250] flex flex-col items-center justify-center pointer-events-none animate-in zoom-in duration-500">
-                <div className="bg-black/80 backdrop-blur-lg p-8 rounded-3xl border-4 border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.6)] flex flex-col items-center text-center">
-                    <SafeIcon icon={Icons.Crown} size={64} className="text-yellow-500 mb-4 animate-bounce" />
-                    <h2 className="text-2xl md:text-4xl font-black text-white uppercase italic tracking-tighter mb-2">Victoire de</h2>
-                    <h3 className="text-3xl md:text-5xl font-black text-yellow-400 uppercase mb-8 drop-shadow-lg">{gameState.players[winningInfo.winnerId].name}</h3>
-                    <div className="scale-125 md:scale-150 transform rotate-6">
+                <div className="bg-black/90 backdrop-blur-xl p-8 rounded-3xl border-4 border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.6)] flex flex-col items-center text-center max-w-md w-[90%]">
+                    
+                    {/* INFO VAINQUEUR */}
+                    <SafeIcon icon={Icons.Crown} size={48} className="text-yellow-500 mb-2 animate-bounce" />
+                    <h2 className="text-xl md:text-3xl font-black text-white uppercase italic tracking-tighter mb-1">Victoire de</h2>
+                    <h3 className="text-2xl md:text-4xl font-black text-yellow-400 uppercase mb-6 drop-shadow-lg">{gameState.players[winningInfo.winnerId].name}</h3>
+                    
+                    {/* DOMINO GAGNANT */}
+                    <div className="scale-125 mb-8 transform rotate-6">
                         <DominoTile v1={winningInfo.winningTile.v1} v2={winningInfo.winningTile.v2} size="lg" skinId={user.equippedSkin} />
                     </div>
+
+                    {/* NOUVEAU : AFFICHAGE DES MAINS DES PERDANTS */}
+                    <div className="w-full border-t border-white/20 pt-4 mt-2">
+                        <p className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest mb-3">Mains restantes</p>
+                        <div className="flex flex-col gap-3 w-full">
+                            {gameState.players.filter(p => p.id !== winningInfo.winnerId).map(loser => (
+                                <div key={loser.id} className="flex items-center justify-between bg-white/5 p-2 rounded-lg">
+                                    <span className="text-xs font-bold text-white uppercase mr-4 w-20 text-left truncate">{loser.name}</span>
+                                    <div className="flex gap-1 overflow-x-auto custom-scrollbar pb-1">
+                                        {loser.hand.length > 0 ? (
+                                            loser.hand.map((tile, i) => (
+                                                <DominoTile key={i} v1={tile.v1} v2={tile.v2} size="sm" className="scale-75 origin-center" skinId="skin_classic" />
+                                            ))
+                                        ) : (
+                                            <span className="text-[10px] text-zinc-500 italic">Vide</span>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
                 </div>
             </div>
           )}
