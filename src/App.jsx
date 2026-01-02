@@ -546,16 +546,16 @@ const AdOverlay = ({ onClose, onReward }) => {
 
 // --- ECRAN LOBBY MULTIJOUEUR ---
 // N'oublie pas d'ajouter 'socket' ici dans les {}
-const LobbyScreen = ({ onBack, onJoinTable, onCreateTable, socket }) => { 
+const LobbyScreen = ({ onBack, onJoinTable, onCreateTable, socket, user }) => { 
     const [filterStake, setFilterStake] = useState('all');
     const [loadingTableId, setLoadingTableId] = useState(null);
 
     const handleJoin = (table) => {
         setLoadingTableId(table.id);
         
-        // 1. On prévient le serveur qu'on veut jouer
-        console.log("Envoi de la demande au serveur...");
-        socket.emit('join_game', "Moi"); // On envoie "Moi" ou le pseudo de l'utilisateur
+        console.log("Envoi demande...");
+        // ICI : On envoie le vrai pseudo !
+        socket.emit('join_game', user ? user.pseudo : "Anonyme");
 
         // 2. On écoute la réponse du serveur (mise à jour de la liste)
         socket.once('update_players', (playersList) => {
@@ -2313,6 +2313,7 @@ const App = () => {
         {screen === 'lobby' && <LobbyScreen
     socket={socket}  // <--- AJOUT IMPORTANT ICI
     onBack={() => setScreen('home')}
+    user={currentUser}
     onJoinTable={(cfg) => handleStartGame(cfg)}
     onCreateTable={() => { setSetupMode('multi'); setScreen('setup'); }}
 />}
