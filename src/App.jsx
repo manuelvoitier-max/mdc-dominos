@@ -970,30 +970,46 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   const currentBoard = MOCK_DB.items.find(i => i.id === user.equippedBoard) || MOCK_DB.items.find(i => i.id === 'board_classic');
 
   // 3. LE CERVEAU DU DÉMARRAGE
+  // Dans le useEffect existant (celui avec socket.on('game_start'...))
   useEffect(() => { 
-      // Si on est en mode MULTI (via le lobby)
-      if (config && config.currency === 'gold') { // Détection simple du mode multi pour l'instant
-          console.log("📡 Mode Multi : J'écoute le serveur...");
+      if (config.mode === 'multi') {
           
-          // On écoute l'ordre de démarrage du serveur
+          // 1. Démarrage (Déjà fait)
           socket.on('game_start', (serverData) => {
-              console.log("⚡ C'est parti ! Main reçue du serveur :", serverData.hand);
+             // ... (ton code actuel) ...
+          });
+
+          // 2. MISE À JOUR DU PLATEAU (Nouveau !)
+          socket.on('board_update', (data) => {
+              console.log("📡 Plateau mis à jour par le serveur !", data.board);
               
+              // Petit son "Clac" pour le plaisir
+              const audio = new Audio('https://actions.google.com/sounds/v1/impacts/wood_plank_flick.ogg');
+              audio.play().catch(e => {});
+
               setGameState(prev => ({
                   ...prev,
-                  status: 'playing', // On passe en jeu !
-                  // On met à jour NOTRE main avec celle reçue du serveur
-                  players: prev.players.map((p, i) => {
-                      if (i === 0) return { ...p, hand: serverData.hand }; // Moi (Vrais dominos)
-                      // Les autres (Bots pour l'instant) reçoivent 7 dominos vides pour l'affichage
-                      return { ...p, hand: Array(7).fill({id:0, v1:0, v2:0}) }; 
-                  }),
-                  turnIndex: serverData.turnIndex
+                  board: data.board, // Le serveur impose le plateau
+                  ends: data.ends,
+                  turnIndex: data.turnIndex,
+                  // On retire le domino joué de NOTRE main (si c'était nous)
+                  players: prev.players.map(p => {
+                      if (p.id === 0) { // Si c'est moi
+                          // On filtre pour enlever les dominos qui sont maintenant sur le plateau
+                          // Astuce : on vérifie si l'ID du domino est dans le plateau
+                          const idsOnBoard = data.board.map(b => b.id);
+                          return { ...p, hand: p.hand.filter(h => !idsOnBoard.includes(h.id)) };
+                      }
+                      return p;
+                  })
               }));
           });
 
-          // Nettoyage si on quitte l'écran
-          return () => { socket.off('game_start'); };
+          return () => { 
+              socket.off('game_start'); 
+              socket.off('board_update'); // Nettoyage
+          };
+      }
 
       } else {
           // MODE SOLO CLASSIQUE (Entraînement)
