@@ -43,50 +43,30 @@ const passerAuTourSuivant = () => {
 const appliquerCoup = (tile, side, playerId) => {
     if (board.find(d => d.id === tile.id)) return;
     
-    // 1. DÉTERMINER L'ORIENTATION VISUELLE
-    // Par défaut, un domino est horizontal. Sauf si c'est un double (Vertical).
     let orientation = (tile.v1 === tile.v2) ? 'vertical' : 'horizontal';
-
-    let placed = { 
-        ...tile, 
-        orientation: orientation, // <--- C'EST ÇA QUI MANQUAIT !
-        placedAt: Date.now(), 
-        sourcePlayerId: playerId 
-    };
+    let placed = { ...tile, orientation, placedAt: Date.now(), sourcePlayerId: playerId };
 
     if (board.length === 0) {
         board = [placed];
         ends = { left: tile.v1, right: tile.v2 };
     } else {
         if (side === 'left') {
-            // Si on joue à gauche, le v2 du domino doit toucher le ends.left du plateau
-            if (placed.v2 !== ends.left) { 
-                // Si ça ne matche pas, on inverse le domino
-                let tmp = placed.v1; placed.v1 = placed.v2; placed.v2 = tmp; 
-            }
-            ends.left = placed.v1; // La nouvelle extrémité gauche est le v1 du domino
+            if (placed.v2 !== ends.left) { let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp; }
+            ends.left = placed.v1;
             board.unshift(placed);
         } else {
-            // Si on joue à droite, le v1 du domino doit toucher le ends.right du plateau
-            if (placed.v1 !== ends.right) { 
-                let tmp = placed.v1; placed.v1 = placed.v2; placed.v2 = tmp; 
-            }
-            ends.right = placed.v2; // La nouvelle extrémité droite est le v2 du domino
+            if (placed.v1 !== ends.right) { let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp; }
+            ends.right = placed.v2;
             board.push(placed);
         }
     }
     
-    // Retirer de la main
     players[playerId].hand = players[playerId].hand.filter(d => d.id !== tile.id);
-    
-    // Mise à jour client
     io.emit('board_update', { board, ends, turnIndex: (turnIndex + 2) % 3 });
 
-    // Victoire ?
     if (players[playerId].hand.length === 0) {
         console.log(`🏆 VICTOIRE de ${players[playerId].name}`);
         lastWinnerId = playerId;
-        // On pourrait réinitialiser ici, mais on laisse les joueurs voir le résultat
     } else {
         passerAuTourSuivant();
     }
@@ -105,41 +85,25 @@ const lancerManche = () => {
     let autoPlay = false;
 
     if (lastWinnerId !== null && players[lastWinnerId]) {
-        // Le gagnant d'avant commence
         starterIndex = lastWinnerId;
         autoPlay = false;
         board = [];
         ends = null;
-        console.log(`👑 ${players[starterIndex].name} a la main.`);
     } else {
         // Premier tour : Gros Cochon
-        console.log("🐷 Recherche du Cochon...");
         let maxVal = -1;
         players.forEach((p, index) => {
             p.hand.forEach(tile => {
-                // Priorité aux doubles
                 let val = (tile.v1 === tile.v2) ? (tile.v1 + 100) : (tile.v1 + tile.v2);
-                if (val > maxVal) {
-                    maxVal = val;
-                    starterIndex = index;
-                    startTile = tile;
-                }
+                if (val > maxVal) { maxVal = val; starterIndex = index; startTile = tile; }
             });
         });
-        console.log(`🐷 DÉPART AUTO : ${players[starterIndex].name}`);
         autoPlay = true;
     }
 
-    // SI DÉPART AUTO (COCHON)
     if (autoPlay && startTile) {
         let orientation = (startTile.v1 === startTile.v2) ? 'vertical' : 'horizontal';
-        
-        board = [{ 
-            ...startTile, 
-            orientation: orientation, // <--- ICI AUSSI
-            placedAt: Date.now(), 
-            sourcePlayerId: starterIndex 
-        }];
+        board = [{ ...startTile, orientation, placedAt: Date.now(), sourcePlayerId: starterIndex }];
         ends = { left: startTile.v1, right: startTile.v2 };
         players[starterIndex].hand = players[starterIndex].hand.filter(t => t.id !== startTile.id);
         turnIndex = (starterIndex + 2) % 3;
@@ -149,20 +113,18 @@ const lancerManche = () => {
         turnIndex = starterIndex;
     }
 
-    // ENVOI
+    // ENVOI SÉCURISÉ
     players.forEach((p, index) => {
         io.to(p.id).emit('game_start', { 
             hand: p.hand, 
             turnIndex: turnIndex, 
             myIndex: index,
-            players: players
+            players: players // On envoie la liste complète
         });
     });
 
     if (autoPlay) {
-        setTimeout(() => {
-            io.emit('board_update', { board, ends, turnIndex });
-        }, 500);
+        setTimeout(() => { io.emit('board_update', { board, ends, turnIndex }); }, 500);
     }
 };
 
@@ -170,20 +132,45 @@ io.on('connection', (socket) => {
     console.log(`🔌 Connecté: ${socket.id}`);
 
     socket.on('join_game', (pseudo) => {
-        // Si le joueur est déjà là, on ne fait rien
-        if (players.find(p => p.id === socket.id)) return;
-
-        if (players.length < 3) {
+        // Nettoyage des doublons (Même ID socket)
+        const existingIdx = players.findIndex(p => p.id === socket.id);
+        if (existingIdx !== -1) {
+             // Si le joueur est déjà là, on met juste à jour son pseudo
+             players[existingIdx].name = pseudo;
+        } else if (players.length < 3) {
+            // Sinon on l'ajoute
             players.push({ id: socket.id, name: pseudo, type: 'human', hand: [] });
             console.log(`👤 ${pseudo} rejoint (${players.length}/3)`);
-            io.emit('update_players', players);
+        } else {
+            // Si c'est plein
+            socket.emit('game_full');
+            return;
         }
+        
+        // IMPORTANT : On prévient TOUT LE MONDE qu'il y a un changement
+        io.emit('update_players', players);
 
         if (players.length === 3 && !gameStarted) {
             gameStarted = true;
-            console.log("✅ 3 JOUEURS - START");
+            console.log("✅ START !");
             setTimeout(lancerManche, 1000);
         }
+    });
+
+    socket.on('disconnect', () => {
+         console.log(`❌ Départ : ${socket.id}`);
+         // Reset si plus personne
+         if (io.engine.clientsCount === 0) {
+             console.log("🧹 Reset Serveur");
+             players = [];
+             gameStarted = false;
+             lastWinnerId = null;
+             board = [];
+         } else if (!gameStarted) {
+             // Si la partie n'a pas commencé, on enlève le joueur de la liste
+             players = players.filter(p => p.id !== socket.id);
+             io.emit('update_players', players);
+         }
     });
 
     socket.on('play_move', (data) => {
@@ -191,21 +178,9 @@ io.on('connection', (socket) => {
             appliquerCoup(data.tile, data.side, turnIndex);
         }
     });
-    
-    // Gestion propre de la déconnexion pour éviter les blocages
-    socket.on('disconnect', () => {
-         console.log(`❌ Départ : ${socket.id}`);
-         if (io.engine.clientsCount === 0) {
-             console.log("🧹 Reset Serveur");
-             players = [];
-             gameStarted = false;
-             lastWinnerId = null;
-             board = [];
-         }
-    });
 });
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-    console.log(`⚡ SERVEUR CORRIGÉ (ORIENTATION + COCHON)`);
+    console.log(`⚡ SERVEUR V5 (LOBBY FIX) PRÊT`);
 });
