@@ -1,4 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+import io from 'socket.io-client'; // <--- AJOUTE CETTE LIGNE
+
+// Connexion au serveur Labo (Ton ordinateur local)
+const socket = io.connect("http://127.0.0.1:3001"); // <--- AJOUTE CETTE LIGNE
 
 /**
  * --- ICONES SVG INTEGREES (Stable & Autonome) ---
@@ -1998,6 +2002,19 @@ const TournamentScreen = ({ tournament, onStartNext, onBack, onUpdateRounds, isU
  * --- APP PRINCIPALE ---
  */
 const App = () => {
+    // --- MOUCHARD DE CONNEXION ---
+  useEffect(() => {
+    console.log("📡 Tentative de connexion au serveur...");
+    
+    socket.on('connect', () => {
+      console.log("✅ CLIENT : Je suis connecté au serveur ! Mon ID est :", socket.id);
+    });
+
+    socket.on('connect_error', (err) => {
+      console.log("❌ CLIENT : Erreur de connexion", err.message);
+    });
+  }, []);
+  // -----------------------------
   const [screen, setScreen] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
   const [gameConfig, setGameConfig] = useState(null);
