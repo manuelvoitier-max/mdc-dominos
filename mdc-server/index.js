@@ -12,121 +12,143 @@ const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
-// --- VARIABLES GLOBALES ---
+// --- VARIABLES ---
 let players = [];
 let board = [];
 let ends = null;
 let turnIndex = 0;
 
-// --- FONCTIONS CERVEAU ---
+// --- FONCTIONS ---
 const generateDominoes = () => {
     const dominoes = [];
-    let id = 0;
-    // On génère les 28 dominos uniques
     for (let i = 0; i <= 6; i++) {
         for (let j = i; j <= 6; j++) { 
-            // On crée un ID unique "v1-v2" pour éviter les confusions
-            dominoes.push({ id: `${i}-${j}`, v1: i, v2: j }); 
+            // IMPORTANT : On force v1 et v2 à être des NOMBRES
+            dominoes.push({ id: `${i}-${j}`, v1: Number(i), v2: Number(j) }); 
         }
     }
     return dominoes.sort(() => Math.random() - 0.5);
 };
 
 const getValidMoves = (hand, ends) => {
+    // Si pas d'extrémités (premier coup), tout est valide
     if (!ends) return hand.map(d => ({ tile: d, side: 'start' }));
+    
     const moves = [];
     hand.forEach(d => {
-        if (d.v1 === ends.left || d.v2 === ends.left) moves.push({ tile: d, side: 'left' });
-        if (d.v1 === ends.right || d.v2 === ends.right) moves.push({ tile: d, side: 'right' });
+        // DEBUG : On vérifie les types
+        const v1 = Number(d.v1);
+        const v2 = Number(d.v2);
+        const left = Number(ends.left);
+        const right = Number(ends.right);
+
+        if (v1 === left || v2 === left) moves.push({ tile: d, side: 'left' });
+        else if (v1 === right || v2 === right) moves.push({ tile: d, side: 'right' });
     });
     return moves;
 };
 
-// --- GESTION DES TOURS (SENS ANTI-HORAIRE : 0 -> 2 -> 1 -> 0) ---
+// --- TOUR ---
 const passerAuTourSuivant = () => {
-    // Formule magique pour aller dans l'autre sens (Reculer de 1)
-    turnIndex = (turnIndex + 2) % 3;
-    
-    console.log(`👉 C'est au tour du joueur ${turnIndex} (SENS ANTI-HORAIRE)`);
+    turnIndex = (turnIndex + 2) % 3; // Sens Anti-Horaire
+    console.log(`👉 Au tour du joueur ${turnIndex}`);
 
-    // Si c'est un BOT (Joueur 1 ou 2)
     if (turnIndex !== 0) {
-        setTimeout(() => jouerBot(turnIndex), 2000); // 2 secondes de réflexion pour bien voir
+        setTimeout(() => jouerBot(turnIndex), 1500);
     } else {
-        console.log("⏳ Attente du joueur humain...");
-        io.emit('your_turn'); // On prévient le client que c'est à lui
+        io.emit('your_turn');
     }
 };
 
 const jouerBot = (botId) => {
     const botHand = players[botId].hand;
+    
+    // --- MOUCHARD DE DEBUG ---
+    console.log(`\n🔍 --- ANALYSE BOT ${botId} ---`);
+    console.log(`Main du Bot :`, botHand.map(d => `[${d.v1}|${d.v2}]`).join(', '));
+    if (ends) {
+        console.log(`Extrémités Plateau : GAUCHE=${ends.left} | DROITE=${ends.right}`);
+    } else {
+        console.log(`Plateau vide (Etrange si ce n'est pas le 1er tour)`);
+    }
+    // -------------------------
+
     const moves = getValidMoves(botHand, ends);
 
     if (moves.length > 0) {
         const move = moves[0];
-        console.log(`🤖 Bot ${botId} joue [${move.tile.v1}|${move.tile.v2}]`);
+        console.log(`✅ COUP TROUVÉ : [${move.tile.v1}|${move.tile.v2}] sur ${move.side}`);
         appliquerCoup(move.tile, move.side, botId);
     } else {
-        console.log(`🛑 Bot ${botId} BOUDE !`);
-        // On envoie l'info "Boudé" (tu peux ajouter un son côté client plus tard)
+        console.log(`❌ AUCUN COUP VALIDE -> LE BOT BOUDE`);
         io.emit('player_boude', { playerId: botId });
         passerAuTourSuivant();
     }
 };
 
 const appliquerCoup = (tile, side, playerId) => {
-    // SECURITÉ ANTI-DOUBLON : Est-ce que ce domino est déjà sur la table ?
-    const isAlreadyPlayed = board.find(d => d.v1 === tile.v1 && d.v2 === tile.v2);
-    if (isAlreadyPlayed) {
-        console.log("⚠️ ALERTE : Tentative de jouer un domino déjà posé ! Annulation.");
-        return; 
-    }
+    // Conversion de sécurité
+    let v1 = Number(tile.v1);
+    let v2 = Number(tile.v2);
+    // On reconstruit l'objet propre pour éviter les formats bizarres venant du client
+    let placed = { id: tile.id, v1: v1, v2: v2, placedAt: Date.now(), sourcePlayerId: playerId };
 
-    // 1. Mise à jour du plateau
-    let placed = { ...tile, placedAt: Date.now(), sourcePlayerId: playerId };
-    
     if (board.length === 0) {
         board = [placed];
-        ends = { left: tile.v1, right: tile.v2 };
+        ends = { left: v1, right: v2 };
+        console.log(`INIT PLATEAU : [${v1}|${v2}]`);
     } else {
+        // Conversion de sécurité pour les bouts actuels
+        let currentLeft = Number(ends.left);
+        let currentRight = Number(ends.right);
+
         if (side === 'left') {
-            if (placed.v1 !== ends.left) { let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp; }
+            // On veut coller à GAUCHE.
+            // Si le domino est [1|6] et Gauche est 6.
+            // v1=1, v2=6. Left=6.
+            // v2 (6) === Left (6) ? OUI.
+            // Donc ça marche sans inverser. Nouveau bout = v1 (1).
+            
+            // Si le domino est [6|1] (v1=6, v2=1) et Left=6.
+            // v2 (1) !== Left (6).
+            // Donc on INVERSE -> [1|6].
+            if (placed.v2 !== currentLeft) { 
+                console.log(`🔄 Inversion domino pour coller à gauche`);
+                let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp; 
+            }
             ends.left = placed.v1;
             board.unshift(placed);
         } else {
-            if (placed.v1 !== ends.right) { let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp; }
+            // DROITE
+            if (placed.v1 !== currentRight) {
+                console.log(`🔄 Inversion domino pour coller à droite`);
+                let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp;
+            }
             ends.right = placed.v2;
             board.push(placed);
         }
     }
+    
+    console.log(`📌 Bouts mis à jour : G=${ends.left} | D=${ends.right}`);
 
-    // 2. Enlever le domino de la main (Serveur)
-    // On utilise l'ID unique string qu'on a créé au début
     players[playerId].hand = players[playerId].hand.filter(d => d.id !== tile.id);
 
-    // 3. Envoyer la mise à jour
     io.emit('board_update', { 
         board, 
         ends, 
-        turnIndex: (turnIndex + 2) % 3 // On envoie déjà l'index du SUIVANT pour l'affichage
+        turnIndex: (turnIndex + 2) % 3 
     });
 
-    // 4. Suite
     passerAuTourSuivant();
 };
 
-// --- CONNEXION ---
 io.on('connection', (socket) => {
     console.log(`🔌 Connecté : ${socket.id}`);
-
     socket.on('join_game', (pseudo) => {
         players = []; board = []; ends = null; turnIndex = 0;
-
-        // Joueur 0 (Toi)
+        
         players.push({ id: socket.id, name: pseudo, hand: [] });
-        // Joueur 1 (Bot Gauche - Sera le dernier à jouer)
         players.push({ id: 'bot1', name: 'Chaton', hand: [] });
-        // Joueur 2 (Bot Droite - Sera le premier à jouer après toi)
         players.push({ id: 'bot2', name: 'Olivier', hand: [] });
 
         socket.emit('update_players', players);
@@ -136,28 +158,19 @@ io.on('connection', (socket) => {
             players[0].hand = deck.slice(0, 7);
             players[1].hand = deck.slice(7, 14);
             players[2].hand = deck.slice(14, 21);
-
-            console.log("🎮 Partie lancée !");
-            
-            // On envoie la main au joueur
-            io.emit('game_start', { 
-                hand: players[0].hand, 
-                turnIndex: 0 
-            });
+            io.emit('game_start', { hand: players[0].hand, turnIndex: 0 });
+            console.log("🎮 Distribution terminée.");
         }, 500);
     });
 
     socket.on('play_move', (data) => {
-        // Sécurité : Est-ce vraiment ton tour ?
-        if (turnIndex !== 0) {
-            console.log("⛔ Ce n'est pas ton tour !");
-            return;
+        if (turnIndex === 0) {
+            console.log(`\n👤 JOUEUR HUMAIN POSE : [${data.tile.v1}|${data.tile.v2}]`);
+            appliquerCoup(data.tile, data.side, 0);
         }
-        console.log(`👤 Joueur Humain joue [${data.tile.v1}|${data.tile.v2}]`);
-        appliquerCoup(data.tile, data.side, 0);
     });
 });
 
 server.listen(3001, () => {
-    console.log('⚡ MAÎTRE DU JEU (SENS INVERSE) PRÊT SUR LE PORT 3001');
+    console.log('⚡ SERVEUR MOUCHARD PRÊT');
 });
