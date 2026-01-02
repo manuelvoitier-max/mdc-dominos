@@ -921,7 +921,7 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
 };
 
 // ... GameScreen ... (Same as provided above)
-const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) => {
+const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, socket }) => {
  
   // --- GESTION ADVERSAIRES ---
   let bot1Name, bot2Name;
@@ -969,7 +969,37 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
   const ownedPhrases = MOCK_DB.items.filter(i => i.type === 'phrase' && user.inventory.includes(i.id));
   const currentBoard = MOCK_DB.items.find(i => i.id === user.equippedBoard) || MOCK_DB.items.find(i => i.id === 'board_classic');
 
-  useEffect(() => { startRound(1, 1); }, []);
+  // 3. LE CERVEAU DU DÉMARRAGE
+  useEffect(() => { 
+      // Si on est en mode MULTI (via le lobby)
+      if (config && config.currency === 'gold') { // Détection simple du mode multi pour l'instant
+          console.log("📡 Mode Multi : J'écoute le serveur...");
+          
+          // On écoute l'ordre de démarrage du serveur
+          socket.on('game_start', (serverData) => {
+              console.log("⚡ C'est parti ! Main reçue du serveur :", serverData.hand);
+              
+              setGameState(prev => ({
+                  ...prev,
+                  status: 'playing', // On passe en jeu !
+                  // On met à jour NOTRE main avec celle reçue du serveur
+                  players: prev.players.map((p, i) => {
+                      if (i === 0) return { ...p, hand: serverData.hand }; // Moi (Vrais dominos)
+                      // Les autres (Bots pour l'instant) reçoivent 7 dominos vides pour l'affichage
+                      return { ...p, hand: Array(7).fill({id:0, v1:0, v2:0}) }; 
+                  }),
+                  turnIndex: serverData.turnIndex
+              }));
+          });
+
+          // Nettoyage si on quitte l'écran
+          return () => { socket.off('game_start'); };
+
+      } else {
+          // MODE SOLO CLASSIQUE (Entraînement)
+          startRound(1, 1); 
+      }
+  }, []);
 
   useEffect(() => {
     let timer;
@@ -2244,6 +2274,7 @@ const App = () => {
         )}
 
         {screen === 'game' && <GameScreen
+            socket={socket} // <--- AJOUTE CETTE LIGNE ABSOLUMENT
             key={gameConfig?.gameId || 'solo-game'}
             config={gameConfig}
             onExit={(playersData) => {

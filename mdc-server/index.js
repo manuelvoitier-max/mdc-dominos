@@ -8,58 +8,73 @@ app.use(cors());
 
 const server = http.createServer(app);
 
-// Configuration de Socket.io pour accepter les connexions de ton jeu React
+// Configuration : On accepte ton jeu React sur le port 5173 (Vite)
 const io = new Server(server, {
     cors: {
-        origin: "*", // L'adresse de ton jeu React en local
+        origin: "*", // On ouvre les vannes pour éviter les bugs de connexion
         methods: ["GET", "POST"]
     }
 });
 
-// --- VARIABLES DU JEU (MÉMOIRE DU SERVEUR) ---
-let players = []; // Liste des joueurs connectés
-let gameState = {
-    board: [],
-    turnIndex: 0
+// --- LOGIQUE DU JEU (Cerveau) ---
+const generateDominoes = () => {
+    const dominoes = [];
+    let id = 0;
+    for (let i = 0; i <= 6; i++) {
+        for (let j = i; j <= 6; j++) {
+            dominoes.push({ id: id++, v1: i, v2: j });
+        }
+    }
+    return dominoes.sort(() => Math.random() - 0.5);
 };
 
-// Quand quelqu'un se connecte
+let players = []; 
+
 io.on('connection', (socket) => {
-    console.log(`Un joueur est entré au Labo : ${socket.id}`);
+    console.log(`🔌 Connecté : ${socket.id}`);
 
-    // 1. Un joueur rejoint la table
+    // 1. Un joueur rejoint
     socket.on('join_game', (pseudo) => {
-        if (players.length < 3) {
-            const newPlayer = { id: socket.id, name: pseudo, hand: [] };
-            players.push(newPlayer);
-            
-            // On prévient tout le monde
-            io.emit('update_players', players);
-            console.log(`${pseudo} a rejoint la table.`);
-        } else {
-            socket.emit('error', 'La table est pleine !');
-        }
-    });
-
-    // 2. Un joueur joue un domino
-    socket.on('play_move', (data) => {
-        // data contient : { tile, side, playerId }
-        console.log(`Coup joué par ${socket.id} :`, data.tile);
+        // Pour l'instant, on nettoie tout pour tester seul
+        players = []; 
         
-        // ICI : On devra ajouter la logique de validation plus tard
-        // Pour l'instant, on renvoie le coup à tout le monde pour l'afficher
-        io.emit('move_played', data);
+        const newPlayer = { id: socket.id, name: pseudo, hand: [] };
+        players.push(newPlayer);
+        console.log(`${pseudo} a rejoint la table.`);
+        
+        // On prévient le joueur qu'il est bien inscrit
+        socket.emit('update_players', players);
+
+        // TEST : On lance la partie TOUT DE SUITE avec des bots simulés
+        setTimeout(() => {
+            console.log("🎮 Lancement de la partie !");
+            startGame();
+        }, 1000);
     });
 
-    // Déconnexion
+    // Fonction pour démarrer et distribuer
+    const startGame = () => {
+        const deck = generateDominoes();
+        
+        // On prend le joueur réel (Toi)
+        const realPlayer = players[0];
+        
+        // On découpe le jeu : 7 pour toi
+        const hand = deck.slice(0, 7);
+        
+        // On envoie TA main spécifique
+        io.to(realPlayer.id).emit('game_start', {
+            hand: hand,
+            turnIndex: 0 // C'est au premier joueur de jouer
+        });
+    };
+
     socket.on('disconnect', () => {
-        console.log(`Joueur parti : ${socket.id}`);
+        console.log(`❌ Déconnexion : ${socket.id}`);
         players = players.filter(p => p.id !== socket.id);
-        io.emit('update_players', players);
     });
 });
 
-// Lancer le serveur sur le port 3001 (pour ne pas gêner React qui est sur le 3000)
 server.listen(3001, () => {
-    console.log('⚡ LE LABO EST OUVERT SUR LE PORT 3001');
+    console.log('⚡ SERVEUR DOMINO PRÊT SUR LE PORT 3001');
 });
