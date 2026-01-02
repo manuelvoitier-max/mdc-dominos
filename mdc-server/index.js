@@ -17,6 +17,7 @@ let players = [];
 let board = [];
 let ends = null;
 let turnIndex = 0;
+let gameStarted = false; // Nouvelle variable pour savoir si on joue déjà
 
 // --- FONCTIONS ---
 const generateDominoes = () => {
@@ -39,20 +40,15 @@ const getValidMoves = (hand, ends) => {
     return moves;
 };
 
-// --- TOUR ---
 const passerAuTourSuivant = () => {
-    turnIndex = (turnIndex + 2) % 3; // Sens Anti-Horaire (0 -> 2 -> 1 -> 0)
-    console.log(`👉 Au tour du joueur ${turnIndex}`);
-
+    turnIndex = (turnIndex + 2) % 3; 
     const currentPlayer = players[turnIndex];
 
+    console.log(`👉 Tour de ${currentPlayer.name} (${currentPlayer.type})`);
+
     if (currentPlayer.type === 'bot') {
-        // Si c'est le Bot (Joueur 2), il joue auto
         setTimeout(() => jouerBot(turnIndex), 1500);
     } else {
-        // Si c'est un Humain (Toi ou Ton Ami), on prévient TOUT LE MONDE
-        // Mais seul le client concerné débloquera ses dominos
-        console.log(`⏳ Attente de ${currentPlayer.name} (${currentPlayer.id})...`);
         io.emit('your_turn', { playerIndex: turnIndex });
     }
 };
@@ -63,10 +59,10 @@ const jouerBot = (botId) => {
 
     if (moves.length > 0) {
         const move = moves[0];
-        console.log(`🤖 Bot ${botId} joue [${move.tile.v1}|${move.tile.v2}]`);
+        console.log(`🤖 Bot joue [${move.tile.v1}|${move.tile.v2}]`);
         appliquerCoup(move.tile, move.side, botId);
     } else {
-        console.log(`🛑 Bot ${botId} BOUDE !`);
+        console.log(`🛑 Bot BOUDE`);
         io.emit('player_boude', { playerId: botId });
         passerAuTourSuivant();
     }
@@ -95,10 +91,7 @@ const appliquerCoup = (tile, side, playerId) => {
 
     players[playerId].hand = players[playerId].hand.filter(d => d.id !== tile.id);
 
-    io.emit('board_update', { 
-        board, ends, turnIndex: (turnIndex + 2) % 3 
-    });
-
+    io.emit('board_update', { board, ends, turnIndex: (turnIndex + 2) % 3 });
     passerAuTourSuivant();
 };
 
@@ -106,68 +99,72 @@ io.on('connection', (socket) => {
     console.log(`🔌 Connecté : ${socket.id}`);
 
     socket.on('join_game', (pseudo) => {
-        // Si la partie est déjà pleine (3 joueurs dont le bot), on refuse
-        if (players.length >= 3) return;
+        // Si la partie est déjà lancée, on refuse les nouveaux (sauf reconnexion future)
+        if (gameStarted) return;
 
-        console.log(`👤 ${pseudo} rejoint la table.`);
-        
-        // On ajoute le joueur réel
-        players.push({ id: socket.id, name: pseudo, type: 'human', hand: [] });
-        
-        // On prévient tout le monde de qui est là
+        // On vérifie si le joueur est déjà là pour éviter les doublons
+        const existingPlayer = players.find(p => p.id === socket.id);
+        if (!existingPlayer) {
+             // On ajoute le joueur
+            players.push({ id: socket.id, name: pseudo, type: 'human', hand: [] });
+            console.log(`➕ ${pseudo} a rejoint. Total: ${players.length}/2 Humains requis.`);
+        }
+
         io.emit('update_players', players);
 
-        // --- CONDITIONS DE DÉMARRAGE ---
-        // Si on a 2 Humains, on ajoute 1 Bot et on lance !
-        if (players.filter(p => p.type === 'human').length === 2) {
-            
-            console.log("✅ 2 Joueurs présents ! Ajout du Bot et Lancement...");
-            
-            // Ajout du Bot (Joueur 2)
+        // --- DÉMARRAGE ---
+        const humains = players.filter(p => p.type === 'human');
+        
+        if (humains.length === 2 && !gameStarted) {
+            console.log("✅ 2 JOUEURS PRÊTS ! LANCEMENT DANS 2 SECONDES...");
+            gameStarted = true; // On verrouille le démarrage
+
+            // Ajout du Bot
             players.push({ id: 'bot_olivier', name: 'Olivier (Bot)', type: 'bot', hand: [] });
 
-            // Lancement
             setTimeout(() => {
                 const deck = generateDominoes();
                 players[0].hand = deck.slice(0, 7);
                 players[1].hand = deck.slice(7, 14);
-                players[2].hand = deck.slice(14, 21); // Main du Bot
+                players[2].hand = deck.slice(14, 21);
 
-                // On envoie à CHAQUE joueur sa propre main
                 players.forEach((p, index) => {
                     if (p.type === 'human') {
                         io.to(p.id).emit('game_start', { 
                             hand: p.hand, 
                             turnIndex: 0,
-                            myIndex: index // On dit au joueur "Tu es le numéro X"
+                            myIndex: index
                         });
                     }
                 });
-                
-                console.log("🎮 Partie démarrée !");
-            }, 1000);
+                console.log("🎮 PARTIE EN COURS !");
+            }, 2000);
         }
     });
 
     socket.on('play_move', (data) => {
-        // On vérifie que c'est bien au joueur qui a cliqué de jouer
-        if (players[turnIndex].id === socket.id) {
-            console.log(`👤 ${players[turnIndex].name} joue [${data.tile.v1}|${data.tile.v2}]`);
+        if (players[turnIndex] && players[turnIndex].id === socket.id) {
             appliquerCoup(data.tile, data.side, turnIndex);
         }
     });
     
-    // Gérer la déconnexion pour éviter de bloquer le serveur
+    // GESTION DOUCE DE LA DÉCONNEXION
     socket.on('disconnect', () => {
         console.log(`❌ Déconnexion : ${socket.id}`);
-        // Pour faire simple : si quelqu'un part, on reset tout
-        if (players.find(p => p.id === socket.id)) {
-            players = []; board = []; ends = null; turnIndex = 0;
-            console.log("🔄 Reset du serveur (un joueur est parti).");
+        
+        // Si la partie n'a PAS commencé, on retire le joueur pour laisser la place
+        if (!gameStarted) {
+            players = players.filter(p => p.id !== socket.id);
+            console.log(`➖ Un joueur est parti. Reste : ${players.length}`);
+            io.emit('update_players', players);
+        } else {
+            // Si la partie a commencé, on ne touche à rien (pour l'instant), 
+            // sinon ça plante tout le monde. On verra la reconnexion plus tard.
+            console.log("⚠️ Un joueur s'est déconnecté en pleine partie !");
         }
     });
 });
 
 server.listen(3001, () => {
-    console.log('⚡ SALON MULTIJOUEUR (2 HUMAINS + 1 BOT) PRÊT');
+    console.log('⚡ SERVEUR ROBUSTE PRÊT (Port 3001)');
 });
