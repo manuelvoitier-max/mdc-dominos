@@ -23,120 +23,80 @@ const generateDominoes = () => {
     const dominoes = [];
     for (let i = 0; i <= 6; i++) {
         for (let j = i; j <= 6; j++) { 
-            // IMPORTANT : On force v1 et v2 à être des NOMBRES
-            dominoes.push({ id: `${i}-${j}`, v1: Number(i), v2: Number(j) }); 
+            dominoes.push({ id: `${i}-${j}`, v1: i, v2: j }); 
         }
     }
     return dominoes.sort(() => Math.random() - 0.5);
 };
 
 const getValidMoves = (hand, ends) => {
-    // Si pas d'extrémités (premier coup), tout est valide
     if (!ends) return hand.map(d => ({ tile: d, side: 'start' }));
-    
     const moves = [];
     hand.forEach(d => {
-        // DEBUG : On vérifie les types
-        const v1 = Number(d.v1);
-        const v2 = Number(d.v2);
-        const left = Number(ends.left);
-        const right = Number(ends.right);
-
-        if (v1 === left || v2 === left) moves.push({ tile: d, side: 'left' });
-        else if (v1 === right || v2 === right) moves.push({ tile: d, side: 'right' });
+        if (d.v1 === ends.left || d.v2 === ends.left) moves.push({ tile: d, side: 'left' });
+        if (d.v1 === ends.right || d.v2 === ends.right) moves.push({ tile: d, side: 'right' });
     });
     return moves;
 };
 
 // --- TOUR ---
 const passerAuTourSuivant = () => {
-    turnIndex = (turnIndex + 2) % 3; // Sens Anti-Horaire
+    turnIndex = (turnIndex + 2) % 3; // Sens Anti-Horaire (0 -> 2 -> 1 -> 0)
     console.log(`👉 Au tour du joueur ${turnIndex}`);
 
-    if (turnIndex !== 0) {
+    const currentPlayer = players[turnIndex];
+
+    if (currentPlayer.type === 'bot') {
+        // Si c'est le Bot (Joueur 2), il joue auto
         setTimeout(() => jouerBot(turnIndex), 1500);
     } else {
-        io.emit('your_turn');
+        // Si c'est un Humain (Toi ou Ton Ami), on prévient TOUT LE MONDE
+        // Mais seul le client concerné débloquera ses dominos
+        console.log(`⏳ Attente de ${currentPlayer.name} (${currentPlayer.id})...`);
+        io.emit('your_turn', { playerIndex: turnIndex });
     }
 };
 
 const jouerBot = (botId) => {
     const botHand = players[botId].hand;
-    
-    // --- MOUCHARD DE DEBUG ---
-    console.log(`\n🔍 --- ANALYSE BOT ${botId} ---`);
-    console.log(`Main du Bot :`, botHand.map(d => `[${d.v1}|${d.v2}]`).join(', '));
-    if (ends) {
-        console.log(`Extrémités Plateau : GAUCHE=${ends.left} | DROITE=${ends.right}`);
-    } else {
-        console.log(`Plateau vide (Etrange si ce n'est pas le 1er tour)`);
-    }
-    // -------------------------
-
     const moves = getValidMoves(botHand, ends);
 
     if (moves.length > 0) {
         const move = moves[0];
-        console.log(`✅ COUP TROUVÉ : [${move.tile.v1}|${move.tile.v2}] sur ${move.side}`);
+        console.log(`🤖 Bot ${botId} joue [${move.tile.v1}|${move.tile.v2}]`);
         appliquerCoup(move.tile, move.side, botId);
     } else {
-        console.log(`❌ AUCUN COUP VALIDE -> LE BOT BOUDE`);
+        console.log(`🛑 Bot ${botId} BOUDE !`);
         io.emit('player_boude', { playerId: botId });
         passerAuTourSuivant();
     }
 };
 
 const appliquerCoup = (tile, side, playerId) => {
-    // Conversion de sécurité
-    let v1 = Number(tile.v1);
-    let v2 = Number(tile.v2);
-    // On reconstruit l'objet propre pour éviter les formats bizarres venant du client
-    let placed = { id: tile.id, v1: v1, v2: v2, placedAt: Date.now(), sourcePlayerId: playerId };
+    const isAlreadyPlayed = board.find(d => d.id === tile.id);
+    if (isAlreadyPlayed) return;
+
+    let placed = { ...tile, placedAt: Date.now(), sourcePlayerId: playerId };
 
     if (board.length === 0) {
         board = [placed];
-        ends = { left: v1, right: v2 };
-        console.log(`INIT PLATEAU : [${v1}|${v2}]`);
+        ends = { left: tile.v1, right: tile.v2 };
     } else {
-        // Conversion de sécurité pour les bouts actuels
-        let currentLeft = Number(ends.left);
-        let currentRight = Number(ends.right);
-
         if (side === 'left') {
-            // On veut coller à GAUCHE.
-            // Si le domino est [1|6] et Gauche est 6.
-            // v1=1, v2=6. Left=6.
-            // v2 (6) === Left (6) ? OUI.
-            // Donc ça marche sans inverser. Nouveau bout = v1 (1).
-            
-            // Si le domino est [6|1] (v1=6, v2=1) et Left=6.
-            // v2 (1) !== Left (6).
-            // Donc on INVERSE -> [1|6].
-            if (placed.v2 !== currentLeft) { 
-                console.log(`🔄 Inversion domino pour coller à gauche`);
-                let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp; 
-            }
+            if (placed.v2 !== ends.left) { let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp; }
             ends.left = placed.v1;
             board.unshift(placed);
         } else {
-            // DROITE
-            if (placed.v1 !== currentRight) {
-                console.log(`🔄 Inversion domino pour coller à droite`);
-                let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp;
-            }
+            if (placed.v1 !== ends.right) { let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp; }
             ends.right = placed.v2;
             board.push(placed);
         }
     }
-    
-    console.log(`📌 Bouts mis à jour : G=${ends.left} | D=${ends.right}`);
 
     players[playerId].hand = players[playerId].hand.filter(d => d.id !== tile.id);
 
     io.emit('board_update', { 
-        board, 
-        ends, 
-        turnIndex: (turnIndex + 2) % 3 
+        board, ends, turnIndex: (turnIndex + 2) % 3 
     });
 
     passerAuTourSuivant();
@@ -144,33 +104,70 @@ const appliquerCoup = (tile, side, playerId) => {
 
 io.on('connection', (socket) => {
     console.log(`🔌 Connecté : ${socket.id}`);
+
     socket.on('join_game', (pseudo) => {
-        players = []; board = []; ends = null; turnIndex = 0;
+        // Si la partie est déjà pleine (3 joueurs dont le bot), on refuse
+        if (players.length >= 3) return;
+
+        console.log(`👤 ${pseudo} rejoint la table.`);
         
-        players.push({ id: socket.id, name: pseudo, hand: [] });
-        players.push({ id: 'bot1', name: 'Chaton', hand: [] });
-        players.push({ id: 'bot2', name: 'Olivier', hand: [] });
+        // On ajoute le joueur réel
+        players.push({ id: socket.id, name: pseudo, type: 'human', hand: [] });
+        
+        // On prévient tout le monde de qui est là
+        io.emit('update_players', players);
 
-        socket.emit('update_players', players);
+        // --- CONDITIONS DE DÉMARRAGE ---
+        // Si on a 2 Humains, on ajoute 1 Bot et on lance !
+        if (players.filter(p => p.type === 'human').length === 2) {
+            
+            console.log("✅ 2 Joueurs présents ! Ajout du Bot et Lancement...");
+            
+            // Ajout du Bot (Joueur 2)
+            players.push({ id: 'bot_olivier', name: 'Olivier (Bot)', type: 'bot', hand: [] });
 
-        setTimeout(() => {
-            const deck = generateDominoes();
-            players[0].hand = deck.slice(0, 7);
-            players[1].hand = deck.slice(7, 14);
-            players[2].hand = deck.slice(14, 21);
-            io.emit('game_start', { hand: players[0].hand, turnIndex: 0 });
-            console.log("🎮 Distribution terminée.");
-        }, 500);
+            // Lancement
+            setTimeout(() => {
+                const deck = generateDominoes();
+                players[0].hand = deck.slice(0, 7);
+                players[1].hand = deck.slice(7, 14);
+                players[2].hand = deck.slice(14, 21); // Main du Bot
+
+                // On envoie à CHAQUE joueur sa propre main
+                players.forEach((p, index) => {
+                    if (p.type === 'human') {
+                        io.to(p.id).emit('game_start', { 
+                            hand: p.hand, 
+                            turnIndex: 0,
+                            myIndex: index // On dit au joueur "Tu es le numéro X"
+                        });
+                    }
+                });
+                
+                console.log("🎮 Partie démarrée !");
+            }, 1000);
+        }
     });
 
     socket.on('play_move', (data) => {
-        if (turnIndex === 0) {
-            console.log(`\n👤 JOUEUR HUMAIN POSE : [${data.tile.v1}|${data.tile.v2}]`);
-            appliquerCoup(data.tile, data.side, 0);
+        // On vérifie que c'est bien au joueur qui a cliqué de jouer
+        if (players[turnIndex].id === socket.id) {
+            console.log(`👤 ${players[turnIndex].name} joue [${data.tile.v1}|${data.tile.v2}]`);
+            appliquerCoup(data.tile, data.side, turnIndex);
+        }
+    });
+    
+    // Gérer la déconnexion pour éviter de bloquer le serveur
+    socket.on('disconnect', () => {
+        console.log(`❌ Déconnexion : ${socket.id}`);
+        // Pour faire simple : si quelqu'un part, on reset tout
+        if (players.find(p => p.id === socket.id)) {
+            players = []; board = []; ends = null; turnIndex = 0;
+            console.log("🔄 Reset du serveur (un joueur est parti).");
         }
     });
 });
 
 server.listen(3001, () => {
-    console.log('⚡ SERVEUR MOUCHARD PRÊT');
+    console.log('⚡ SALON MULTIJOUEUR (2 HUMAINS + 1 BOT) PRÊT');
 });

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import io from 'socket.io-client'; // <--- AJOUTE CETTE LIGNE
 
 // Connexion au serveur Labo (Ton ordinateur local)
-const socket = io.connect("http://127.0.0.1:3001"); // <--- AJOUTE CETTE LIGNE
+const socket = io.connect("https://werner-atelic-subaveragely.ngrok-free.dev"); // <--- AJOUTE CETTE LIGNE
 
 /**
  * --- ICONES SVG INTEGREES (Stable & Autonome) ---
