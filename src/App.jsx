@@ -563,37 +563,35 @@ const AdOverlay = ({ onClose, onReward }) => {
 const LobbyScreen = ({ onBack, onJoinTable, onCreateTable, socket, user }) => { 
     const [filterStake, setFilterStake] = useState('all');
     const [loadingTableId, setLoadingTableId] = useState(null);
+    const [playersInLobby, setPlayersInLobby] = useState([]); // Pour afficher qui est là
+
+    // AJOUT : Écoute les arrivées dans le lobby
+    useEffect(() => {
+        socket.on('update_players', (players) => {
+            console.log("Mise à jour Lobby:", players);
+            setPlayersInLobby(players);
+        });
+        return () => socket.off('update_players');
+    }, [socket]);
 
     const handleJoin = (table) => {
         setLoadingTableId(table.id);
         
-        console.log("Envoi demande...");
-        // ICI : On envoie le vrai pseudo !
-        socket.emit('join_game', user ? user.pseudo : "Anonyme");
+        // On envoie le vrai pseudo
+        const myPseudo = user ? user.pseudo : "Invité";
+        socket.emit('join_game', myPseudo);
 
-        // 2. On écoute la réponse du serveur (mise à jour de la liste)
-        socket.once('update_players', (playersList) => {
-            console.log("Réponse du serveur : Liste des joueurs", playersList);
-            
-            // Si on est bien dans la liste, on lance la partie
+        // On écoute le démarrage
+        socket.once('game_start', () => {
             onJoinTable({
-                mode: 'multi', // <--- AJOUTE CETTE LIGNE OBLIGATOIREMENT !
+                mode: 'multi',
                 format: table.format.toLowerCase() === 'manches' ? 'manches' : 'points',
                 target: table.max,
                 stake: table.stake,
                 currency: 'gold',
                 difficulty: 'medium'
             });
-            setLoadingTableId(null);
         });
-
-        // Sécurité : Si le serveur ne répond pas en 5 secondes
-        setTimeout(() => {
-            if(loadingTableId) {
-                setLoadingTableId(null);
-                alert("Le serveur ne répond pas...");
-            }
-        }, 5000);
     };
 
     const filteredTables = MOCK_TABLES.filter(t => filterStake === 'all' || t.stake === filterStake);
@@ -667,14 +665,20 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable, socket, user }) => {
                 {loadingTableId && (
                     <div className="fixed inset-0 z-[1000] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6">
                         <div className="w-20 h-20 rounded-full border-4 border-t-green-500 border-zinc-800 animate-spin mb-8"></div>
-                        <h2 className="text-3xl font-black text-white uppercase italic animate-pulse">Recherche d'adversaires...</h2>
-                        <p className="text-zinc-500 mt-2 font-mono">Connexion au serveur Martinique...</p>
+                        <h2 className="text-3xl font-black text-white uppercase italic animate-pulse">En attente des joueurs...</h2>
+                        
+                        {/* AFFICHER QUI EST LÀ */}
+                        <div className="mt-4 bg-zinc-800 p-4 rounded-xl border border-zinc-700 min-w-[200px]">
+                            <p className="text-zinc-500 text-xs mb-2 uppercase">Joueurs prêts ({playersInLobby.length}/3)</p>
+                            {playersInLobby.map((p, i) => (
+                                <div key={i} className="text-white font-bold flex items-center gap-2 justify-center">
+                                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                    {p.name}
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
-           </div>
-        </div>
-    );
-};
 
 const LoginScreen = ({ onLogin }) => {
     const [pseudo, setPseudo] = useState("");
