@@ -1305,35 +1305,54 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
               </div>
           )}
          
-          {/* BANNIERE VICTOIRE ANIMATION (AVEC MAINS ADVERSES) */}
+          {/* BANNIERE VICTOIRE (MODE PAYSAGE : GAGNANT A GAUCHE / PERDANTS A DROITE) */}
           {gameState.status === 'winning_animation' && winningInfo && (
             <div className="absolute inset-0 z-[250] flex flex-col items-center justify-center pointer-events-none animate-in zoom-in duration-500">
-                <div className="bg-black/90 backdrop-blur-xl p-8 rounded-3xl border-4 border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.6)] flex flex-col items-center text-center max-w-md w-[90%]">
+                {/* Conteneur principal en LIGNE (flex-row) pour le mode paysage */}
+                <div className="bg-black/95 backdrop-blur-xl p-6 rounded-3xl border-4 border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.6)] flex flex-row items-center justify-center gap-8 max-w-5xl w-auto pr-8">
                     
-                    {/* INFO VAINQUEUR */}
-                    <SafeIcon icon={Icons.Crown} size={48} className="text-yellow-500 mb-2 animate-bounce" />
-                    <h2 className="text-xl md:text-3xl font-black text-white uppercase italic tracking-tighter mb-1">Victoire de</h2>
-                    <h3 className="text-2xl md:text-4xl font-black text-yellow-400 uppercase mb-6 drop-shadow-lg">{gameState.players[winningInfo.winnerId].name}</h3>
-                    
-                    {/* DOMINO GAGNANT */}
-                    <div className="scale-125 mb-8 transform rotate-6">
-                        <DominoTile v1={winningInfo.winningTile.v1} v2={winningInfo.winningTile.v2} size="lg" skinId={user.equippedSkin} />
+                    {/* PARTIE GAUCHE : LE VAINQUEUR */}
+                    <div className="flex flex-col items-center min-w-[200px]">
+                        <SafeIcon icon={Icons.Crown} size={56} className="text-yellow-500 mb-2 animate-bounce" />
+                        <h2 className="text-xl font-black text-white uppercase italic tracking-tighter mb-0.5">Victoire de</h2>
+                        <h3 className="text-3xl font-black text-yellow-400 uppercase mb-6 drop-shadow-lg max-w-[250px] truncate leading-tight">
+                            {gameState.players[winningInfo.winnerId].name}
+                        </h3>
+                        
+                        {/* Domino Gagnant */}
+                        <div className="scale-150 transform rotate-6 mb-2">
+                            <DominoTile v1={winningInfo.winningTile.v1} v2={winningInfo.winningTile.v2} size="lg" skinId={user.equippedSkin} />
+                        </div>
                     </div>
 
-                    {/* NOUVEAU : AFFICHAGE DES MAINS DES PERDANTS */}
-                    <div className="w-full border-t border-white/20 pt-4 mt-2">
-                        <p className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest mb-3">Mains restantes</p>
+                    {/* SÉPARATEUR VERTICAL */}
+                    <div className="w-0.5 h-48 bg-white/10 rounded-full"></div>
+
+                    {/* PARTIE DROITE : LES PERDANTS */}
+                    <div className="flex flex-col justify-center min-w-[300px]">
+                        <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.2em] mb-4 text-left pl-1">
+                            Mains Restantes
+                        </p>
                         <div className="flex flex-col gap-3 w-full">
                             {gameState.players.filter(p => p.id !== winningInfo.winnerId).map(loser => (
-                                <div key={loser.id} className="flex items-center justify-between bg-white/5 p-2 rounded-lg">
-                                    <span className="text-xs font-bold text-white uppercase mr-4 w-20 text-left truncate">{loser.name}</span>
+                                <div key={loser.id} className="flex flex-col bg-white/5 p-3 rounded-xl border border-white/5">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-xs font-black text-white uppercase flex items-center gap-2">
+                                            {loser.type === 'bot' ? <SafeIcon icon={Icons.Wifi} size={12} className="text-zinc-500"/> : <SafeIcon icon={Icons.User} size={12} className="text-zinc-500"/>}
+                                            {loser.name}
+                                        </span>
+                                        <span className="text-[10px] font-mono text-zinc-400">
+                                            {loser.hand.length > 0 ? calculateHandPoints(loser.hand) + ' pts' : 'Vide'}
+                                        </span>
+                                    </div>
+                                    
                                     <div className="flex gap-1 overflow-x-auto custom-scrollbar pb-1">
                                         {loser.hand.length > 0 ? (
                                             loser.hand.map((tile, i) => (
-                                                <DominoTile key={i} v1={tile.v1} v2={tile.v2} size="sm" className="scale-75 origin-center" skinId="skin_classic" />
+                                                <DominoTile key={i} v1={tile.v1} v2={tile.v2} size="sm" className="scale-90 origin-left" skinId="skin_classic" />
                                             ))
                                         ) : (
-                                            <span className="text-[10px] text-zinc-500 italic">Vide</span>
+                                            <span className="text-[10px] text-zinc-600 italic py-1">Aucun domino</span>
                                         )}
                                     </div>
                                 </div>
