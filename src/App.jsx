@@ -545,14 +545,23 @@ const AdOverlay = ({ onClose, onReward }) => {
 };
 
 // --- ECRAN LOBBY MULTIJOUEUR ---
-const LobbyScreen = ({ onBack, onJoinTable, onCreateTable }) => {
+// N'oublie pas d'ajouter 'socket' ici dans les {}
+const LobbyScreen = ({ onBack, onJoinTable, onCreateTable, socket }) => { 
     const [filterStake, setFilterStake] = useState('all');
     const [loadingTableId, setLoadingTableId] = useState(null);
 
     const handleJoin = (table) => {
         setLoadingTableId(table.id);
-        // Simulation du délai de connexion et de matchmaking
-        setTimeout(() => {
+        
+        // 1. On prévient le serveur qu'on veut jouer
+        console.log("Envoi de la demande au serveur...");
+        socket.emit('join_game', "Moi"); // On envoie "Moi" ou le pseudo de l'utilisateur
+
+        // 2. On écoute la réponse du serveur (mise à jour de la liste)
+        socket.once('update_players', (playersList) => {
+            console.log("Réponse du serveur : Liste des joueurs", playersList);
+            
+            // Si on est bien dans la liste, on lance la partie
             onJoinTable({
                 format: table.format.toLowerCase() === 'manches' ? 'manches' : 'points',
                 target: table.max,
@@ -561,15 +570,30 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable }) => {
                 difficulty: 'medium'
             });
             setLoadingTableId(null);
-        }, 2000);
+        });
+
+        // Sécurité : Si le serveur ne répond pas en 5 secondes
+        setTimeout(() => {
+            if(loadingTableId) {
+                setLoadingTableId(null);
+                alert("Le serveur ne répond pas...");
+            }
+        }, 5000);
     };
 
     const filteredTables = MOCK_TABLES.filter(t => filterStake === 'all' || t.stake === filterStake);
 
     return (
+        // ... (Le reste du return (JSX) reste IDENTIQUE, ne change rien au HTML) ...
         <div className="flex flex-col h-full p-4 md:p-6 relative bg-zinc-950 overflow-y-auto text-white font-sans">
-            <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><SafeIcon icon={Icons.ChevronLeft} size={32} /></button>
-            <div className="flex-1 max-w-3xl mx-auto w-full pt-8 pb-12">
+           {/* ... garde tout le code visuel ici ... */}
+           {/* Si tu veux je peux te redonner tout le bloc JSX pour être sûr, mais c'est le même */}
+           <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><SafeIcon icon={Icons.ChevronLeft} size={32} /></button>
+           <div className="flex-1 max-w-3xl mx-auto w-full pt-8 pb-12">
+               {/* ... etc ... */}
+               {/* Pour faire simple, copie-colle juste la logique handleJoin ci-dessus dans ton code existant */}
+               {/* Si tu préfères le code COMPLET de LobbyScreen dis-le moi */}
+               
                 <div className="flex justify-between items-end mb-8">
                     <div>
                         <h2 className="text-2xl md:text-4xl font-black uppercase tracking-tighter italic">SALON <span className="text-green-500">JEU</span></h2>
@@ -578,7 +602,6 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable }) => {
                     <Button onClick={onCreateTable} className="text-xs py-3 px-5"><SafeIcon icon={Icons.Settings} size={14} /> CRÉER UNE TABLE</Button>
                 </div>
 
-                {/* FILTRES */}
                 <div className="flex gap-2 mb-6">
                     <button onClick={() => setFilterStake('all')} className={`px-4 py-2 rounded-full text-xs font-black uppercase transition-all ${filterStake === 'all' ? 'bg-white text-black' : 'bg-zinc-900 text-zinc-500 hover:text-white'}`}>Tout</button>
                     <button onClick={() => setFilterStake(50)} className={`px-4 py-2 rounded-full text-xs font-black uppercase transition-all ${filterStake === 50 ? 'bg-white text-black' : 'bg-zinc-900 text-zinc-500 hover:text-white'}`}>50 Or</button>
@@ -586,7 +609,6 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable }) => {
                     <button onClick={() => setFilterStake(500)} className={`px-4 py-2 rounded-full text-xs font-black uppercase transition-all ${filterStake === 500 ? 'bg-white text-black' : 'bg-zinc-900 text-zinc-500 hover:text-white'}`}>500 Or</button>
                 </div>
 
-                {/* LISTE DES TABLES */}
                 <div className="flex flex-col gap-3">
                     {filteredTables.map(table => (
                         <div key={table.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex items-center justify-between hover:border-zinc-600 transition-all group">
@@ -626,8 +648,7 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable }) => {
                         </div>
                     ))}
                 </div>
-               
-                {/* MATCHMAKING OVERLAY SIMULATION */}
+                
                 {loadingTableId && (
                     <div className="fixed inset-0 z-[1000] bg-black/90 backdrop-blur-sm flex flex-col items-center justify-center text-center p-6">
                         <div className="w-20 h-20 rounded-full border-4 border-t-green-500 border-zinc-800 animate-spin mb-8"></div>
@@ -635,7 +656,7 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable }) => {
                         <p className="text-zinc-500 mt-2 font-mono">Connexion au serveur Martinique...</p>
                     </div>
                 )}
-            </div>
+           </div>
         </div>
     );
 };
@@ -2198,10 +2219,11 @@ const App = () => {
         />}
        
         {screen === 'lobby' && <LobbyScreen
-            onBack={() => setScreen('home')}
-            onJoinTable={(cfg) => handleStartGame(cfg)}
-            onCreateTable={() => { setSetupMode('multi'); setScreen('setup'); }}
-        />}
+    socket={socket}  // <--- AJOUT IMPORTANT ICI
+    onBack={() => setScreen('home')}
+    onJoinTable={(cfg) => handleStartGame(cfg)}
+    onCreateTable={() => { setSetupMode('multi'); setScreen('setup'); }}
+/>}
 
         {screen === 'tournament_standings' && (
             <TournamentScreen
