@@ -433,14 +433,14 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
         // 'left-35' : Aligné à gauche de l'avatar
         // 'mt-6' : Descend de 24px (pour passer sous le cercle)
         // Tu peux mettre 'left-[-10px]' pour décaler vers la gauche ou 'left-[10px]' vers la droite
-        handPositionClass = "top-full mt-24 left-[-35px]"; 
+        handPositionClass = "top-full mt-6 left-[-0px]"; 
     } 
     else if (position === 'top-right') {
         // BOT 2 (Haut Droite - Valou)
         // 'right-0' : Aligné à DROITE de l'avatar (IMPORTANT pour ne pas sortir de l'écran)
         // 'mt-6' : Descend de 24px
         // Tu peux mettre 'right-[-20px]' pour le coller encore plus au bord droit
-        handPositionClass = "top-full mt-6 right-[-15px]"; 
+        handPositionClass = "top-full mt-6 right-[-0px]"; 
     } 
     else {
         // JOUEUR (Bas - Toi)
