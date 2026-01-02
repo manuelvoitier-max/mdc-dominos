@@ -1328,7 +1328,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                     {/* SÉPARATEUR VERTICAL */}
                     <div className="w-0.5 h-48 bg-white/10 rounded-full"></div>
 
-                    {/* PARTIE DROITE : LES PERDANTS */}
+                    {/* PARTIE DROITE : LES PERDANTS (MODIFIÉ : Juste Nom + Dominos) */}
                     <div className="flex flex-col justify-center min-w-[300px]">
                         <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.2em] mb-4 text-left pl-1">
                             Mains Restantes
@@ -1336,23 +1336,23 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
                         <div className="flex flex-col gap-3 w-full">
                             {gameState.players.filter(p => p.id !== winningInfo.winnerId).map(loser => (
                                 <div key={loser.id} className="flex flex-col bg-white/5 p-3 rounded-xl border border-white/5">
-                                    <div className="flex items-center justify-between mb-2">
+                                    
+                                    {/* 1. NOM DU JOUEUR (Plus de points ici) */}
+                                    <div className="flex items-center justify-start mb-2">
                                         <span className="text-xs font-black text-white uppercase flex items-center gap-2">
                                             {loser.type === 'bot' ? <SafeIcon icon={Icons.Wifi} size={12} className="text-zinc-500"/> : <SafeIcon icon={Icons.User} size={12} className="text-zinc-500"/>}
                                             {loser.name}
                                         </span>
-                                        <span className="text-[10px] font-mono text-zinc-400">
-                                            {loser.hand.length > 0 ? calculateHandPoints(loser.hand) + ' pts' : 'Vide'}
-                                        </span>
                                     </div>
                                     
-                                    <div className="flex gap-1 overflow-x-auto custom-scrollbar pb-1">
+                                    {/* 2. LES DOMINOS VISUELS */}
+                                    <div className="flex gap-1 overflow-x-auto custom-scrollbar pb-1 min-h-[30px] items-center">
                                         {loser.hand.length > 0 ? (
                                             loser.hand.map((tile, i) => (
                                                 <DominoTile key={i} v1={tile.v1} v2={tile.v2} size="sm" className="scale-90 origin-left" skinId="skin_classic" />
                                             ))
                                         ) : (
-                                            <span className="text-[10px] text-zinc-600 italic py-1">Aucun domino</span>
+                                            <span className="text-[10px] text-zinc-600 italic">Plus de dominos</span>
                                         )}
                                     </div>
                                 </div>
