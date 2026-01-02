@@ -424,7 +424,8 @@ const getAvatarIcon = (avatarId, size = 36, className = "") => {
 };
 
 const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude, chatMessage, isVip, equippedAvatar, mdcPoints, cochons, isCochonMode, hand, revealed }) => {
-    // Calcul des styles de positionnement de l'avatar
+    
+    // Positionnement global du bloc joueur sur l'écran
     const getPosStyle = () => {
         switch(position) {
           case 'top-left': return { top: '40px', left: '2px', flexDirection: 'row' };
@@ -435,16 +436,12 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
     };
     const style = getPosStyle();
     
-    const bubbleStyle = position === 'bottom-right'
-        ? "bottom-24 right-20"
-        : position === 'top-left' ? "top-full mt-2 left-0" : "top-full mt-2 right-0";
-
+    const bubbleStyle = position === 'bottom-right' ? "bottom-24 right-20" : position === 'top-left' ? "top-full mt-2 left-0" : "top-full mt-2 right-0";
     const scoreColor = isCochonMode ? 'text-pink-500' : 'text-yellow-500';
     const scoreLabel = isCochonMode ? '🐷' : 'Pts';
     const scoreValue = isCochonMode ? (cochons || 0) : mdcPoints;
 
     return (
-        // Le conteneur principal de l'avatar
         <div className={`absolute flex gap-2 md:gap-4 transition-all duration-300 items-center 
             ${(active || revealed) ? 'scale-105 opacity-100 z-[100]' : 'opacity-80 scale-100 z-20'} 
             scale-[0.65] md:scale-100 origin-${position.includes('left') ? 'top-left' : 'top-right'}`} 
@@ -460,20 +457,31 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
                 </div>
             )}
 
-            {/* AVATAR + COMPTEUR */}
-            <div className="relative">
+            {/* ZONE CENTRALE : AVATAR + COMPTEUR + DOMINOS */}
+            <div className="relative flex flex-col items-center">
+                
+                {/* 1. L'Avatar (Cercle principal) */}
                 <div className={`w-10 h-10 md:w-24 md:h-24 rounded-full border-2 md:border-4 flex items-center justify-center bg-zinc-950 transition-all duration-500 ${active ? 'border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.5)]' : 'border-zinc-700 shadow-xl'}`}>
                     {isBot ? <SafeIcon icon={Icons.Wifi} className={`w-5 h-5 md:w-9 md:h-9 ${active ? "text-red-500" : "text-zinc-600"}`} /> : <div className={active ? "text-red-500" : "text-zinc-500"}>{getAvatarIcon(equippedAvatar, 20, "w-5 h-5 md:w-9 md:h-9")}</div>}
                     {active && <div className="absolute -top-2 -right-1 md:-top-3 md:-right-1 bg-red-600 text-white text-[6px] md:text-[9px] font-black px-1 py-0.5 rounded uppercase shadow-lg">JOUE</div>}
                 </div>
                 
-                {/* CERCLE BLANC (Compteur) */}
+                {/* 2. Le Compteur (Petit rond blanc) - Positionné en absolu par rapport à l'avatar */}
                 <div className="absolute -bottom-1 -left-1 w-5 h-5 md:w-10 md:h-10 bg-white text-black rounded-full border-2 md:border-4 border-zinc-950 flex items-center justify-center shadow-lg z-10">
                      <span className="font-black text-[8px] md:text-sm">{cardsCount}</span>
                 </div>
+
+                {/* 3. Les Dominos Révélés (EN DESSOUS) */}
+                {revealed && hand && hand.length > 0 && (
+                    <div className="absolute top-full mt-6 left-1/2 -translate-x-1/2 z-[200] flex gap-1 bg-black/90 backdrop-blur-md p-1.5 rounded-lg border border-white/20 shadow-2xl animate-in zoom-in slide-in-from-top-2 duration-300 min-w-max">
+                        {hand.map((tile, i) => (
+                            <DominoTile key={i} v1={tile.v1} v2={tile.v2} size="sm" className="scale-75 origin-center" skinId="skin_classic" />
+                        ))}
+                    </div>
+                )}
             </div>
             
-            {/* PANNEAU NOM + SCORE */}
+            {/* PANNEAU NOM + SCORE (Sur le côté) */}
             <div className={`flex flex-col ${position === 'top-left' ? 'items-start' : 'items-end'} bg-zinc-900/90 backdrop-blur-xl px-2 py-1 md:px-5 md:py-3 rounded-md md:rounded-lg border border-zinc-700 shadow-2xl min-w-[70px] md:min-w-[140px]`}>
                 <span className={`font-sans font-bold text-[8px] md:text-xs tracking-widest uppercase mb-0.5 md:mb-1 flex items-center gap-1 ${isVip ? 'text-yellow-400' : 'text-white'}`}>{isVip && <SafeIcon icon={Icons.Crown} size={8} className="md:w-3 md:h-3 text-yellow-400 fill-yellow-400" />}{name}</span>
                 <div className="flex items-center gap-2 md:gap-3">
@@ -489,22 +497,6 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
                 </div>
                 {isBoude && <div className="mt-1 text-white bg-red-600 font-black text-[6px] md:text-[10px] uppercase tracking-widest animate-pulse px-1 py-0.5 rounded">BOUDÉ !!</div>}
             </div>
-
-            {/* DOMINOS RÉVÉLÉS (Positionnement FIXE par rapport au conteneur parent pour éviter les bugs) */}
-            {revealed && hand && hand.length > 0 && (
-                <div className={`absolute z-[200] flex gap-1 bg-black/90 backdrop-blur-md p-2 rounded-xl border border-white/20 shadow-2xl animate-in zoom-in duration-300 min-w-max
-                    ${position === 'top-left' 
-                        ? 'top-[120%] left-0' // Bot 1 : Juste en dessous de lui
-                        : position === 'top-right' 
-                            ? 'top-[120%] right-0' // Bot 2 : Juste en dessous de lui (aligné à droite)
-                            : 'bottom-[120%] right-0' // Joueur : Juste au dessus
-                    }
-                `}>
-                    {hand.map((tile, i) => (
-                        <DominoTile key={i} v1={tile.v1} v2={tile.v2} size="sm" className="scale-90 origin-center" skinId="skin_classic" />
-                    ))}
-                </div>
-            )}
         </div>
     );
 };
