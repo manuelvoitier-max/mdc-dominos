@@ -12,13 +12,13 @@ const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
-// --- VARIABLES D'ÉTAT ---
+// --- VARIABLES ---
 let players = [];
 let board = [];
 let ends = null;
 let turnIndex = 0;
 let gameStarted = false;
-let lastWinnerId = null; // Mémoire : Qui a gagné la dernière fois ?
+let lastWinnerId = null;
 
 // --- FONCTIONS ---
 const generateDominoes = () => {
@@ -32,32 +32,46 @@ const generateDominoes = () => {
 };
 
 const passerAuTourSuivant = () => {
-    // Sens Anti-horaire (Antilles) : +2 modulo 3
     turnIndex = (turnIndex + 2) % 3; 
     const currentPlayer = players[turnIndex];
-    if (!currentPlayer) return;
-
-    console.log(`👉 Tour de ${currentPlayer.name}`);
-    io.emit('your_turn', { playerIndex: turnIndex });
+    if (currentPlayer) {
+        console.log(`👉 Tour de ${currentPlayer.name}`);
+        io.emit('your_turn', { playerIndex: turnIndex });
+    }
 };
 
 const appliquerCoup = (tile, side, playerId) => {
-    // Vérif doublon
     if (board.find(d => d.id === tile.id)) return;
     
-    let placed = { ...tile, placedAt: Date.now(), sourcePlayerId: playerId };
+    // 1. DÉTERMINER L'ORIENTATION VISUELLE
+    // Par défaut, un domino est horizontal. Sauf si c'est un double (Vertical).
+    let orientation = (tile.v1 === tile.v2) ? 'vertical' : 'horizontal';
+
+    let placed = { 
+        ...tile, 
+        orientation: orientation, // <--- C'EST ÇA QUI MANQUAIT !
+        placedAt: Date.now(), 
+        sourcePlayerId: playerId 
+    };
 
     if (board.length === 0) {
         board = [placed];
         ends = { left: tile.v1, right: tile.v2 };
     } else {
         if (side === 'left') {
-            if (placed.v2 !== ends.left) { let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp; }
-            ends.left = placed.v1;
+            // Si on joue à gauche, le v2 du domino doit toucher le ends.left du plateau
+            if (placed.v2 !== ends.left) { 
+                // Si ça ne matche pas, on inverse le domino
+                let tmp = placed.v1; placed.v1 = placed.v2; placed.v2 = tmp; 
+            }
+            ends.left = placed.v1; // La nouvelle extrémité gauche est le v1 du domino
             board.unshift(placed);
         } else {
-            if (placed.v1 !== ends.right) { let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp; }
-            ends.right = placed.v2;
+            // Si on joue à droite, le v1 du domino doit toucher le ends.right du plateau
+            if (placed.v1 !== ends.right) { 
+                let tmp = placed.v1; placed.v1 = placed.v2; placed.v2 = tmp; 
+            }
+            ends.right = placed.v2; // La nouvelle extrémité droite est le v2 du domino
             board.push(placed);
         }
     }
@@ -68,103 +82,83 @@ const appliquerCoup = (tile, side, playerId) => {
     // Mise à jour client
     io.emit('board_update', { board, ends, turnIndex: (turnIndex + 2) % 3 });
 
-    // VERIFICATION VICTOIRE
+    // Victoire ?
     if (players[playerId].hand.length === 0) {
-        console.log(`🏆 VICTOIRE de ${players[playerId].name} !`);
-        lastWinnerId = playerId; // On mémorise le gagnant pour la prochaine partie
-        // On laisse le frontend gérer l'affichage de victoire, 
-        // mais le serveur sait maintenant qui doit commencer la prochaine.
-        
-        // On remet gameStarted à false pour permettre de relancer une manche via un bouton "Rejouer" (à implémenter plus tard)
-        // Pour l'instant on laisse tourner pour que l'anim se finisse.
+        console.log(`🏆 VICTOIRE de ${players[playerId].name}`);
+        lastWinnerId = playerId;
+        // On pourrait réinitialiser ici, mais on laisse les joueurs voir le résultat
     } else {
         passerAuTourSuivant();
     }
 };
 
 const lancerManche = () => {
-    console.log("🎲 DISTRIBUTION DES DOMINOS...");
+    console.log("🎲 DISTRIBUTION...");
     const deck = generateDominoes();
     
-    // Distribution
     players[0].hand = deck.slice(0, 7);
     players[1].hand = deck.slice(7, 14);
     players[2].hand = deck.slice(14, 21);
 
-    // --- LOGIQUE DE DÉMARRAGE (Règles Antilles) ---
-    
     let starterIndex = -1;
     let startTile = null;
     let autoPlay = false;
 
     if (lastWinnerId !== null && players[lastWinnerId]) {
-        // CAS 2 : IL Y A UN GAGNANT PRÉCÉDENT
-        console.log(`👑 Le gagnant précédent (${players[lastWinnerId].name}) commence librement.`);
+        // Le gagnant d'avant commence
         starterIndex = lastWinnerId;
-        autoPlay = false; // Il choisit son domino
-        board = [];       // Le plateau commence vide
+        autoPlay = false;
+        board = [];
         ends = null;
+        console.log(`👑 ${players[starterIndex].name} a la main.`);
     } else {
-        // CAS 1 : PREMIÈRE PARTIE (ou après Reset) -> LE PLUS GROS DOUBLE COMMENCE
-        console.log("🐷 Recherche du plus gros double (Cochon)...");
-        let maxDouble = -1;
-
+        // Premier tour : Gros Cochon
+        console.log("🐷 Recherche du Cochon...");
+        let maxVal = -1;
         players.forEach((p, index) => {
             p.hand.forEach(tile => {
-                if (tile.v1 === tile.v2 && tile.v1 > maxDouble) {
-                    maxDouble = tile.v1;
+                // Priorité aux doubles
+                let val = (tile.v1 === tile.v2) ? (tile.v1 + 100) : (tile.v1 + tile.v2);
+                if (val > maxVal) {
+                    maxVal = val;
                     starterIndex = index;
                     startTile = tile;
                 }
             });
         });
-
-        // Sécurité si 0 double (très rare à 3 joueurs)
-        if (starterIndex === -1) {
-            // On prend le plus lourd
-             let maxWeight = -1;
-             players.forEach((p, index) => {
-                p.hand.forEach(tile => {
-                    if ((tile.v1 + tile.v2) > maxWeight) {
-                        maxWeight = tile.v1 + tile.v2;
-                        starterIndex = index;
-                        startTile = tile;
-                    }
-                });
-            });
-        }
-
-        console.log(`🐷 DÉPART AUTOMATIQUE : ${players[starterIndex].name} avec [${startTile.v1}|${startTile.v2}]`);
-        autoPlay = true; // Le serveur joue pour lui
+        console.log(`🐷 DÉPART AUTO : ${players[starterIndex].name}`);
+        autoPlay = true;
     }
 
-    // APPLICATION DU DÉMARRAGE
+    // SI DÉPART AUTO (COCHON)
     if (autoPlay && startTile) {
-        // Le serveur pose le domino
-        board = [{ ...startTile, placedAt: Date.now(), sourcePlayerId: starterIndex }];
+        let orientation = (startTile.v1 === startTile.v2) ? 'vertical' : 'horizontal';
+        
+        board = [{ 
+            ...startTile, 
+            orientation: orientation, // <--- ICI AUSSI
+            placedAt: Date.now(), 
+            sourcePlayerId: starterIndex 
+        }];
         ends = { left: startTile.v1, right: startTile.v2 };
         players[starterIndex].hand = players[starterIndex].hand.filter(t => t.id !== startTile.id);
-        
-        // Tour au suivant
         turnIndex = (starterIndex + 2) % 3;
     } else {
-        // Le joueur commence, plateau vide
         board = [];
         ends = null;
         turnIndex = starterIndex;
     }
 
-    // ENVOI AUX JOUEURS
+    // ENVOI
     players.forEach((p, index) => {
         io.to(p.id).emit('game_start', { 
             hand: p.hand, 
             turnIndex: turnIndex, 
             myIndex: index,
-            players: players // Noms pour l'affichage
+            players: players
         });
     });
 
-    // Si on a joué automatiquement, on met à jour le plateau tout de suite
     if (autoPlay) {
         setTimeout(() => {
             io.emit('board_update', { board, ends, turnIndex });
@@ -173,43 +167,22 @@ const lancerManche = () => {
 };
 
 io.on('connection', (socket) => {
-    console.log(`🔌 Nouveau : ${socket.id}`);
+    console.log(`🔌 Connecté: ${socket.id}`);
 
     socket.on('join_game', (pseudo) => {
-        // Gestion reconnexion simplifiée
-        const existing = players.find(p => p.id === socket.id);
-        if (!existing && players.length < 3) {
-            players.push({ id: socket.id, name: pseudo, type: 'human', hand: [] });
-            console.log(`👤 ${pseudo} rejoint. (${players.length}/3)`);
-        }
-        
-        io.emit('update_players', players);
+        // Si le joueur est déjà là, on ne fait rien
+        if (players.find(p => p.id === socket.id)) return;
 
-        // LANCEMENT
+        if (players.length < 3) {
+            players.push({ id: socket.id, name: pseudo, type: 'human', hand: [] });
+            console.log(`👤 ${pseudo} rejoint (${players.length}/3)`);
+            io.emit('update_players', players);
+        }
+
         if (players.length === 3 && !gameStarted) {
             gameStarted = true;
-            console.log("✅ 3 JOUEURS - Lancement...");
+            console.log("✅ 3 JOUEURS - START");
             setTimeout(lancerManche, 1000);
-        }
-    });
-    
-    // NOUVEAU : Pour lancer la partie suivante
-    socket.on('next_round', () => {
-        // (Sécurité simple : n'importe qui peut relancer pour l'instant)
-        console.log("🔄 Demande de nouvelle manche reçue");
-        lancerManche();
-    });
-
-    socket.on('disconnect', () => {
-        console.log(`❌ Départ : ${socket.id}`);
-        // En partie, on ne supprime pas le joueur pour ne pas casser la logique du tour
-        // Sauf si tout le monde part, on reset
-        if (io.engine.clientsCount === 0) {
-            console.log("🧹 Reset complet du serveur");
-            players = [];
-            gameStarted = false;
-            lastWinnerId = null;
-            board = [];
         }
     });
 
@@ -218,9 +191,21 @@ io.on('connection', (socket) => {
             appliquerCoup(data.tile, data.side, turnIndex);
         }
     });
+    
+    // Gestion propre de la déconnexion pour éviter les blocages
+    socket.on('disconnect', () => {
+         console.log(`❌ Départ : ${socket.id}`);
+         if (io.engine.clientsCount === 0) {
+             console.log("🧹 Reset Serveur");
+             players = [];
+             gameStarted = false;
+             lastWinnerId = null;
+             board = [];
+         }
+    });
 });
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-    console.log(`⚡ SERVEUR ANTILLAIS (RÈGLES CORRECTES) PRÊT`);
+    console.log(`⚡ SERVEUR CORRIGÉ (ORIENTATION + COCHON)`);
 });
