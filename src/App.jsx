@@ -964,7 +964,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin }) =
           const t = setTimeout(() => {
               setGameState(prev => resolvePartieEnd(prev, prev.players, prev.winnerId));
               setWinningInfo(null);
-          }, 5000);
+          }, 6000);
           return () => clearTimeout(t);
       }
   }, [gameState.status]);
