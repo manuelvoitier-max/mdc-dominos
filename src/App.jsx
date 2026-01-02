@@ -1012,6 +1012,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
                   board: data.board,
                   ends: data.ends,
                   turnIndex: data.turnIndex,
+                  pendingChoice: null, // <--- AJOUTE CETTE LIGNE (Sécurité anti-blocage)
                   // On met à jour notre main pour enlever le domino qu'on vient de jouer (si c'est nous)
                   players: prev.players.map(p => {
                       if (p.id === 0) {
@@ -1299,15 +1300,16 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
     // --- MODE MULTIJOUEUR ---
     if (config && config.mode === 'multi') {
         console.log("Envoi du coup au serveur...", tile);
-        // On envoie l'ordre au serveur
+        
         socket.emit('play_move', { 
             tile: tile, 
             side: side, 
             playerId: id 
         });
         
-        // ET C'EST TOUT ! On ne fait pas de setGameState ici.
-        // On attend que le serveur nous réponde pour bouger le domino.
+        // CORRECTION ICI : On force la fermeture de la fenêtre de choix immédiatement !
+        setGameState(prev => ({ ...prev, pendingChoice: null }));
+        
         return; 
     }
     // MODIFICATION : Son "Clac" plus réaliste (type domino sur table)
