@@ -430,10 +430,10 @@ const PlayerAvatar = ({ name, active, isBot, position, cardsCount, wins, isBoude
 
     if (position === 'top-left') {
         // BOT 1 (Haut Gauche - Chaton)
-        // 'left-0' : Aligné à gauche de l'avatar
+        // 'left-35' : Aligné à gauche de l'avatar
         // 'mt-6' : Descend de 24px (pour passer sous le cercle)
         // Tu peux mettre 'left-[-10px]' pour décaler vers la gauche ou 'left-[10px]' vers la droite
-        handPositionClass = "top-full mt-6 left-[-10px]"; 
+        handPositionClass = "top-full mt-24 left-[-35px]"; 
     } 
     else if (position === 'top-right') {
         // BOT 2 (Haut Droite - Valou)
