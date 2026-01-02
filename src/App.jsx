@@ -563,14 +563,19 @@ const AdOverlay = ({ onClose, onReward }) => {
 const LobbyScreen = ({ onBack, onJoinTable, onCreateTable, socket, user }) => { 
     const [filterStake, setFilterStake] = useState('all');
     const [loadingTableId, setLoadingTableId] = useState(null);
-    const [playersInLobby, setPlayersInLobby] = useState([]); // Pour afficher qui est là
+    const [playersInLobby, setPlayersInLobby] = useState([]);
 
-    // AJOUT : Écoute les arrivées dans le lobby
+    // AJOUT : On demande la liste dès qu'on arrive !
     useEffect(() => {
+        // 1. On écoute la réponse
         socket.on('update_players', (players) => {
             console.log("Mise à jour Lobby:", players);
             setPlayersInLobby(players);
         });
+
+        // 2. On demande au serveur "Qui est là ?" immédiatement
+        socket.emit('request_lobby_info'); 
+
         return () => socket.off('update_players');
     }, [socket]);
 
@@ -942,14 +947,12 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
 // ... GameScreen ... (Same as provided above)
 const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, socket }) => {
 
-  // --- CORRECTION DU BUG "CHATON & OLIVIER" ---
-  // On ne définit les noms des bots que si on est en MODE SOLO !
-  let p1Name = "Attente Joueur...";
-  let p2Name = "Attente Joueur...";
-  let p1Type = 'human'; // En multi, par défaut c'est des humains
+  // --- CONFIGURATION DES NOMS (SOLO vs MULTI) ---
+  let p1Name = "Attente...";
+  let p2Name = "Attente...";
+  let p1Type = 'human'; 
   let p2Type = 'human';
 
-  // Si on est en SOLO ou TOURNOI LOCAL, là on met les Bots
   if (config.mode !== 'multi') {
       p1Type = 'bot';
       p2Type = 'bot';
@@ -958,8 +961,8 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
           p1Name = config.customOpponents[0].pseudo;
           p2Name = config.customOpponents[1].pseudo;
       } else {
-          p1Name = config.difficulty === 'legend' ? "Man'X le Président" : config.difficulty === 'expert' ? "Chaton la tigresse" : "Chaton";
-          p2Name = config.difficulty === 'legend' ? "Valou le Redoutable" : config.difficulty === 'expert' ? "Olivier le blagueur" : "Olivier";
+          p1Name = config.difficulty === 'legend' ? "Man'X" : config.difficulty === 'expert' ? "Chaton" : "Chaton";
+          p2Name = config.difficulty === 'legend' ? "Valou" : config.difficulty === 'expert' ? "Olivier" : "Olivier";
       }
   }
 
@@ -976,7 +979,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   const [gameState, setGameState] = useState({
     players: [
       { id: 0, name: user.pseudo, type: 'human', hand: [], mdcPoints: p0Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p0Data.history, label: null, initialMaxDouble: -1 },
-      // ICI : On utilise les variables corrigées (Humains vides en multi, Bots en solo)
       { id: 1, name: p1Name, type: p1Type, hand: [], mdcPoints: p1Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p1Data.history, label: null, initialMaxDouble: -1 },
       { id: 2, name: p2Name, type: p2Type, hand: [], mdcPoints: p2Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p2Data.history, label: null, initialMaxDouble: -1 }
     ],
@@ -990,7 +992,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   const [adWatchedForThisWin, setAdWatchedForThisWin] = useState(false);
   const [showAdOverlay, setShowAdOverlay] = useState(false);
   const [winningInfo, setWinningInfo] = useState(null);
- 
+  
   const boardRef = useRef(null);
   const containerRef = useRef(null);
   const paidRef = useRef(false);
@@ -998,39 +1000,36 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   const ownedPhrases = MOCK_DB.items.filter(i => i.type === 'phrase' && user.inventory.includes(i.id));
   const currentBoard = MOCK_DB.items.find(i => i.id === user.equippedBoard) || MOCK_DB.items.find(i => i.id === 'board_classic');
 
-  // 3. LE CERVEAU DU JEU (CORRECTIF CRASH & ROTATION)
+  // --- LE CERVEAU DU JEU MULTIJOUEUR ---
   useEffect(() => {
       if (config.mode === 'multi') {
           
-          // --- A. DÉMARRAGE DE LA PARTIE ---
+          // 1. RECEPTION DU DÉMARRAGE (Et correction des noms)
           socket.on('game_start', (serverData) => {
               console.log("🎮 START REÇU", serverData);
               
               setGameState(prev => {
                   const myIdx = serverData.myIndex;
-                  const allPlayers = serverData.players || []; 
+                  const allPlayers = serverData.players || [];
 
-                  // 1. CALCULS DES INDEX (Définis ICI pour être sûr qu'ils existent)
-                  const nextIdx = (myIdx + 1) % 3;       // Joueur à ma Gauche
-                  const afterNextIdx = (myIdx + 2) % 3;  // Joueur à ma Droite
-                  
-                  // 2. CALCUL DU TOUR VISUEL
+                  // CALCULS DE ROTATION (Importants !)
+                  const nextIdx = (myIdx + 1) % 3;       
+                  const afterNextIdx = (myIdx + 2) % 3;  
                   const localTurnIndex = (serverData.turnIndex - myIdx + 3) % 3;
 
                   const newPlayers = [...prev.players];
 
-                  // 3. MISE À JOUR DES JOUEURS (Sécurisée avec ?.)
-                  // MOI (Toujours index 0 localement)
+                  // JOUEUR 0 (Moi)
                   newPlayers[0].name = allPlayers[myIdx]?.name || "Moi";
                   newPlayers[0].hand = serverData.hand;
 
-                  // GAUCHE (Index 1 localement)
+                  // JOUEUR 1 (Gauche)
                   newPlayers[1].name = allPlayers[nextIdx]?.name || "Attente...";
                   newPlayers[1].hand = allPlayers[nextIdx]?.hand || [];
 
-                  // DROITE (Index 2 localement)
+                  // JOUEUR 2 (Droite)
                   newPlayers[2].name = allPlayers[afterNextIdx]?.name || "Attente...";
-                  newPlayers[2].hand = allPlayers[afterNextIndex]?.hand || [];
+                  newPlayers[2].hand = allPlayers[afterNextIdx]?.hand || [];
 
                   return {
                       ...prev,
@@ -1038,26 +1037,21 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
                       turnIndex: localTurnIndex,
                       status: 'playing',
                       currentManche: 1,
-                      myServerIndex: myIdx
+                      myServerIndex: myIdx // On sauvegarde qui je suis sur le serveur
                   };
               });
               setTimeLeft(15);
           });
 
-          // --- B. MISE À JOUR DU PLATEAU ---
+          // 2. MISE A JOUR DU PLATEAU
           socket.on('board_update', (data) => {
-              // Son Clac
               const audio = new Audio('https://actions.google.com/sounds/v1/impacts/wood_plank_flick.ogg');
               audio.play().catch(e => {});
 
               setGameState(prev => {
-                  // Récupération de mon index serveur (sauvegardé au start)
                   const myIdx = prev.myServerIndex !== undefined ? prev.myServerIndex : 0;
-                  
-                  // Recalcul du tour visuel
                   const localTurnIndex = (data.turnIndex - myIdx + 3) % 3;
 
-                  // Mise à jour de MA main (pour retirer le domino joué)
                   const newPlayers = prev.players.map(p => {
                       if (p.id === 0) {
                            const idsOnBoard = data.board.map(b => b.id);
@@ -1070,22 +1064,20 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
                       ...prev,
                       board: data.board,
                       ends: data.ends,
-                      turnIndex: localTurnIndex, // <--- C'est lui qui gère l'affichage "Qui joue ?"
+                      turnIndex: localTurnIndex, 
                       players: newPlayers,
-                      pendingChoice: null // On ferme la fenêtre de choix si elle est ouverte
+                      pendingChoice: null 
                   };
               });
           });
 
-          // Nettoyage
           return () => { 
               socket.off('game_start'); 
               socket.off('board_update');
           };
 
       } else {
-          // MODE SOLO
-          startRound(1, 1); 
+          startRound(1, 1); // Mode Solo
       }
   }, []);
 
@@ -1125,7 +1117,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   useEffect(() => {
       if (gameState.status === 'tournoi_over' && gameState.winnerId === 0 && !paidRef.current) {
           paidRef.current = true;
-          // MODIFICATION : Le gain est égal à la MISE multipliée par le NOMBRE DE JOUEURS (ex: 100 * 3 = 300)
           onWin(config.stake * gameState.players.length, config.currency);
       }
   }, [gameState.status, gameState.winnerId]);
@@ -1148,7 +1139,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
       }
   }, [gameState.turnIndex, gameState.status, gameState.history]);
 
-  // Zoom Optimisé (CORRIGÉ : Marges de sécurité augmentées pour éviter que le dernier domino ne sorte)
   useEffect(() => {
     const calculateZoom = () => {
         if (boardRef.current && containerRef.current) {
@@ -1156,20 +1146,14 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
           const containerWidth = containerRef.current.clientWidth;
           const boardHeight = boardRef.current.scrollHeight;
           const containerHeight = containerRef.current.clientHeight;
-         
+          
           const isLandscape = containerWidth > containerHeight;
-         
-          // MODIFICATION ICI : On passe de 0.85 à 0.75 (75% de l'écran max)
-          // Cela crée une "zone tampon" de 12.5% de chaque côté.
           const safeWidth = containerWidth * (isLandscape ? 0.70 : 0.75);
           const safeHeight = containerHeight * (isLandscape ? 0.60 : 0.55);
-         
-          // On garde la limite max à 0.6 pour ne pas que ce soit trop gros au début
           const calculatedZoom = Math.min(safeWidth / boardWidth, safeHeight / boardHeight, 0.8);
           setZoomScale(calculatedZoom);
         }
     };
-    // On garde le délai pour laisser le temps au DOM de s'agrandir avant de mesurer
     setTimeout(calculateZoom, 50);
   }, [gameState.board, gameState.turnIndex]);
 
@@ -1188,18 +1172,14 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
 
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch((e) => {
-            console.log("Erreur plein écran:", e);
-        });
+        document.documentElement.requestFullscreen().catch((e) => {});
     } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-        }
+        if (document.exitFullscreen) document.exitFullscreen();
     }
   };
 
   const handleScreenshot = () => {
-      alert("📸 Capture d'écran sauvegardée dans la galerie ! (Simulation)");
+      alert("📸 Capture d'écran sauvegardée !");
   };
 
   const handleDoubleReward = () => {
@@ -1208,16 +1188,14 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
 
   const onAdCompleted = () => {
       setAdWatchedForThisWin(true);
-      // MODIFICATION : On ajoute le montant du pot une 2ème fois pour doubler le gain total
       onDoubleWin(config.stake * gameState.players.length, config.currency);
       alert("Gain Doublé !");
   };
 
-
   const startRound = (mancheNum, partieNum, forcedStarterId = -1) => {
     const allTiles = generateDominoes();
     const hands = [allTiles.slice(0, 7), allTiles.slice(7, 14), allTiles.slice(14, 21)];
-   
+    
     let starterIndex = forcedStarterId;
     let maxDTotal = -1;
     let starterTile = null;
@@ -1246,20 +1224,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
     if (forcedStarterId === -1 && starterTile) setTimeout(() => { playTile(starterIndex, starterTile, 'start'); }, 2000);
   };
 
-  useEffect(() => {
-    if (gameState.status !== 'playing' || gameState.pendingChoice) return;
-    const player = gameState.players[gameState.turnIndex];
-    if (player.type === 'bot') {
-      const timer = setTimeout(() => {
-        const aiLevel = player.name.includes("Valou") ? 'valou_legend' : (config.difficulty || 'easy');
-        const move = getBotMove(player.hand, gameState.ends, aiLevel);
-        if (move) playTile(player.id, move.tile, move.side);
-        else passTurn(player.id);
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [gameState.turnIndex, gameState.status, gameState.pendingChoice]);
-
   const passTurn = (id) => {
     const playerName = gameState.players[id].name;
     addLog({ player: playerName, action: 'BOUDÉ', type: 'alert' });
@@ -1282,7 +1246,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
     setTimeLeft(15);
   };
 
-  // --- LOGIQUE FIN DE PARTIE & COCHONS ---
   const resolvePartieEnd = (prevState, currentPlayers, winnerId) => {
       const winnerName = currentPlayers[winnerId].name;
       addLog({ player: winnerName, action: 'GAGNE LA PARTIE', type: 'success' });
@@ -1296,17 +1259,16 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
           const maxW = Math.max(...withWins.map(p => p.wins));
           const mancheWinnerId = withWins.find(p => p.wins === maxW).id;
           const numCochons = withWins.filter(p => p.wins === 0).length;
-         
+          
           const finalMdcManche = withWins.map(p => {
               let mdcGain = p.wins;
               let label = "";
-             
+              
               if (p.id === mancheWinnerId) {
                   if (numCochons === 2) { mdcGain = 5; label = "DOUBLE COCHON !!"; }
                   else if (numCochons === 1) { mdcGain = 4; label = "COCHON !"; }
               } else if (p.wins === 0) { mdcGain = -1; label = "COCHON PRIS (-1)"; }
 
-              // LOGIQUE SPECIALE COCHONS
               let newCochonsTotal = p.cochonsTotal || 0;
               if (config.format === 'cochons' && p.id === mancheWinnerId) {
                   if (mdcGain === 5) {
@@ -1323,7 +1285,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
               return { ...p, mdcPoints: p.mdcPoints + mdcGain, cochonsTotal: newCochonsTotal, gain: mdcGain, label, mancheHistory: [...p.mancheHistory, mdcGain] };
           });
 
-          // VERIFICATION VICTOIRE
           let isTournoiFini = false;
           if (config.mode === 'tournament') isTournoiFini = false;
           else if (config.format === 'cochons') isTournoiFini = finalMdcManche.some(p => p.cochonsTotal >= config.target);
@@ -1336,7 +1297,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   };
 
   const playTile = (id, tile, side) => {
-    // --- MODE MULTIJOUEUR ---
     if (config && config.mode === 'multi') {
         console.log("Envoi du coup au serveur...", tile);
         
@@ -1346,28 +1306,21 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
             playerId: id 
         });
         
-        // CORRECTION ICI : On force la fermeture de la fenêtre de choix immédiatement !
+        // CORRECTION: On ferme la modale
         setGameState(prev => ({ ...prev, pendingChoice: null }));
-        
         return; 
     }
-    // MODIFICATION : Son "Clac" plus réaliste (type domino sur table)
-    // Source fiable Google (Wood Plank Flick) qui ressemble beaucoup à un domino
+    
+    // Mode Solo
     const audio = new Audio('https://actions.google.com/sounds/v1/impacts/wood_plank_flick.ogg');
-   
-    // ASTUCE DE PRO : On change légèrement la vitesse (entre 0.9 et 1.1) à chaque coup
-    // pour que le son ne soit jamais exactement le même (effet naturel)
     audio.playbackRate = 0.9 + Math.random() * 0.2;
     audio.volume = 1.0;
-   
     const playPromise = audio.play();
-    if (playPromise !== undefined) {
-        playPromise.catch(error => { console.log("Audio bloqué:", error); });
-    }
+    if (playPromise !== undefined) { playPromise.catch(error => { console.log("Audio bloqué:", error); }); }
+    
     const playerName = gameState.players[id].name;
     addLog({ player: playerName, action: 'Posé', info: `[${tile.v1}|${tile.v2}]` });
-   
-    // ... Le reste de la fonction reste STRICTEMENT identique ...
+    
     const isWin = gameState.players[id].hand.length === 1 && gameState.players[id].hand[0].id === tile.id;
     if (isWin) {
         setWinningInfo({ winnerId: id, winningTile: tile });
@@ -1375,7 +1328,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
     setGameState(prev => {
       let newBoard = [...prev.board];
       let newEnds = prev.ends ? { ...prev.ends } : { left: null, right: null };
-// MODIFICATION : On ajoute 'placedAt: Date.now()' pour forcer le rafraîchissement de l'animation
       let placed = { ...tile, orientation: (tile.v1 === tile.v2) ? 'vertical' : 'horizontal', flipped: false, sourcePlayerId: id, placedAt: Date.now() };
       if (!prev.ends) { newBoard = [placed]; newEnds = { left: tile.v1, right: tile.v2 }; }
       else {
@@ -1383,7 +1335,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
         else { placed.flipped = (tile.v2 === newEnds.right); newEnds.right = placed.flipped ? tile.v1 : tile.v2; newBoard.push(placed); }
       }
       const newPlayers = prev.players.map(p => p.id === id ? { ...p, hand: p.hand.filter(h => h.id !== tile.id), isBoude: false } : p);
-     
+      
       if (newPlayers[id].hand.length === 0) {
           return {
               ...prev,
@@ -1396,7 +1348,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
               mandatoryTile: null
           };
       }
-     
+      
       return { ...prev, players: newPlayers, board: newBoard, ends: newEnds, turnIndex: (prev.turnIndex + 2) % 3, pendingChoice: null, mandatoryTile: null };
     });
     setTimeLeft(15);
@@ -1409,7 +1361,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
     <div className={`fixed inset-0 w-full h-full z-50 bg-slate-950 overflow-hidden text-white font-sans ${currentBoard.style} transition-colors duration-500`}>
       {showAdOverlay && <AdOverlay onClose={() => setShowAdOverlay(false)} onReward={onAdCompleted} />}
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/felt.png')] opacity-20 mix-blend-overlay"></div>
-     
+      
       {currentBoard.id === 'board_xmas' && (
           <div className="absolute inset-0 pointer-events-none opacity-30 flex justify-between px-10">
               <SafeIcon icon={Icons.Snowflake} className="animate-bounce text-white w-8 h-8 opacity-50" style={{animationDuration:'3s'}} />
@@ -1418,41 +1370,29 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
           </div>
       )}
 
-      {/* HEADER (Objectif déplacé à droite pour meilleure visibilité) */}
       <div className="absolute top-0 left-0 w-full z-[60] flex justify-between items-center px-4 h-12 bg-black/40 backdrop-blur-md border-b border-white/5 shadow-2xl">
-         
-          {/* GAUCHE : Quitter */}
           <Button variant="ghost" onClick={onExit} className="p-1"><SafeIcon icon={Icons.X} size={24} /></Button>
-         
-          {/* CENTRE : Timer Seul (Plus gros et centré) */}
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
               <span className="text-3xl font-black font-mono text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-widest">
                   {timeLeft < 10 ? `0${timeLeft}` : timeLeft}
               </span>
           </div>
-
-          {/* DROITE : Objectif + Mise + Plein écran */}
           <div className="flex items-center gap-2">
-             
-              {/* NOUVEL EMPLACEMENT : Objectif (Badge Bleu/Visible) */}
               <div className="flex flex-col items-end mr-1 bg-blue-900/40 px-2 py-1 rounded border border-blue-500/30">
                   <span className="text-[8px] text-blue-200 font-bold uppercase leading-none mb-0.5">Objectif</span>
                   <span className="text-xs font-black text-white leading-none">
                       {config.target} {config.format === 'manches' ? 'VICT.' : config.format === 'cochons' ? '🐷' : 'PTS'}
                   </span>
               </div>
-
               <span className="text-[10px] text-yellow-500 font-black font-mono bg-black/50 px-2 py-1.5 rounded border border-yellow-500/30 shadow-inner">
                   {config.stake} OR
               </span>
-             
               <button onClick={toggleFullScreen} className="p-2 bg-black/30 rounded hover:bg-white/10 transition-colors border border-white/5">
                   <SafeIcon icon={Icons.Maximize} size={18} className="text-zinc-300" />
               </button>
           </div>
       </div>
-     
-      {/* TAPIS */}
+      
       <div className="flex-1 w-full h-full flex flex-col items-center justify-center relative pt-32 pb-[25vh]" ref={containerRef}>
           {currentBoard.id === 'board_sponsor' && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30 z-0">
@@ -1462,31 +1402,21 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
                   </div>
               </div>
           )}
-         
-          {/* BANNIERE VICTOIRE (MODE PAYSAGE : GAGNANT A GAUCHE / PERDANTS A DROITE) */}
+          
           {gameState.status === 'winning_animation' && winningInfo && (
             <div className="absolute inset-0 z-[250] flex flex-col items-center justify-center pointer-events-none animate-in zoom-in duration-500">
-                {/* Conteneur principal en LIGNE (flex-row) pour le mode paysage */}
                 <div className="bg-black/95 backdrop-blur-xl p-6 rounded-3xl border-4 border-yellow-500 shadow-[0_0_50px_rgba(234,179,8,0.6)] flex flex-row items-center justify-center gap-8 max-w-5xl w-auto pr-8">
-                    
-                    {/* PARTIE GAUCHE : LE VAINQUEUR */}
                     <div className="flex flex-col items-center min-w-[200px]">
                         <SafeIcon icon={Icons.Crown} size={56} className="text-yellow-500 mb-2 animate-bounce" />
                         <h2 className="text-xl font-black text-white uppercase italic tracking-tighter mb-0.5">Victoire de</h2>
                         <h3 className="text-3xl font-black text-yellow-400 uppercase mb-6 drop-shadow-lg max-w-[250px] truncate leading-tight">
                             {gameState.players[winningInfo.winnerId].name}
                         </h3>
-                        
-                        {/* Domino Gagnant */}
                         <div className="scale-150 transform rotate-6 mb-2">
                             <DominoTile v1={winningInfo.winningTile.v1} v2={winningInfo.winningTile.v2} size="lg" skinId={user.equippedSkin} />
                         </div>
                     </div>
-
-                    {/* SÉPARATEUR VERTICAL */}
                     <div className="w-0.5 h-48 bg-white/10 rounded-full"></div>
-
-                    {/* PARTIE DROITE : LES PERDANTS (MODIFIÉ : Juste Nom + Dominos) */}
                     <div className="flex flex-col justify-center min-w-[300px]">
                         <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-[0.2em] mb-4 text-left pl-1">
                             Mains Restantes
@@ -1494,16 +1424,12 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
                         <div className="flex flex-col gap-3 w-full">
                             {gameState.players.filter(p => p.id !== winningInfo.winnerId).map(loser => (
                                 <div key={loser.id} className="flex flex-col bg-white/5 p-3 rounded-xl border border-white/5">
-                                    
-                                    {/* 1. NOM DU JOUEUR (Plus de points ici) */}
                                     <div className="flex items-center justify-start mb-2">
                                         <span className="text-xs font-black text-white uppercase flex items-center gap-2">
                                             {loser.type === 'bot' ? <SafeIcon icon={Icons.Wifi} size={12} className="text-zinc-500"/> : <SafeIcon icon={Icons.User} size={12} className="text-zinc-500"/>}
                                             {loser.name}
                                         </span>
                                     </div>
-                                    
-                                    {/* 2. LES DOMINOS VISUELS */}
                                     <div className="flex gap-1 overflow-x-auto custom-scrollbar pb-1 min-h-[30px] items-center">
                                         {loser.hand.length > 0 ? (
                                             loser.hand.map((tile, i) => (
@@ -1517,12 +1443,10 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
                             ))}
                         </div>
                     </div>
-
                 </div>
             </div>
           )}
 
-          {/* AVATARS PLUS PETITS ET DANS LES COINS */}
           <PlayerAvatar
               name={gameState.players[1].name}
               isBot
@@ -1534,7 +1458,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
               chatMessage={lastChatMessage?.playerId === 1 ? lastChatMessage.text : null}
               isVip={gameState.players[1].id === 0 ? user.isVip : false}
               equippedAvatar={gameState.players[1].type === 'human' ? user.equippedAvatar : gameState.players[1].name.includes('Chaton') ? 'avatar_robot' : 'avatar_smile'}
-              // --- AJOUTS POUR LE MODE COCHON ---
               mdcPoints={gameState.players[1].mdcPoints}
               cochons={gameState.players[1].cochonsTotal}
               isCochonMode={config.format === 'cochons'}
@@ -1551,28 +1474,16 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
               chatMessage={lastChatMessage?.playerId === 2 ? lastChatMessage.text : null}
               isVip={gameState.players[2].id === 0 ? user.isVip : false}
               equippedAvatar={gameState.players[2].type === 'human' ? user.equippedAvatar : gameState.players[2].name.includes('Olivier') ? 'avatar_king' : 'avatar_classic'}
-              // --- AJOUTS POUR LE MODE COCHON ---
               mdcPoints={gameState.players[2].mdcPoints}
               cochons={gameState.players[2].cochonsTotal}
               isCochonMode={config.format === 'cochons'}
           />
-          {/* ZONE PLATEAU (CORRIGÉE : Alignement Flexbox restauré) */}
+          
           <div className="w-full h-full flex items-center justify-center pointer-events-none relative z-10">
-           
-            {/* Définition des animations (CSS) */}
             <style>{`
-                @keyframes slideFromBottom {
-                    0% { transform: translateY(300px) scale(1.5); opacity: 0; }
-                    100% { transform: translateY(0) scale(1); opacity: 1; }
-                }
-                @keyframes slideFromTopLeft {
-                    0% { transform: translate(-300px, -300px) scale(0.5); opacity: 0; }
-                    100% { transform: translate(0, 0) scale(1); opacity: 1; }
-                }
-                @keyframes slideFromTopRight {
-                    0% { transform: translate(300px, -300px) scale(0.5); opacity: 0; }
-                    100% { transform: translate(0, 0) scale(1); opacity: 1; }
-                }
+                @keyframes slideFromBottom { 0% { transform: translateY(300px) scale(1.5); opacity: 0; } 100% { transform: translateY(0) scale(1); opacity: 1; } }
+                @keyframes slideFromTopLeft { 0% { transform: translate(-300px, -300px) scale(0.5); opacity: 0; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+                @keyframes slideFromTopRight { 0% { transform: translate(300px, -300px) scale(0.5); opacity: 0; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
                 .anim-p0 { animation: slideFromBottom 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
                 .anim-p1 { animation: slideFromTopLeft 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
                 .anim-p2 { animation: slideFromTopRight 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
@@ -1581,26 +1492,14 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
             <div ref={boardRef} className="flex items-center justify-center origin-center drop-shadow-[0_30px_60px_rgba(0,0,0,0.9)] whitespace-nowrap w-max" style={{ transform: `scale(${zoomScale})`, transition: 'transform 0.5s ease-out' }}>
                 {gameState.board.map((tile, i) => {
                     const isNew = (Date.now() - (tile.placedAt || 0)) < 1000;
-                   
                     let animClass = "";
-                    // On applique l'animation et un z-index élevé pour passer devant
                     if (isNew) {
                         if (tile.sourcePlayerId === 0) animClass = "anim-p0 z-50";
                         else if (tile.sourcePlayerId === 1) animClass = "anim-p1 z-50";
                         else if (tile.sourcePlayerId === 2) animClass = "anim-p2 z-50";
                     }
-
                     return (
-                        <DominoTile
-                            key={tile.id}
-                            v1={tile.v1}
-                            v2={tile.v2}
-                            orientation={tile.orientation}
-                            flipped={tile.flipped}
-                            skinId={user.equippedSkin}
-                            // L'animation est appliquée directement ici, sans casser le flex
-                            className={`mx-0.5 ${animClass}`}
-                        />
+                        <DominoTile key={tile.id} v1={tile.v1} v2={tile.v2} orientation={tile.orientation} flipped={tile.flipped} skinId={user.equippedSkin} className={`mx-0.5 ${animClass}`} />
                     );
                 })}
             </div>
@@ -1612,27 +1511,19 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
             ))}
         </div>
       </div>
-     
-      {/* MAIN JOUEUR */}
+      
       <div className="absolute bottom-0 left-0 w-full h-[18vh] bg-gradient-to-t from-black via-black/90 to-transparent flex items-end pb-2 px-2 overflow-visible z-[100]">
           <div className="w-12 flex items-end pb-2 relative pointer-events-auto mr-2">
-              <button
-                onClick={() => setShowChat(!showChat)}
-                className="bg-zinc-800 border-2 border-zinc-600 rounded-full w-8 h-8 flex items-center justify-center text-white shadow-xl hover:bg-zinc-700 active:scale-95 transition-all"
-              >
+              <button onClick={() => setShowChat(!showChat)} className="bg-zinc-800 border-2 border-zinc-600 rounded-full w-8 h-8 flex items-center justify-center text-white shadow-xl hover:bg-zinc-700 active:scale-95 transition-all">
                   <SafeIcon icon={Icons.MessageCircle} size={16} />
               </button>
-             
+              
               {showChat && (
                   <div className="absolute bottom-10 left-0 w-48 bg-zinc-900 border-2 border-zinc-700 rounded-xl p-2 shadow-2xl animate-in slide-in-from-bottom-2 pointer-events-auto">
                       <h3 className="text-[8px] font-black uppercase text-zinc-500 mb-1 px-2">Vos Phrases</h3>
                       <div className="flex flex-col gap-1 max-h-32 overflow-y-auto custom-scrollbar">
                           {ownedPhrases.length > 0 ? ownedPhrases.map(phrase => (
-                              <button
-                                key={phrase.id}
-                                onClick={() => handleSendChat(phrase.text)}
-                                className="text-left text-[10px] font-bold text-white bg-zinc-800 hover:bg-zinc-700 p-2 rounded transition-colors border border-white/5"
-                              >
+                              <button key={phrase.id} onClick={() => handleSendChat(phrase.text)} className="text-left text-[10px] font-bold text-white bg-zinc-800 hover:bg-zinc-700 p-2 rounded transition-colors border border-white/5">
                                   {phrase.text}
                               </button>
                           )) : (
@@ -1643,7 +1534,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
               )}
           </div>
 
-          {/* MODIFICATION ICI : justify-start pour aligner à gauche et pl-4 pour décaler un peu du chat */}
           <div className="flex-1 flex justify-start pl-[18%] items-end gap-1 overflow-visible px-0 pointer-events-none pb-2">
            {humanHand.map((tile) => {
               const m = getValidMoves([tile], gameState.ends);
@@ -1651,20 +1541,19 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
               return (
                 <div key={tile.id} className="overflow-visible pointer-events-auto">
                   <DominoTile
-                     v1={tile.v1} v2={tile.v2} size="lg" orientation="vertical" skinId={user.equippedSkin} highlight={canClick && !gameState.mandatoryTile} isMandatory={false}
-                     onClick={() => {
-                         if (gameState.mandatoryTile) return;
-                         if (canClick && m.length === 1) playTile(0, tile, m[0].side);
-                         else if (canClick && m.length > 1) setGameState(prev => ({ ...prev, pendingChoice: { tile, moves: m } }));
-                     }}
-                     className={`transform transition-all duration-300 scale-90 origin-bottom ${canClick && !gameState.mandatoryTile ? 'hover:-translate-y-4 cursor-pointer hover:scale-105 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'opacity-30 grayscale translate-y-1'}`}
+                      v1={tile.v1} v2={tile.v2} size="lg" orientation="vertical" skinId={user.equippedSkin} highlight={canClick && !gameState.mandatoryTile} isMandatory={false}
+                      onClick={() => {
+                          if (gameState.mandatoryTile) return;
+                          if (canClick && m.length === 1) playTile(0, tile, m[0].side);
+                          else if (canClick && m.length > 1) setGameState(prev => ({ ...prev, pendingChoice: { tile, moves: m } }));
+                      }}
+                      className={`transform transition-all duration-300 scale-90 origin-bottom ${canClick && !gameState.mandatoryTile ? 'hover:-translate-y-4 cursor-pointer hover:scale-105 shadow-[0_0_15px_rgba(34,197,94,0.4)]' : 'opacity-30 grayscale translate-y-1'}`}
                   />
                 </div>
               )
            })}
          </div>
          
-         {/* AVATAR JOUEUR (Compact) */}
          <div className="w-auto flex justify-end items-end pb-2 ml-2">
             <PlayerAvatar
                 name={user.pseudo}
@@ -1676,7 +1565,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
                 chatMessage={lastChatMessage?.playerId === 0 ? lastChatMessage.text : null}
                 isVip={user.isVip}
                 equippedAvatar={user.equippedAvatar}
-                // --- AJOUTS POUR LE MODE COCHON ---
                 mdcPoints={gameState.players[0].mdcPoints}
                 cochons={gameState.players[0].cochonsTotal}
                 isCochonMode={config.format === 'cochons'}
@@ -1696,7 +1584,6 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
          )}
       </div>
 
-      {/* MODAL FIN DE MANCHE */}
       {(gameState.status !== 'playing' && gameState.status !== 'dealing' && gameState.status !== 'winning_animation') && (
         <div className="absolute inset-0 z-[300] bg-black/95 flex flex-col items-center justify-center p-4 text-center backdrop-blur-xl animate-in fade-in duration-500 text-white">
            <div className="bg-slate-900 border-2 border-red-700 p-4 rounded-2xl shadow-2xl max-w-lg w-full relative overflow-hidden text-white flex flex-col max-h-[85vh]">
@@ -1762,23 +1649,12 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
              )}
 
              <div className="flex gap-2 items-center">
-                <button
-                    onClick={handleScreenshot}
-                    className="p-3 bg-zinc-800 rounded-xl hover:bg-zinc-700 transition-colors border border-zinc-600"
-                    title="Prendre une photo"
-                >
+                <button onClick={handleScreenshot} className="p-3 bg-zinc-800 rounded-xl hover:bg-zinc-700 transition-colors border border-zinc-600" title="Prendre une photo">
                     <SafeIcon icon={Icons.Camera} size={18} className="text-white" />
                 </button>
 
                 {gameState.status === 'partie_over' || gameState.status === 'partie_draw' ? (
-                     <Button
-                         onClick={() => startRound(
-                             gameState.currentManche,
-                             gameState.currentPartie + 1,
-                             gameState.winnerId !== null ? gameState.winnerId : -1
-                         )}
-                         className="flex-1 py-3 text-sm text-blue-950"
-                     >
+                     <Button onClick={() => startRound(gameState.currentManche, gameState.currentPartie + 1, gameState.winnerId !== null ? gameState.winnerId : -1)} className="flex-1 py-3 text-sm text-blue-950">
                          DONNE SUIVANTE
                      </Button>
                 ) : gameState.status === 'manche_over' ? (
@@ -1793,14 +1669,8 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
                 ) : (
                     <Button onClick={onExit} className="flex-1 py-3 text-sm text-blue-200">RETOUR MENU</Button>
                 )}
-               
-                <button
-                    onClick={() => {
-                        alert("Le tableau reste affiché. Utilisez les boutons pour continuer.");
-                    }}
-                    className="p-3 bg-zinc-800 rounded-xl hover:bg-red-900/50 transition-colors border border-zinc-600 text-red-400"
-                    title="Fermer"
-                >
+                
+                <button onClick={() => { alert("Le tableau reste affiché. Utilisez les boutons pour continuer."); }} className="p-3 bg-zinc-800 rounded-xl hover:bg-red-900/50 transition-colors border border-zinc-600 text-red-400" title="Fermer">
                     <SafeIcon icon={Icons.X} size={18} />
                 </button>
              </div>
@@ -1818,12 +1688,11 @@ const MemberScreen = ({ onBack, user, onLogout }) => {
     return (
         <div className="flex flex-col h-full p-6 relative bg-slate-950 overflow-y-auto text-white font-sans">
             <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><SafeIcon icon={Icons.ChevronLeft} size={32} /></button>
-           
+            
             <div className="flex-1 flex flex-col items-center max-w-2xl mx-auto w-full pt-8 pb-12">
                 <h2 className="text-4xl font-black mb-2 uppercase tracking-tighter text-center italic">ESPACE <span className="text-red-600">MEMBRE</span></h2>
                 <div className="w-16 h-1 bg-red-600 mb-8"></div>
-               
-                {/* PROFIL CARD */}
+                
                 <div className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-6 flex items-center gap-6 shadow-xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 p-2 opacity-10"><SafeIcon icon={Icons.User} size={120}/></div>
                     <div className="w-20 h-20 rounded bg-zinc-800 flex items-center justify-center border-2 border-zinc-700 relative">
@@ -1839,7 +1708,6 @@ const MemberScreen = ({ onBack, user, onLogout }) => {
                     </div>
                 </div>
 
-                 {/* PORTEFEUILLE */}
                 <div className="w-full grid grid-cols-2 gap-4 mb-6">
                     <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-xl flex flex-col items-center justify-center shadow-lg">
                         <div className="text-blue-400 font-black text-xs uppercase mb-1 flex items-center gap-1"><SafeIcon icon={Icons.Gem} size={12}/> Jetons</div>
@@ -1851,7 +1719,6 @@ const MemberScreen = ({ onBack, user, onLogout }) => {
                     </div>
                 </div>
 
-                {/* STATISTIQUES */}
                 <div className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl mb-8">
                       <h3 className="text-xs font-black uppercase text-zinc-400 mb-6 flex items-center gap-2">
                           <SafeIcon icon={Icons.TrendingUp} size={14} /> Performance Globale
@@ -1864,10 +1731,9 @@ const MemberScreen = ({ onBack, user, onLogout }) => {
                       <div className="w-full h-2 bg-zinc-800 rounded-full overflow-hidden"><div className="h-full bg-green-500" style={{ width: `${winRate}%` }}></div></div>
                 </div>
 
-                {/* RANKING MENSUEL */}
                 <div className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-xl mb-8">
                     <h3 className="text-xs font-black uppercase text-zinc-400 mb-4 flex items-center gap-2"><SafeIcon icon={Icons.Award} size={14} /> Classement du Mois</h3>
-                   
+                    
                     <div className="flex gap-2 mb-6 bg-zinc-950 p-1 rounded-lg">
                         <button onClick={() => setRankingTab('cochonsDonnes')} className={`flex-1 py-2 rounded text-[10px] font-black uppercase transition-all ${rankingTab === 'cochonsDonnes' ? 'bg-red-600 text-white' : 'text-zinc-500 hover:text-white'}`}>🐷 Boucher</button>
                         <button onClick={() => setRankingTab('cochonsPris')} className={`flex-1 py-2 rounded text-[10px] font-black uppercase transition-all ${rankingTab === 'cochonsPris' ? 'bg-blue-600 text-white' : 'text-zinc-500 hover:text-white'}`}>🛡️ Défense</button>
@@ -1994,16 +1860,11 @@ const RankingScreen = ({ onBack, user }) => {
     );
 };
 
-/**
- * --- MOTEUR TOURNOI (LOGIQUE COMPLETE) ---
- */
 const TournamentEngine = {
-  // 1. Complète avec des Bots pour avoir un multiple de 3
   prepareParticipants: (realPlayers) => {
     let participants = [...realPlayers];
-    // Simulation d'autres joueurs réels pour l'exemple
     for(let i=0; i<20; i++) participants.push({ id: `random_${i}`, pseudo: `Joueur ${i+1}`, isBot: true, type: 'bot', score: 0 });
-   
+    
     const remainder = participants.length % 3;
     if (remainder !== 0) {
       const botsNeeded = 3 - remainder;
@@ -2014,34 +1875,27 @@ const TournamentEngine = {
     return participants.sort(() => Math.random() - 0.5);
   },
 
-  // 2. Crée les tables
   createTables: (participants) => {
     const tables = [];
     let tableId = 1;
     for (let i = 0; i < participants.length; i += 3) {
       tables.push({
         id: tableId++,
-        seats: [participants[i], participants[i+1], participants[i+2]], // [Maitre, Impair, Pair]
+        seats: [participants[i], participants[i+1], participants[i+2]],
         scores: [0, 0, 0]
       });
     }
     return tables;
   },
 
-  // 3. Rotation (Maitre fixe, Impair monte, Pair descend)
   rotateTables: (currentTables) => {
     const totalTables = currentTables.length;
     let nextTables = currentTables.map(t => ({ id: t.id, seats: [null, null, null], scores: [0,0,0] }));
 
     currentTables.forEach((table, index) => {
-      // Seat 0 (Maitre) -> Reste
       nextTables[index].seats[0] = table.seats[0];
-
-      // Seat 1 (Impair) -> Monte (Table + 1)
       let nextUp = (index + 1) % totalTables;
       nextTables[nextUp].seats[1] = table.seats[1];
-
-      // Seat 2 (Pair) -> Descend (Table - 1)
       let nextDown = (index - 1 + totalTables) % totalTables;
       nextTables[nextDown].seats[2] = table.seats[2];
     });
@@ -2049,9 +1903,7 @@ const TournamentEngine = {
   }
 };
 
-// --- ECRAN TOURNOI (AVEC REGLAGES ADMIN) ---
 const TournamentScreen = ({ tournament, onStartNext, onBack, onUpdateRounds, isUserAdmin }) => {
-    // Tri des joueurs par score décroissant
     const sortedParticipants = [...tournament.participants].sort((a, b) => b.score - a.score);
     const isFinished = tournament.round > tournament.totalRounds;
 
@@ -2062,22 +1914,20 @@ const TournamentScreen = ({ tournament, onStartNext, onBack, onUpdateRounds, isU
                     <SafeIcon icon={Icons.ChevronLeft} size={32} />
                 </button>
             )}
-           
+            
             <div className="flex-1 max-w-3xl mx-auto w-full pt-8 pb-12 flex flex-col">
                 <div className="text-center mb-6">
                     <SafeIcon icon={Icons.Trophy} size={64} className="text-yellow-500 mx-auto mb-4 animate-bounce" />
                     <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter italic">
                         {isFinished ? <span className="text-yellow-500">CLASSEMENT FINAL</span> : tournament.round === 0 ? "LISTE DES INSCRITS" : `TOUR ${tournament.round} / ${tournament.totalRounds}`}
                     </h2>
-                   
-                    {/* --- ZONE ADMIN : REGLAGE DES TOURS (5, 10, 15, X) --- */}
+                    
                     {isUserAdmin && tournament.round === 0 && (
                         <div className="mt-4 bg-zinc-900 border border-yellow-500/30 p-3 rounded-xl inline-block shadow-lg animate-in slide-in-from-top-4">
                              <div className="text-[10px] text-yellow-500 font-bold uppercase tracking-widest mb-2 flex items-center justify-center gap-2">
                                 <SafeIcon icon={Icons.Settings} size={12}/> Admin : Durée du Tournoi
                              </div>
                              <div className="flex gap-2 justify-center items-center">
-                                {/* Boutons prédefinis */}
                                 {[5, 10, 15].map(nb => (
                                     <button
                                         key={nb}
@@ -2087,7 +1937,6 @@ const TournamentScreen = ({ tournament, onStartNext, onBack, onUpdateRounds, isU
                                         {nb}
                                     </button>
                                 ))}
-                                {/* Case X personnalisée */}
                                 <div className="relative group">
                                     <input
                                         type="number"
@@ -2103,7 +1952,6 @@ const TournamentScreen = ({ tournament, onStartNext, onBack, onUpdateRounds, isU
                              <div className="text-[9px] text-zinc-600 mt-1 italic">Tours</div>
                         </div>
                     )}
-                    {/* -------------------------------------- */}
 
                     {!isFinished && tournament.round > 0 && (
                         <p className="text-zinc-400 text-sm font-bold uppercase tracking-widest mt-2">
@@ -2112,7 +1960,6 @@ const TournamentScreen = ({ tournament, onStartNext, onBack, onUpdateRounds, isU
                     )}
                 </div>
 
-                {/* LISTE DES PARTICIPANTS */}
                 <div className="flex-1 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl mb-8">
                     <div className="overflow-y-auto max-h-[50vh] custom-scrollbar p-2">
                         {sortedParticipants.map((p, i) => (
@@ -2137,7 +1984,6 @@ const TournamentScreen = ({ tournament, onStartNext, onBack, onUpdateRounds, isU
                     </div>
                 </div>
 
-                {/* BOUTON D'ACTION */}
                 <div className="mt-auto">
                     {isFinished ? (
                         <Button onClick={onBack} className="w-full py-5 text-xl bg-green-600 border-green-500">RETOURNER AU MENU</Button>
@@ -2152,30 +1998,12 @@ const TournamentScreen = ({ tournament, onStartNext, onBack, onUpdateRounds, isU
     );
 };
 
-/**
- * --- APP PRINCIPALE ---
- */
 const App = () => {
-    // --- MOUCHARD DE CONNEXION ---
-  useEffect(() => {
-    console.log("📡 Tentative de connexion au serveur...");
-    
-    socket.on('connect', () => {
-      console.log("✅ CLIENT : Je suis connecté au serveur ! Mon ID est :", socket.id);
-    });
-
-    socket.on('connect_error', (err) => {
-      console.log("❌ CLIENT : Erreur de connexion", err.message);
-    });
-  }, []);
-  // -----------------------------
   const [screen, setScreen] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
   const [gameConfig, setGameConfig] = useState(null);
-  const [setupMode, setSetupMode] = useState('solo'); // 'solo' ou 'multi'
+  const [setupMode, setSetupMode] = useState('solo');
 
-  // --- LOGIQUE TOURNOI ---
-  // Ajout de "totalRounds" dans l'état
   const [tournament, setTournament] = useState({
       active: false,
       registered: false,
@@ -2184,7 +2012,7 @@ const App = () => {
       tables: [],
       myTable: null,
       participants: [],
-      totalRounds: 5 // Valeur par défaut
+      totalRounds: 5 
   });
 
   const handleLogin = (user) => { setCurrentUser(user); setScreen('home'); };
@@ -2201,25 +2029,19 @@ const App = () => {
       updateUser({ ...currentUser, wallet: { ...currentUser.wallet, [currency]: currentUser.wallet[currency] + amount } });
       alert(`Gagné ! +${amount} ${currency}`);
   };
-   
+    
   const handleDoubleWin = (amount, currency) => {
        updateUser({ ...currentUser, wallet: { ...currentUser.wallet, [currency]: currentUser.wallet[currency] + amount } });
   };
-   
+    
   const handleLogout = () => {
       setCurrentUser(null);
       setScreen('login');
   };
 
-  // --- GESTION DU TOURNOI ---
-   
-  // 1. Inscription / Création
   const handleRegisterTournament = () => {
     const human = { ...currentUser, id: 'user_me', score: 0 };
     const allParticipants = TournamentEngine.prepareParticipants([human]);
-   
-    // Si l'admin a défini une "target" dans le setup, on l'utilise comme nombre de tours
-    // Sinon par défaut c'est 5
     const roundsConfigured = (currentUser.role === 'admin' && gameConfig?.target) ? gameConfig.target : 5;
 
     setTournament({
@@ -2230,12 +2052,11 @@ const App = () => {
         tables: [],
         myTable: null,
         participants: allParticipants,
-        totalRounds: roundsConfigured // On sauvegarde la config
+        totalRounds: roundsConfigured 
     });
     setScreen('tournament_standings');
   };
 
-  // Helper pour initialiser un Round (Tour)
   const startNextRound = (roundNum) => {
       let nextTables;
       if (roundNum === 1) {
@@ -2243,9 +2064,9 @@ const App = () => {
       } else {
           nextTables = TournamentEngine.rotateTables(tournament.tables);
       }
-     
+      
       const myNewTable = nextTables.find(t => t.seats.find(s => s.id === 'user_me'));
-     
+      
       setTournament(prev => ({
           ...prev,
           round: roundNum,
@@ -2253,11 +2074,10 @@ const App = () => {
           tables: nextTables,
           myTable: myNewTable
       }));
-     
+      
       launchTournamentGame(myNewTable, 1);
   };
 
-  // 3. Lancer une manche
   const launchTournamentGame = (table, mancheNum, previousScores = null) => {
     let opponents = table.seats.filter(s => s.id !== 'user_me');
     if (mancheNum === 2) opponents = [...opponents].reverse();
@@ -2276,11 +2096,9 @@ const App = () => {
     setScreen('game');
   };
 
-  // 4. Fin d'une manche (Appelé par GameScreen)
   const handleTournamentStep = (playersData) => {
-    // A. Mise à jour des scores globaux
     let updatedParticipants = [...tournament.participants];
-   
+    
     if (playersData) {
         playersData.forEach(pData => {
             const participantIndex = updatedParticipants.findIndex(p => p.pseudo === pData.name);
@@ -2288,8 +2106,7 @@ const App = () => {
                 updatedParticipants[participantIndex].score += pData.mdcPoints;
             }
         });
-       
-        // Simulation scores autres tables
+        
         updatedParticipants = updatedParticipants.map(p => {
             if (!playersData.find(pd => pd.name === p.pseudo)) {
                 return { ...p, score: p.score + Math.floor(Math.random() * 4) };
@@ -2298,24 +2115,19 @@ const App = () => {
         });
     }
 
-    // B. Logique de progression
     if (tournament.manche === 1) {
-        // Fin Manche 1
         setTournament(prev => ({
             ...prev,
             participants: updatedParticipants,
             manche: 2
         }));
         setScreen('tournament_standings');
-       
+        
     } else {
-        // Fin Manche 2 (Fin du Tour)
         if (tournament.round >= tournament.totalRounds) {
-            // FIN DU TOURNOI
             setTournament(prev => ({ ...prev, participants: updatedParticipants, round: 6 }));
             setScreen('tournament_standings');
         } else {
-            // PASSAGE AU TOUR SUIVANT
             setTournament(prev => ({
                 ...prev,
                 participants: updatedParticipants,
@@ -2331,7 +2143,7 @@ const App = () => {
     <div className="fixed inset-0 w-screen h-screen z-50 bg-[#020617] text-white overflow-hidden select-none flex justify-center items-center">
       <div className="w-full h-full lg:max-w-[900px] lg:max-h-[650px] lg:border lg:border-slate-800 lg:rounded-3xl shadow-[0_50px_100px_rgba(0,0,0,0.8)] bg-slate-950 relative overflow-hidden flex flex-col ring-1 ring-white/10 text-white">
         {screen === 'login' && <LoginScreen onLogin={handleLogin} />}
-       
+        
         {screen === 'home' && currentUser && <HomeScreen
             user={currentUser}
             onNavigate={(s, c) => {
@@ -2341,29 +2153,29 @@ const App = () => {
             }}
             onTournamentClick={handleRegisterTournament}
         />}
-       
+        
         {screen === 'shop' && currentUser && <ShopScreen user={currentUser} onBack={() => setScreen('home')} onUpdateUser={updateUser} />}
-       
+        
         {screen === 'setup' && <SetupScreen
             onBack={() => setScreen(setupMode === 'solo' ? 'home' : 'lobby')}
             onStart={handleStartGame}
             user={currentUser}
             mode={setupMode}
         />}
-       
+        
         {screen === 'lobby' && <LobbyScreen
-    socket={socket}  // <--- AJOUT IMPORTANT ICI
-    onBack={() => setScreen('home')}
-    user={currentUser}
-    onJoinTable={(cfg) => handleStartGame(cfg)}
-    onCreateTable={() => { setSetupMode('multi'); setScreen('setup'); }}
-/>}
+            socket={socket}
+            user={currentUser}
+            onBack={() => setScreen('home')}
+            onJoinTable={(cfg) => handleStartGame(cfg)}
+            onCreateTable={() => { setSetupMode('multi'); setScreen('setup'); }}
+        />}
 
         {screen === 'tournament_standings' && (
             <TournamentScreen
                 tournament={tournament}
-                isUserAdmin={currentUser.role === 'admin'} // On dit si c'est l'admin
-                onUpdateRounds={(nb) => setTournament(prev => ({ ...prev, totalRounds: nb }))} // La fonction pour changer les tours
+                isUserAdmin={currentUser.role === 'admin'}
+                onUpdateRounds={(nb) => setTournament(prev => ({ ...prev, totalRounds: nb }))}
                 onStartNext={() => {
                     if (tournament.manche === 1 && tournament.round > 1) {
                         startNextRound(tournament.round);
@@ -2378,7 +2190,7 @@ const App = () => {
         )}
 
         {screen === 'game' && <GameScreen
-            socket={socket} // <--- AJOUTE CETTE LIGNE ABSOLUMENT
+            socket={socket}
             key={gameConfig?.gameId || 'solo-game'}
             config={gameConfig}
             onExit={(playersData) => {
