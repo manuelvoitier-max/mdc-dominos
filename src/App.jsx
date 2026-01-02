@@ -980,34 +980,41 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   const ownedPhrases = MOCK_DB.items.filter(i => i.type === 'phrase' && user.inventory.includes(i.id));
   const currentBoard = MOCK_DB.items.find(i => i.id === user.equippedBoard) || MOCK_DB.items.find(i => i.id === 'board_classic');
 
-  // 3. LE CERVEAU DU DÉMARRAGE
-  // Dans le useEffect existant (celui avec socket.on('game_start'...))
-  useEffect(() => { 
+  // 3. LE CERVEAU DU DÉMARRAGE & ÉCOUTE DU SERVEUR
+  useEffect(() => {
       if (config.mode === 'multi') {
           
-          // 1. Démarrage (Déjà fait)
+          // 1. Démarrage de la partie (reçoit les mains)
           socket.on('game_start', (serverData) => {
-             // ... (ton code actuel) ...
+              console.log("🎮 DÉBUT DE PARTIE REÇU DU SERVEUR", serverData);
+              const myHand = serverData.hand;
+              
+              setGameState(prev => ({
+                  ...prev,
+                  players: prev.players.map(p => p.id === 0 ? { ...p, hand: myHand } : p),
+                  turnIndex: serverData.turnIndex,
+                  status: 'playing', // On passe en mode jeu !
+                  currentManche: 1
+              }));
+              setTimeLeft(15);
           });
 
-          // 2. MISE À JOUR DU PLATEAU (Nouveau !)
+          // 2. Mise à jour du plateau (quand quelqu'un joue)
           socket.on('board_update', (data) => {
               console.log("📡 Plateau mis à jour par le serveur !", data.board);
               
-              // Petit son "Clac" pour le plaisir
+              // Petit son "Clac"
               const audio = new Audio('https://actions.google.com/sounds/v1/impacts/wood_plank_flick.ogg');
               audio.play().catch(e => {});
 
               setGameState(prev => ({
                   ...prev,
-                  board: data.board, // Le serveur impose le plateau
+                  board: data.board,
                   ends: data.ends,
                   turnIndex: data.turnIndex,
-                  // On retire le domino joué de NOTRE main (si c'était nous)
+                  // On met à jour notre main pour enlever le domino qu'on vient de jouer (si c'est nous)
                   players: prev.players.map(p => {
-                      if (p.id === 0) { // Si c'est moi
-                          // On filtre pour enlever les dominos qui sont maintenant sur le plateau
-                          // Astuce : on vérifie si l'ID du domino est dans le plateau
+                      if (p.id === 0) {
                           const idsOnBoard = data.board.map(b => b.id);
                           return { ...p, hand: p.hand.filter(h => !idsOnBoard.includes(h.id)) };
                       }
@@ -1016,14 +1023,28 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
               }));
           });
 
+          // 3. MISE À JOUR DES NOMS (C'est ici qu'on l'ajoute !)
+          socket.on('update_players', (playersList) => {
+              console.log("👥 Liste des joueurs reçue :", playersList);
+              setGameState(prev => {
+                  const newPlayers = [...prev.players];
+                  // On met à jour les noms des joueurs 1 et 2 avec ceux du serveur
+                  // (Le joueur 0 c'est toujours "Moi", donc on touche pas)
+                  if(playersList[1]) newPlayers[1].name = playersList[1].name;
+                  if(playersList[2]) newPlayers[2].name = playersList[2].name;
+                  return { ...prev, players: newPlayers };
+              });
+          });
+
+          // NETTOYAGE (Important : on coupe l'écoute quand on quitte l'écran)
           return () => { 
               socket.off('game_start'); 
-              socket.off('board_update'); // Nettoyage
+              socket.off('board_update');
+              socket.off('update_players'); // On n'oublie pas de nettoyer celui-là aussi
           };
-      
 
       } else {
-          // MODE SOLO CLASSIQUE (Entraînement)
+          // MODE SOLO CLASSIQUE (Si on n'est pas en multi)
           startRound(1, 1); 
       }
   }, []);
