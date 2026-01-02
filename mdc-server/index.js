@@ -157,6 +157,11 @@ io.on('connection', (socket) => {
         }
     });
 
+    // NOUVEAU : Permet au client de demander qui est là sans rejoindre
+    socket.on('request_lobby_info', () => {
+        socket.emit('update_players', players);
+    });
+
     socket.on('disconnect', () => {
          console.log(`❌ Départ : ${socket.id}`);
          // Reset si plus personne

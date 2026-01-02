@@ -998,37 +998,38 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   const ownedPhrases = MOCK_DB.items.filter(i => i.type === 'phrase' && user.inventory.includes(i.id));
   const currentBoard = MOCK_DB.items.find(i => i.id === user.equippedBoard) || MOCK_DB.items.find(i => i.id === 'board_classic');
 
-  // 3. LE CERVEAU ANTI-CRASH
+  // 3. LE CERVEAU DU JEU (CORRECTIF CRASH & ROTATION)
   useEffect(() => {
       if (config.mode === 'multi') {
           
+          // --- A. DÉMARRAGE DE LA PARTIE ---
           socket.on('game_start', (serverData) => {
               console.log("🎮 START REÇU", serverData);
               
-              const myIdx = serverData.myIndex;
-              const allPlayers = serverData.players || []; // Sécurité si vide
-
-              // Rotation des index
-              const nextIdx = (myIdx + 1) % 3;
-              const afterNextIdx = (myIdx + 2) % 3;
-
-              // Index du tour local
-              const localTurnIndex = (serverData.turnIndex - myIdx + 3) % 3;
-
               setGameState(prev => {
+                  const myIdx = serverData.myIndex;
+                  const allPlayers = serverData.players || []; 
+
+                  // 1. CALCULS DES INDEX (Définis ICI pour être sûr qu'ils existent)
+                  const nextIdx = (myIdx + 1) % 3;       // Joueur à ma Gauche
+                  const afterNextIdx = (myIdx + 2) % 3;  // Joueur à ma Droite
+                  
+                  // 2. CALCUL DU TOUR VISUEL
+                  const localTurnIndex = (serverData.turnIndex - myIdx + 3) % 3;
+
                   const newPlayers = [...prev.players];
 
-                  // 1. MOI
+                  // 3. MISE À JOUR DES JOUEURS (Sécurisée avec ?.)
+                  // MOI (Toujours index 0 localement)
                   newPlayers[0].name = allPlayers[myIdx]?.name || "Moi";
                   newPlayers[0].hand = serverData.hand;
 
-                  // 2. GAUCHE (Sécurisé avec ?.)
-                  // Si le joueur n'existe pas encore dans la liste, on met "Attente..."
+                  // GAUCHE (Index 1 localement)
                   newPlayers[1].name = allPlayers[nextIdx]?.name || "Attente...";
                   newPlayers[1].hand = allPlayers[nextIdx]?.hand || [];
 
-                  // 3. DROITE (Sécurisé avec ?.)
-                  newPlayers[2].name = allPlayers[afterNextIndex]?.name || "Attente...";
+                  // DROITE (Index 2 localement)
+                  newPlayers[2].name = allPlayers[afterNextIdx]?.name || "Attente...";
                   newPlayers[2].hand = allPlayers[afterNextIndex]?.hand || [];
 
                   return {
@@ -1043,15 +1044,20 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
               setTimeLeft(15);
           });
 
+          // --- B. MISE À JOUR DU PLATEAU ---
           socket.on('board_update', (data) => {
+              // Son Clac
               const audio = new Audio('https://actions.google.com/sounds/v1/impacts/wood_plank_flick.ogg');
               audio.play().catch(e => {});
 
               setGameState(prev => {
+                  // Récupération de mon index serveur (sauvegardé au start)
                   const myIdx = prev.myServerIndex !== undefined ? prev.myServerIndex : 0;
+                  
+                  // Recalcul du tour visuel
                   const localTurnIndex = (data.turnIndex - myIdx + 3) % 3;
 
-                  // Mise à jour de MA main uniquement (pour enlever mes dominos)
+                  // Mise à jour de MA main (pour retirer le domino joué)
                   const newPlayers = prev.players.map(p => {
                       if (p.id === 0) {
                            const idsOnBoard = data.board.map(b => b.id);
@@ -1064,19 +1070,21 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
                       ...prev,
                       board: data.board,
                       ends: data.ends,
-                      turnIndex: localTurnIndex,
+                      turnIndex: localTurnIndex, // <--- C'est lui qui gère l'affichage "Qui joue ?"
                       players: newPlayers,
-                      pendingChoice: null
+                      pendingChoice: null // On ferme la fenêtre de choix si elle est ouverte
                   };
               });
           });
 
+          // Nettoyage
           return () => { 
               socket.off('game_start'); 
               socket.off('board_update');
           };
 
       } else {
+          // MODE SOLO
           startRound(1, 1); 
       }
   }, []);
