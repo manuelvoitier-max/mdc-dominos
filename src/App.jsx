@@ -923,16 +923,26 @@ const SetupScreen = ({ onBack, onStart, user, mode = 'solo' }) => {
 
 // ... GameScreen ... (Same as provided above)
 const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, socket }) => {
- 
-  // --- GESTION ADVERSAIRES ---
-  let bot1Name, bot2Name;
-  if (config.customOpponents && config.customOpponents.length === 2) {
-      bot1Name = config.customOpponents[0].pseudo;
-      bot2Name = config.customOpponents[1].pseudo;
-  }
-  else {
-      bot1Name = config.difficulty === 'legend' ? "Man'X le Président" : config.difficulty === 'expert' ? "Chaton la tigresse" : "Chaton";
-      bot2Name = config.difficulty === 'legend' ? "Valou le Redoutable" : config.difficulty === 'expert' ? "Olivier le blagueur" : "Olivier";
+
+  // --- CORRECTION DU BUG "CHATON & OLIVIER" ---
+  // On ne définit les noms des bots que si on est en MODE SOLO !
+  let p1Name = "Attente Joueur...";
+  let p2Name = "Attente Joueur...";
+  let p1Type = 'human'; // En multi, par défaut c'est des humains
+  let p2Type = 'human';
+
+  // Si on est en SOLO ou TOURNOI LOCAL, là on met les Bots
+  if (config.mode !== 'multi') {
+      p1Type = 'bot';
+      p2Type = 'bot';
+      
+      if (config.customOpponents && config.customOpponents.length === 2) {
+          p1Name = config.customOpponents[0].pseudo;
+          p2Name = config.customOpponents[1].pseudo;
+      } else {
+          p1Name = config.difficulty === 'legend' ? "Man'X le Président" : config.difficulty === 'expert' ? "Chaton la tigresse" : "Chaton";
+          p2Name = config.difficulty === 'legend' ? "Valou le Redoutable" : config.difficulty === 'expert' ? "Olivier le blagueur" : "Olivier";
+      }
   }
 
   const getInitData = (pName) => {
@@ -942,15 +952,15 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   };
 
   const p0Data = getInitData(user.pseudo);
-  const p1Data = getInitData(bot1Name);
-  const p2Data = getInitData(bot2Name);
+  const p1Data = getInitData(p1Name);
+  const p2Data = getInitData(p2Name);
 
   const [gameState, setGameState] = useState({
     players: [
-      // AJOUT DE 'cochonsTotal' POUR TOUS
       { id: 0, name: user.pseudo, type: 'human', hand: [], mdcPoints: p0Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p0Data.history, label: null, initialMaxDouble: -1 },
-      { id: 1, name: bot1Name, type: 'bot', hand: [], mdcPoints: p1Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p1Data.history, label: null, initialMaxDouble: -1 },
-      { id: 2, name: bot2Name, type: 'bot', hand: [], mdcPoints: p2Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p2Data.history, label: null, initialMaxDouble: -1 }
+      // ICI : On utilise les variables corrigées (Humains vides en multi, Bots en solo)
+      { id: 1, name: p1Name, type: p1Type, hand: [], mdcPoints: p1Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p1Data.history, label: null, initialMaxDouble: -1 },
+      { id: 2, name: p2Name, type: p2Type, hand: [], mdcPoints: p2Data.total, cochonsTotal: 0, wins: 0, isBoude: false, mancheHistory: p2Data.history, label: null, initialMaxDouble: -1 }
     ],
     board: [], ends: null, turnIndex: 0, status: 'dealing', currentManche: 1, currentPartie: 1, winnerId: null, pendingChoice: null, history: [], mandatoryTile: null
   });
