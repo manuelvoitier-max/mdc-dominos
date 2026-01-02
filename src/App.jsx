@@ -1010,7 +1010,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
               socket.off('game_start'); 
               socket.off('board_update'); // Nettoyage
           };
-      }
+      
 
       } else {
           // MODE SOLO CLASSIQUE (Entraînement)
