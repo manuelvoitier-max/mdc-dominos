@@ -1358,10 +1358,14 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   }, [gameState.turnIndex, gameState.status, gameState.pendingChoice]);
 
   const passTurn = (id) => {
-    // EN MULTIJOUEUR : On n'exécute JAMAIS cette logique locale.
-    // C'est le serveur qui envoie 'player_passed' ou 'your_turn'.
-    if (config.mode === 'multi') return;
-
+    / --- CORRECTIF MULTIJOUEUR ---
+    // Si on est en ligne, on ne calcule rien ici.
+    // On prévient le serveur qu'on est bloqué, et on attend sa réponse.
+    if (config.mode === 'multi') {
+        console.log("⛔ Je suis boudé -> Envoi au serveur");
+        socket.emit('player_pass'); 
+        return; // On s'arrête là, le serveur fera le reste (changement de tour, etc.)
+    }
     // --- TOUT LE CODE CI-DESSOUS NE S'EXÉCUTE QU'EN SOLO ---
     const playerName = gameState.players[id].name;
     addLog({ player: playerName, action: 'BOUDÉ', type: 'alert' });
