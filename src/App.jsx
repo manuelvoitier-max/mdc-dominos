@@ -1044,18 +1044,25 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
           // CAS 2 : On écoute quand même le socket (pour la manche suivante)
           socket.on('game_start', handleGameData);
 
-          // ... (Le reste : board_update reste identique à ce que tu as)
+          // C. Mise à jour du plateau (CORRIGÉE POUR ANIMATION ET SYNCHRO)
           socket.on('board_update', (data) => {
               const audio = new Audio('https://actions.google.com/sounds/v1/impacts/wood_plank_flick.ogg');
               audio.play().catch(e => {});
 
               setGameState(prev => {
                   const myIdx = prev.myServerIndex !== undefined ? prev.myServerIndex : 0;
+                  
+                  // 1. Calcul du tour local (Synchro des indicateurs)
                   const localTurnIndex = (data.turnIndex - myIdx + 3) % 3;
 
-                  // Mise à jour de MA main pour enlever le domino joué
+                  // 2. Calcul de QUI vient de jouer localement (Pour l'animation)
+                  // Si le serveur n'envoie pas l'info (vieux serveur), on suppose que c'est le joueur courant
+                  const serverLastMoveBy = data.lastMoveBy !== undefined ? data.lastMoveBy : data.turnIndex;
+                  const localLastMoveBy = (serverLastMoveBy - myIdx + 3) % 3;
+
+                  // 3. Mise à jour de MA main (si c'est moi qui ai joué)
                   const newPlayers = prev.players.map(p => {
-                      if (p.id === 0) {
+                      if (p.id === 0 && localLastMoveBy === 0) {
                            const idsOnBoard = data.board.map(b => b.id);
                            return { ...p, hand: p.hand.filter(h => !idsOnBoard.includes(h.id)) };
                       }
@@ -1068,7 +1075,9 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
                       ends: data.ends,
                       turnIndex: localTurnIndex, 
                       players: newPlayers,
-                      pendingChoice: null 
+                      pendingChoice: null,
+                      // NOUVEAU : On stocke qui vient de jouer pour l'animation
+                      justPlayedId: localLastMoveBy 
                   };
               });
           });

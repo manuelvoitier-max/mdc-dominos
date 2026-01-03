@@ -42,8 +42,10 @@ const passerAuTourSuivant = () => {
 };
 
 const appliquerCoup = (tile, side, playerId) => {
+    // 1. Vérifs de base
     if (board.find(d => d.id === tile.id)) return;
     
+    // 2. Logique de placement sur le plateau (inchangée)
     let orientation = (tile.v1 === tile.v2) ? 'vertical' : 'horizontal';
     let placed = { ...tile, orientation, placedAt: Date.now(), sourcePlayerId: playerId };
 
@@ -62,17 +64,28 @@ const appliquerCoup = (tile, side, playerId) => {
         }
     }
     
+    // 3. Retirer le domino de la main du joueur sur le serveur
     if (players[playerId]) {
         players[playerId].hand = players[playerId].hand.filter(d => d.id !== tile.id);
     }
     
-    io.emit('board_update', { board, ends, turnIndex: (turnIndex + 2) % 3 });
+    // 4. CRUCIAL : On informe tout le monde du nouveau plateau
+    // On ajoute 'lastMoveBy' pour dire QUI vient de jouer (pour l'animation)
+    // On envoie le 'turnIndex' ACTUEL (pas encore le suivant) pour la synchro
+    io.emit('board_update', { 
+        board, 
+        ends, 
+        turnIndex: turnIndex, // Le tour de celui qui vient de jouer
+        lastMoveBy: playerId  // <-- NOUVELLE INFO POUR L'ANIMATION
+    });
 
+    // 5. Vérification de victoire OU passage au tour suivant
     if (players[playerId] && players[playerId].hand.length === 0) {
         console.log(`🏆 VICTOIRE de ${players[playerId].name}`);
         lastWinnerId = playerId;
-        // On ne reset pas tout de suite pour laisser voir la victoire
+        // (On ajoutera la gestion de fin ici plus tard)
     } else {
+        // C'est SEULEMENT maintenant qu'on change de joueur
         passerAuTourSuivant();
     }
 };
