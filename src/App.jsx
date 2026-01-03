@@ -2398,5 +2398,4 @@ const App = () => {
 };
 
 export default App;
-// Version Finale Réparée
-export default App;
+
