@@ -199,9 +199,15 @@ const generateDominoes = () => {
 };
 
 const getValidMoves = (hand, ends) => {
-  if (!ends) return hand.map(d => ({ tile: d, side: 'start' }));
+  // SÉCURITÉ : Si ends est null OU si on ne voit pas d'extrémités valides (bug serveur), on autorise tout.
+  // Cela permet de débloquer le premier coup quoi qu'il arrive.
+  if (!ends || (ends.left === undefined && ends.right === undefined)) {
+      return hand.map(d => ({ tile: d, side: 'start' }));
+  }
+  
   const moves = [];
   hand.forEach(d => {
+    // On vérifie les correspondances standards
     if (d.v1 === ends.left || d.v2 === ends.left) moves.push({ tile: d, side: 'left' });
     if (d.v1 === ends.right || d.v2 === ends.right) moves.push({ tile: d, side: 'right' });
   });
