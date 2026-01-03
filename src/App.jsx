@@ -581,14 +581,16 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable, socket, user }) => {
         const myPseudo = user ? user.pseudo : "Invité";
         socket.emit('join_game', myPseudo);
 
-        socket.once('game_start', () => {
+        // MODIFICATION ICI : On récupère 'serverData' (les cartes et les noms)
+        socket.once('game_start', (serverData) => {
             onJoinTable({
                 mode: 'multi',
                 format: table.format.toLowerCase() === 'manches' ? 'manches' : 'points',
                 target: table.max,
                 stake: table.stake,
                 currency: 'gold',
-                difficulty: 'medium'
+                difficulty: 'medium',
+                initialData: serverData // <--- ON TRANSMET LE PAQUET AU JEU !
             });
         });
     };
@@ -992,37 +994,33 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   const ownedPhrases = MOCK_DB.items.filter(i => i.type === 'phrase' && user.inventory.includes(i.id));
   const currentBoard = MOCK_DB.items.find(i => i.id === user.equippedBoard) || MOCK_DB.items.find(i => i.id === 'board_classic');
 
-  // 3. LE CERVEAU DU JEU (CORRIGÉ : TYPO VARIABLE FIXÉE)
+  // 3. LE CERVEAU DU JEU (CORRIGÉ : TIMING + ORTHOGRAPHE)
   useEffect(() => {
       if (config.mode === 'multi') {
           
-          socket.on('game_start', (serverData) => {
-              console.log("🎮 START REÇU", serverData);
+          // On crée une fonction commune pour éviter de répéter le code
+          const handleGameStart = (serverData) => {
+              console.log("🎮 START REÇU (Socket ou Lobby)", serverData);
               
               setGameState(prev => {
                   const myIdx = serverData.myIndex;
                   const allPlayers = serverData.players || []; 
 
-                  // 1. DÉCLARATION CLAIRE DES VARIABLES
-                  // On utilise les noms COMPLETS pour éviter les erreurs
-                  const nextIndex = (myIdx + 1) % 3;       
-                  const afterNextIndex = (myIdx + 2) % 3;  // <--- C'est ici que tu avais mis "Idx" avant
+                  // 1. CORRECTION ORTHOGRAPHE VARIABLE
+                  const nextIdx = (myIdx + 1) % 3;       
+                  const afterNextIndex = (myIdx + 2) % 3; // <--- C'est corrigé ici (C'était 'Idx' avant)
                   
                   const localTurnIndex = (serverData.turnIndex - myIdx + 3) % 3;
-
                   const newPlayers = [...prev.players];
 
                   // 2. MISE À JOUR DES JOUEURS
-                  
-                  // JOUEUR 0 (Moi)
                   newPlayers[0].name = allPlayers[myIdx]?.name || "Moi";
                   newPlayers[0].hand = serverData.hand;
 
-                  // JOUEUR 1 (Gauche) -> nextIndex
-                  newPlayers[1].name = allPlayers[nextIndex]?.name || "Attente...";
-                  newPlayers[1].hand = allPlayers[nextIndex]?.hand || [];
+                  newPlayers[1].name = allPlayers[nextIdx]?.name || "Attente...";
+                  newPlayers[1].hand = allPlayers[nextIdx]?.hand || [];
 
-                  // JOUEUR 2 (Droite) -> afterNextIndex (MAINTENANT ÇA VA MARCHER)
+                  // Maintenant 'afterNextIndex' existe bien !
                   newPlayers[2].name = allPlayers[afterNextIndex]?.name || "Attente...";
                   newPlayers[2].hand = allPlayers[afterNextIndex]?.hand || [];
 
@@ -1036,8 +1034,17 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
                   };
               });
               setTimeLeft(15);
-          });
+          };
 
+          // A. On écoute le socket (pour les parties suivantes)
+          socket.on('game_start', handleGameStart);
+
+          // B. CORRECTION TIMING : Si on vient du Lobby avec des données, on lance TOUT DE SUITE !
+          if (config.initialData) {
+              handleGameStart(config.initialData);
+          }
+
+          // C. Mise à jour du plateau
           socket.on('board_update', (data) => {
               const audio = new Audio('https://actions.google.com/sounds/v1/impacts/wood_plank_flick.ogg');
               audio.play().catch(e => {});
