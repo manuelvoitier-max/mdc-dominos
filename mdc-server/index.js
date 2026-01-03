@@ -108,16 +108,21 @@ const appliquerCoup = (tile, side, playerId) => {
 };
 
 const lancerManche = () => {
-    console.log("🎲 DISTRIBUTION...");
-    const deck = generateDominoes();
-    passCount = 0;
+    console.log("🎲 DISTRIBUTION (NOUVELLE MANCHE)...");
     
-    // Distribution serveur
+    // --- CORRECTIF : ON VIDE LE PLATEAU ICI, DE FAÇON ABSOLUE ---
+    board = [];
+    ends = null;
+    passCount = 0;
+    // -----------------------------------------------------------
+
+    const deck = generateDominoes();
+    
+    // Distribution
     players[0].hand = deck.slice(0, 7);
     players[1].hand = deck.slice(7, 14);
     players[2].hand = deck.slice(14, 21);
 
-    // Infos publiques (Noms + Nombre de dominos, mais pas les valeurs)
     const playersPublicInfo = players.map(p => ({
         id: p.id,
         name: p.name,
@@ -128,14 +133,15 @@ const lancerManche = () => {
     let startTile = null;
     let autoPlay = false;
 
+    // Détermination du premier joueur
     if (lastWinnerId !== null && players[lastWinnerId]) {
         // Le gagnant précédent commence
+        console.log(`👑 Le gagnant précédent (${players[lastWinnerId].name}) garde la main.`);
         starterIndex = lastWinnerId;
         autoPlay = false;
-        board = [];
-        ends = null;
     } else {
-        // Premier tour ou nouvelle session : Gros Cochon commence
+        // Sinon (Premier jeu ou bug), le plus gros double commence
+        console.log("🔍 Recherche du plus gros domino pour commencer...");
         let maxVal = -1;
         players.forEach((p, index) => {
             p.hand.forEach(tile => {
@@ -146,7 +152,7 @@ const lancerManche = () => {
         autoPlay = true;
     }
 
-    // ENVOI DES MAINS AUX JOUEURS
+    // Envoi des mains
     players.forEach((p, index) => {
         io.to(p.id).emit('game_start', { 
             hand: p.hand, 
@@ -156,18 +162,16 @@ const lancerManche = () => {
         });
     });
 
+    // Lancement du jeu
     if (autoPlay && startTile) {
-        console.log(`🐷 COCHON AUTO : ${players[starterIndex].name} avec [${startTile.v1}|${startTile.v2}]`);
-        // On laisse 1.5s pour que les joueurs voient leur main avant que le cochon parte
+        console.log(`🐷 DÉMARRAGE AUTO : ${players[starterIndex].name} avec [${startTile.v1}|${startTile.v2}]`);
         setTimeout(() => {
             appliquerCoup(startTile, 'start', starterIndex);
         }, 1500);
     } else {
-        board = [];
-        ends = null;
+        // Si c'est manuel, on s'assure que le turnIndex est bon et on donne la main
         turnIndex = starterIndex;
-        // On laisse 1s puis on donne la main au gagnant
-        setTimeout(donnerLaMain, 1000);
+        setTimeout(donnerLaMain, 1000); 
     }
 };
 
