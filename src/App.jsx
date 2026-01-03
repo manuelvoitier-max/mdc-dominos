@@ -1116,18 +1116,30 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
       }
   }, []);
 
+  // GESTION DU TIMER ET DE L'AUTO-JEU
   useEffect(() => {
     let timer;
+    // Le chrono tourne visuellement pour tout le monde
     if (gameState.status === 'playing' && timeLeft > 0 && !gameState.pendingChoice) {
       timer = setInterval(() => setTimeLeft(p => p - 1), 1000);
-    } else if (timeLeft === 0 && gameState.status === 'playing') {
+    } 
+    // MAIS : Quand il arrive à 0...
+    else if (timeLeft === 0 && gameState.status === 'playing') {
+      
+      // STOP ! Si on est en multijoueur, on ne fait RIEN DU TOUT.
+      // On attend que le serveur nous dise quoi faire (via socket).
+      if (config.mode === 'multi') {
+          return; 
+      }
+
+      // EN SOLO SEULEMENT : L'ordinateur joue à ma place
       const p = gameState.players[gameState.turnIndex];
       const moves = getValidMoves(p.hand, gameState.ends);
       if (moves.length > 0) playTile(p.id, moves[0].tile, moves[0].side);
       else passTurn(p.id);
     }
     return () => clearInterval(timer);
-  }, [timeLeft, gameState.status, gameState.pendingChoice, gameState.turnIndex]);
+  }, [timeLeft, gameState.status, gameState.pendingChoice, gameState.turnIndex, config.mode]);
 
   useEffect(() => {
       if (gameState.status === 'winning_animation') {
@@ -1288,15 +1300,25 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   }, [gameState.turnIndex, gameState.status, gameState.pendingChoice]);
 
   const passTurn = (id) => {
+    // EN MULTIJOUEUR : On n'exécute JAMAIS cette logique locale.
+    // C'est le serveur qui envoie 'player_passed' ou 'your_turn'.
+    if (config.mode === 'multi') return;
+
+    // --- TOUT LE CODE CI-DESSOUS NE S'EXÉCUTE QU'EN SOLO ---
     const playerName = gameState.players[id].name;
     addLog({ player: playerName, action: 'BOUDÉ', type: 'alert' });
+    
     setGameState(prev => {
         const newPlayers = prev.players.map(p => p.id === id ? { ...p, isBoude: true } : p);
+        
+        // Vérification locale de blocage général (SOLO UNIQUEMENT)
         const allBlocked = newPlayers.every(p => p.isBoude || p.hand.length === 0);
+        
         if (allBlocked) {
             const scores = newPlayers.map(p => ({ id: p.id, points: calculateHandPoints(p.hand) }));
             const minPoints = Math.min(...scores.map(s => s.points));
             const winners = scores.filter(s => s.points === minPoints);
+            
             if (winners.length > 1) {
                 addLog({ player: 'SYSTÈME', action: 'ÉGALITÉ TOTALE', type: 'alert' });
                 return { ...prev, status: 'partie_draw', players: newPlayers };
