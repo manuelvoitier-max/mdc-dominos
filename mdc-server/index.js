@@ -12,15 +12,16 @@ const io = new Server(server, {
     cors: { origin: "*", methods: ["GET", "POST"] }
 });
 
-// --- VARIABLES ---
+// --- VARIABLES GLOBALES ---
 let players = [];
 let board = [];
 let ends = null;
 let turnIndex = 0;
 let gameStarted = false;
 let lastWinnerId = null;
+let passCount = 0; // Compteur pour gérer les blocages
 
-// --- FONCTIONS JEU ---
+// --- FONCTIONS ---
 const generateDominoes = () => {
     const dominoes = [];
     for (let i = 0; i <= 6; i++) {
@@ -31,46 +32,20 @@ const generateDominoes = () => {
     return dominoes.sort(() => Math.random() - 0.5);
 };
 
-// Fonction pour vérifier si un joueur peut jouer
-const peutJouer = (hand, ends) => {
-    if (!ends) return true; // Premier tour
-    return hand.some(d => d.v1 === ends.left || d.v2 === ends.left || d.v1 === ends.right || d.v2 === ends.right);
-};
-
-// Fonction pour vérifier si un joueur peut jouer
-const peutJouer = (hand, ends) => {
-    if (!ends) return true; // Premier tour
-    return hand.some(d => d.v1 === ends.left || d.v2 === ends.left || d.v1 === ends.right || d.v2 === ends.right);
-};
-
-const passerAuTourSuivant = () => {
-    let nextIndex = (turnIndex + 1) % 3;
-    let attempts = 0;
-
-    // On cherche le prochain joueur qui PEUT jouer
-    // (Dans la vraie vie au domino, si tu ne peux pas, tu boudes et c'est au suivant)
-    
-    // Pour l'instant, on passe simplement la main au suivant.
-    // C'est le CLIENT qui dira "Je boude" s'il ne peut pas jouer.
-    
-    turnIndex = nextIndex;
+// Fonction simple pour passer la main (Le serveur ne réfléchit pas, il désigne)
+const donnerLaMain = () => {
     const currentPlayer = players[turnIndex];
-
     if (currentPlayer) {
-        console.log(`👉 Tour de ${currentPlayer.name} (Index ${turnIndex})`);
-        
-        // On envoie le tour à tout le monde
+        console.log(`👉 C'est au tour de ${currentPlayer.name} (Index ${turnIndex})`);
         io.emit('your_turn', { playerIndex: turnIndex });
-        
-        // PETITE AIDE SERVEUR : On vérifie si ce joueur est boudé
-        // Si oui, on pourrait automatiser le "Boudé", mais laissons le client le faire pour l'animation.
     }
 };
 
 const appliquerCoup = (tile, side, playerId) => {
+    // Vérification basique anti-triche
     if (board.find(d => d.id === tile.id)) return;
     
-    // Reset du compteur de "Boudé"
+    // Si quelqu'un joue, on remet le compteur de "Boudé" à 0
     passCount = 0;
 
     let orientation = (tile.v1 === tile.v2) ? 'vertical' : 'horizontal';
@@ -91,49 +66,58 @@ const appliquerCoup = (tile, side, playerId) => {
         }
     }
     
+    // Retrait du domino de la main du joueur (Côté Serveur)
     if (players[playerId]) {
         players[playerId].hand = players[playerId].hand.filter(d => d.id !== tile.id);
     }
     
-    // 1. D'ABORD : On met à jour le plateau pour tout le monde
-    io.emit('board_update', { board, ends, turnIndex, lastMoveBy: playerId });
+    // 1. On met à jour le plateau pour tout le monde
+    // On ajoute 'lastMoveBy' pour que l'animation parte du bon joueur
+    io.emit('board_update', { 
+        board, 
+        ends, 
+        turnIndex, 
+        lastMoveBy: playerId 
+    });
 
-    // 2. ENSUITE : On vérifie la victoire
+    // 2. On vérifie la victoire
     if (players[playerId] && players[playerId].hand.length === 0) {
         console.log(`🏆 VICTOIRE : ${players[playerId].name}`);
         lastWinnerId = playerId;
         
-        // On prépare les mains de tout le monde pour le calcul des scores (Révélation)
+        // On révèle les mains pour le calcul des scores final
         const allHands = players.map(p => ({ 
             serverIndex: players.indexOf(p), 
             hand: p.hand 
         }));
 
-        // IMPORTANT : On attend 500ms que le plateau soit affiché avant de crier victoire
+        // Petit délai pour laisser l'animation du dernier domino se finir
         setTimeout(() => {
             io.emit('round_won', { 
                 winnerId: playerId, 
                 winningTile: tile,
-                allHands: allHands // On envoie les mains pour que le client calcule les points
+                allHands: allHands
             });
         }, 500);
 
     } else {
-        turnIndex = (turnIndex + 2) % 3;
+        // Pas de victoire ? Au suivant !
+        turnIndex = (turnIndex + 2) % 3; // Rotation Martinique (Anti-horaire)
         donnerLaMain();
     }
 };
 
 const lancerManche = () => {
-    console.log("🎲 DISTRIBUTION DES DOMINOS...");
+    console.log("🎲 DISTRIBUTION...");
     const deck = generateDominoes();
+    passCount = 0;
     
-    // On remplit les mains (Serveur)
+    // Distribution serveur
     players[0].hand = deck.slice(0, 7);
     players[1].hand = deck.slice(7, 14);
     players[2].hand = deck.slice(14, 21);
 
-    // Info publique (Noms + ID)
+    // Infos publiques (Noms + Nombre de dominos, mais pas les valeurs)
     const playersPublicInfo = players.map(p => ({
         id: p.id,
         name: p.name,
@@ -145,12 +129,13 @@ const lancerManche = () => {
     let autoPlay = false;
 
     if (lastWinnerId !== null && players[lastWinnerId]) {
+        // Le gagnant précédent commence
         starterIndex = lastWinnerId;
         autoPlay = false;
         board = [];
         ends = null;
     } else {
-        // Recherche du Cochon
+        // Premier tour ou nouvelle session : Gros Cochon commence
         let maxVal = -1;
         players.forEach((p, index) => {
             p.hand.forEach(tile => {
@@ -172,7 +157,8 @@ const lancerManche = () => {
     });
 
     if (autoPlay && startTile) {
-        console.log(`🐷 COCHON AUTO : ${players[starterIndex].name}`);
+        console.log(`🐷 COCHON AUTO : ${players[starterIndex].name} avec [${startTile.v1}|${startTile.v2}]`);
+        // On laisse 1.5s pour que les joueurs voient leur main avant que le cochon parte
         setTimeout(() => {
             appliquerCoup(startTile, 'start', starterIndex);
         }, 1500);
@@ -180,70 +166,83 @@ const lancerManche = () => {
         board = [];
         ends = null;
         turnIndex = starterIndex;
+        // On laisse 1s puis on donne la main au gagnant
+        setTimeout(donnerLaMain, 1000);
     }
 };
 
 io.on('connection', (socket) => {
     console.log(`🔌 Connecté: ${socket.id}`);
 
-    // --- RECEPTION DEMANDE D'INFOS (LOBBY) ---
+    // Si un joueur refresh la page, il redemande qui est là
     socket.on('request_lobby_info', () => {
-        // On envoie la liste actuelle à celui qui demande
         const publicList = players.map(p => ({ name: p.name, id: p.id }));
         socket.emit('update_players', publicList);
     });
 
     socket.on('join_game', (pseudo) => {
-        // 1. Est-ce que ce joueur existe déjà (par pseudo) ?
+        // Gestion reconnexion (Même pseudo = même place)
         const existingPlayer = players.find(p => p.name === pseudo);
 
         if (existingPlayer) {
-            // C'est une RECONNEXION : On met à jour son ID socket
             existingPlayer.id = socket.id;
-            console.log(`🔄 ${pseudo} est revenu (Socket mis à jour)`);
+            console.log(`🔄 ${pseudo} est de retour.`);
+        } else if (players.length < 3) {
+            players.push({ id: socket.id, name: pseudo, type: 'human', hand: [] });
+            console.log(`👤 ${pseudo} rejoint la table (${players.length}/3)`);
         } else {
-            // C'est un NOUVEAU (si place dispo)
-            if (players.length < 3) {
-                players.push({ id: socket.id, name: pseudo, type: 'human', hand: [] });
-                console.log(`👤 ${pseudo} a rejoint la table. (${players.length}/3)`);
-            } else {
-                console.log(`⛔ Table pleine, ${pseudo} rejeté.`);
-                socket.emit('game_full');
-                return;
-            }
+            socket.emit('game_full');
+            return;
         }
         
-        // 2. On prévient TOUT LE MONDE de la nouvelle liste
         const publicList = players.map(p => ({ name: p.name, id: p.id }));
         io.emit('update_players', publicList);
 
-        // 3. Si on est 3, on lance (si pas déjà lancé)
+        // Lancement automatique à 3
         if (players.length === 3 && !gameStarted) {
             gameStarted = true;
-            console.log("✅ 3 JOUEURS - LANCEMENT !!");
+            console.log("✅ TABLE COMPLÈTE - START !");
             setTimeout(lancerManche, 2000);
-        } else if (players.length === 3 && gameStarted) {
-            // Si le jeu a déjà commencé et que qqn revient, on pourrait lui renvoyer sa main (Bonus futur)
-            // Pour l'instant on laisse couler.
         }
     });
 
     socket.on('play_move', (data) => {
+        // Sécurité : on vérifie que c'est bien à lui de jouer
         if (players[turnIndex] && players[turnIndex].id === socket.id) {
             appliquerCoup(data.tile, data.side, turnIndex);
         }
     });
 
-    // --- DECONNEXION ---
+    // Gestion du "Je boude" envoyé par le Client
+    socket.on('player_pass', () => {
+        if (players[turnIndex] && players[turnIndex].id === socket.id) {
+            console.log(`🛑 ${players[turnIndex].name} passe son tour.`);
+            passCount++;
+            
+            // On prévient les autres pour l'affichage
+            io.emit('player_passed', { playerIndex: turnIndex });
+
+            if (passCount >= 3) {
+                console.log("🚫 JEU BLOQUÉ (3 boudés) -> FIN DE MANCHE");
+                // TODO: Gérer le calcul des points en cas de blocage général
+                // Pour l'instant on reset ou on déclare égalité
+                io.emit('round_draw', {}); 
+                passCount = 0;
+            } else {
+                // Au suivant
+                turnIndex = (turnIndex + 2) % 3;
+                donnerLaMain();
+            }
+        }
+    });
+
     socket.on('disconnect', () => {
          console.log(`⚠️ Perte de connexion : ${socket.id}`);
-         // IMPORTANT : ON NE SUPPRIME PLUS LES JOUEURS ICI !
-         // Ils restent en mémoire "fantôme" en attendant leur retour.
-         // Seul un redémarrage manuel du serveur via Render effacera la liste.
+         // On ne supprime PAS le joueur pour qu'il puisse revenir
     });
 });
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-    console.log(`⚡ SERVEUR STABLE (Persistant) PRÊT`);
+    console.log(`⚡ SERVEUR V7 (CLEAN) PRÊT`);
 });
