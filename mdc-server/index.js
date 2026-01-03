@@ -214,7 +214,6 @@ io.on('connection', (socket) => {
     });
 
     // Gestion du "Je boude" envoyé par le Client
-    // Gestion du "Je boude" (CORRIGÉ : Calcul des points en cas de blocage)
     socket.on('player_pass', () => {
         if (players[turnIndex] && players[turnIndex].id === socket.id) {
             console.log(`🛑 ${players[turnIndex].name} passe son tour.`);
@@ -224,49 +223,10 @@ io.on('connection', (socket) => {
             io.emit('player_passed', { playerIndex: turnIndex });
 
             if (passCount >= 3) {
-                console.log("🚫 JEU BLOQUÉ (3 boudés) -> CALCUL DU VAINQUEUR...");
-                
-                // 1. On calcule les points de chaque joueur restant
-                const scores = players.map((p, idx) => {
-                    const points = p.hand.reduce((sum, tile) => sum + tile.v1 + tile.v2, 0);
-                    return { index: idx, points: points, id: p.id };
-                });
-
-                // 2. On trouve le score le plus bas
-                const minPoints = Math.min(...scores.map(s => s.points));
-                const winners = scores.filter(s => s.points === minPoints);
-
-                if (winners.length === 1) {
-                    // --- UN SEUL VAINQUEUR (Le plus petit score) ---
-                    const winner = winners[0];
-                    console.log(`🏆 VICTOIRE AUX POINTS : ${players[winner.index].name} avec ${winner.points} points.`);
-                    
-                    lastWinnerId = winner.index;
-
-                    // On prépare les mains pour l'affichage client
-                    const allHands = players.map(p => ({ 
-                        serverIndex: players.indexOf(p), 
-                        hand: p.hand 
-                    }));
-
-                    // On envoie 'round_won' comme une victoire normale !
-                    // Astuce : Pour 'winningTile', on prend le dernier domino du plateau (celui qui a bloqué)
-                    // pour éviter que le client ne plante sur un domino null.
-                    const blockingTile = board.length > 0 ? board[board.length - 1] : {v1:0, v2:0};
-
-                    io.emit('round_won', { 
-                        winnerId: winner.index, 
-                        winningTile: blockingTile, // Visuel seulement
-                        allHands: allHands,
-                        reason: 'blocked' // Info bonus
-                    });
-
-                } else {
-                    // --- VRAIE ÉGALITÉ (Plusieurs joueurs ont le même score minimum) ---
-                    console.log("⚖️ ÉGALITÉ PARFAITE aux points.");
-                    io.emit('round_draw', {}); 
-                }
-                
+                console.log("🚫 JEU BLOQUÉ (3 boudés) -> FIN DE MANCHE");
+                // TODO: Gérer le calcul des points en cas de blocage général
+                // Pour l'instant on reset ou on déclare égalité
+                io.emit('round_draw', {}); 
                 passCount = 0;
             } else {
                 // Au suivant
