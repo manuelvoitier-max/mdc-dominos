@@ -1003,32 +1003,39 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   const ownedPhrases = MOCK_DB.items.filter(i => i.type === 'phrase' && user.inventory.includes(i.id));
   const currentBoard = MOCK_DB.items.find(i => i.id === user.equippedBoard) || MOCK_DB.items.find(i => i.id === 'board_classic');
 
-  // 3. LE CERVEAU DU JEU (VERSION BLINDÉE)
+  // 3. LE CERVEAU DU JEU (CORRIGÉ : TYPO VARIABLE FIXÉE)
   useEffect(() => {
       if (config.mode === 'multi') {
           
           socket.on('game_start', (serverData) => {
               console.log("🎮 START REÇU", serverData);
               
-              // 1. ON CALCULE TOUT AVANT DE TOUCHER AU STATE
-              const myIdx = serverData.myIndex;
-              const allPlayers = serverData.players || [];
-              const nextIdx = (myIdx + 1) % 3;       
-              const afterNextIdx = (myIdx + 2) % 3;  
-              const localTurnIndex = (serverData.turnIndex - myIdx + 3) % 3;
-
               setGameState(prev => {
+                  const myIdx = serverData.myIndex;
+                  const allPlayers = serverData.players || []; 
+
+                  // 1. DÉCLARATION CLAIRE DES VARIABLES
+                  // On utilise les noms COMPLETS pour éviter les erreurs
+                  const nextIndex = (myIdx + 1) % 3;       
+                  const afterNextIndex = (myIdx + 2) % 3;  // <--- C'est ici que tu avais mis "Idx" avant
+                  
+                  const localTurnIndex = (serverData.turnIndex - myIdx + 3) % 3;
+
                   const newPlayers = [...prev.players];
 
-                  // 2. ON APPLIQUE LES NOMS (Sécurité ?. ajoutée)
+                  // 2. MISE À JOUR DES JOUEURS
+                  
+                  // JOUEUR 0 (Moi)
                   newPlayers[0].name = allPlayers[myIdx]?.name || "Moi";
                   newPlayers[0].hand = serverData.hand;
 
-                  newPlayers[1].name = allPlayers[nextIdx]?.name || "Attente...";
-                  newPlayers[1].hand = allPlayers[nextIdx]?.hand || [];
+                  // JOUEUR 1 (Gauche) -> nextIndex
+                  newPlayers[1].name = allPlayers[nextIndex]?.name || "Attente...";
+                  newPlayers[1].hand = allPlayers[nextIndex]?.hand || [];
 
-                  newPlayers[2].name = allPlayers[afterNextIdx]?.name || "Attente...";
-                  newPlayers[2].hand = allPlayers[afterNextIdx]?.hand || [];
+                  // JOUEUR 2 (Droite) -> afterNextIndex (MAINTENANT ÇA VA MARCHER)
+                  newPlayers[2].name = allPlayers[afterNextIndex]?.name || "Attente...";
+                  newPlayers[2].hand = allPlayers[afterNextIndex]?.hand || [];
 
                   return {
                       ...prev,
