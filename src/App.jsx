@@ -1046,27 +1046,27 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
           socket.on('game_start', handleGameData);
 
           // MISE À JOUR DU PLATEAU (ET DES MAINS ADVERSES)
+          // C. Mise à jour du plateau
           socket.on('board_update', (data) => {
               const audio = new Audio('https://actions.google.com/sounds/v1/impacts/wood_plank_flick.ogg');
               audio.play().catch(e => {});
+
+              // RESET DU TIMER (Pour voir le temps défiler)
+              setTimeLeft(15); 
 
               setGameState(prev => {
                   const myIdx = prev.myServerIndex !== undefined ? prev.myServerIndex : 0;
                   const localTurnIndex = (data.turnIndex - myIdx + 3) % 3;
                   
-                  // Calcul de qui a joué pour enlever 1 domino à la bonne personne
                   const serverLastMoveBy = data.lastMoveBy !== undefined ? data.lastMoveBy : -1;
                   const localLastMoveBy = serverLastMoveBy !== -1 ? (serverLastMoveBy - myIdx + 3) % 3 : -1;
 
-                  const newPlayers = prev.players.map((p, index) => {
-                      // Si c'est MOI (0) qui ai joué, on filtre ma main
+                  const newPlayers = prev.players.map((p) => {
                       if (p.id === 0 && localLastMoveBy === 0) {
                            const idsOnBoard = data.board.map(b => b.id);
                            return { ...p, hand: p.hand.filter(h => !idsOnBoard.includes(h.id)) };
                       }
-                      // Si c'est un ADVERSAIRE (1 ou 2) qui a joué, on retire un domino factice
                       if (p.id !== 0 && p.id === localLastMoveBy) {
-                           // On retire le dernier élément du tableau factice pour réduire le compteur
                            const newHand = [...p.hand];
                            newHand.pop(); 
                            return { ...p, hand: newHand };
@@ -1083,6 +1083,39 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
                       pendingChoice: null,
                       justPlayedId: localLastMoveBy
                   };
+              });
+          });
+
+          // D. VICTOIRE (Avec récupération des mains adverses)
+          socket.on('round_won', (data) => {
+              console.log("🏆 VICTOIRE REÇUE + MAINS RÉVÉLÉES");
+              
+              setGameState(prev => {
+                   const myIdx = prev.myServerIndex !== undefined ? prev.myServerIndex : 0;
+                   const localWinnerId = (data.winnerId - myIdx + 3) % 3;
+
+                   // ON RÉVÈLE LES MAINS (Remplacement des dominos factices par les vrais)
+                   const playersWithRealHands = prev.players.map(p => {
+                       // On cherche la main correspondant à ce joueur dans les données du serveur
+                       // Astuce : On retrouve l'index serveur via la rotation inverse
+                       const serverIndexTarget = (p.id + myIdx) % 3;
+                       const playerData = data.allHands.find(h => h.serverIndex === serverIndexTarget);
+                       
+                       if (playerData) {
+                           return { ...p, hand: playerData.hand };
+                       }
+                       return p;
+                   });
+
+                   setWinningInfo({ winnerId: localWinnerId, winningTile: data.winningTile });
+                   
+                   return {
+                       ...prev,
+                       players: playersWithRealHands, // On met à jour avec les vraies mains
+                       status: 'winning_animation',
+                       winnerId: localWinnerId,
+                       pendingChoice: null
+                   };
               });
           });
 

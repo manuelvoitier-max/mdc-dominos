@@ -31,21 +31,48 @@ const generateDominoes = () => {
     return dominoes.sort(() => Math.random() - 0.5);
 };
 
+// Fonction pour vérifier si un joueur peut jouer
+const peutJouer = (hand, ends) => {
+    if (!ends) return true; // Premier tour
+    return hand.some(d => d.v1 === ends.left || d.v2 === ends.left || d.v1 === ends.right || d.v2 === ends.right);
+};
+
+// Fonction pour vérifier si un joueur peut jouer
+const peutJouer = (hand, ends) => {
+    if (!ends) return true; // Premier tour
+    return hand.some(d => d.v1 === ends.left || d.v2 === ends.left || d.v1 === ends.right || d.v2 === ends.right);
+};
+
 const passerAuTourSuivant = () => {
-    turnIndex = (turnIndex + 2) % 3; 
+    let nextIndex = (turnIndex + 1) % 3;
+    let attempts = 0;
+
+    // On cherche le prochain joueur qui PEUT jouer
+    // (Dans la vraie vie au domino, si tu ne peux pas, tu boudes et c'est au suivant)
+    
+    // Pour l'instant, on passe simplement la main au suivant.
+    // C'est le CLIENT qui dira "Je boude" s'il ne peut pas jouer.
+    
+    turnIndex = nextIndex;
     const currentPlayer = players[turnIndex];
-    // Petite sécurité si le joueur s'est déconnecté entre temps
+
     if (currentPlayer) {
         console.log(`👉 Tour de ${currentPlayer.name} (Index ${turnIndex})`);
+        
+        // On envoie le tour à tout le monde
         io.emit('your_turn', { playerIndex: turnIndex });
+        
+        // PETITE AIDE SERVEUR : On vérifie si ce joueur est boudé
+        // Si oui, on pourrait automatiser le "Boudé", mais laissons le client le faire pour l'animation.
     }
 };
 
 const appliquerCoup = (tile, side, playerId) => {
-    // 1. Vérifs de base
     if (board.find(d => d.id === tile.id)) return;
     
-    // 2. Logique de placement sur le plateau (inchangée)
+    // Reset du compteur de "Boudé"
+    passCount = 0;
+
     let orientation = (tile.v1 === tile.v2) ? 'vertical' : 'horizontal';
     let placed = { ...tile, orientation, placedAt: Date.now(), sourcePlayerId: playerId };
 
@@ -64,29 +91,36 @@ const appliquerCoup = (tile, side, playerId) => {
         }
     }
     
-    // 3. Retirer le domino de la main du joueur sur le serveur
     if (players[playerId]) {
         players[playerId].hand = players[playerId].hand.filter(d => d.id !== tile.id);
     }
     
-    // 4. CRUCIAL : On informe tout le monde du nouveau plateau
-    // On ajoute 'lastMoveBy' pour dire QUI vient de jouer (pour l'animation)
-    // On envoie le 'turnIndex' ACTUEL (pas encore le suivant) pour la synchro
-    io.emit('board_update', { 
-        board, 
-        ends, 
-        turnIndex: turnIndex, // Le tour de celui qui vient de jouer
-        lastMoveBy: playerId  // <-- NOUVELLE INFO POUR L'ANIMATION
-    });
+    // 1. D'ABORD : On met à jour le plateau pour tout le monde
+    io.emit('board_update', { board, ends, turnIndex, lastMoveBy: playerId });
 
-    // 5. Vérification de victoire OU passage au tour suivant
+    // 2. ENSUITE : On vérifie la victoire
     if (players[playerId] && players[playerId].hand.length === 0) {
-        console.log(`🏆 VICTOIRE de ${players[playerId].name}`);
+        console.log(`🏆 VICTOIRE : ${players[playerId].name}`);
         lastWinnerId = playerId;
-        // (On ajoutera la gestion de fin ici plus tard)
+        
+        // On prépare les mains de tout le monde pour le calcul des scores (Révélation)
+        const allHands = players.map(p => ({ 
+            serverIndex: players.indexOf(p), 
+            hand: p.hand 
+        }));
+
+        // IMPORTANT : On attend 500ms que le plateau soit affiché avant de crier victoire
+        setTimeout(() => {
+            io.emit('round_won', { 
+                winnerId: playerId, 
+                winningTile: tile,
+                allHands: allHands // On envoie les mains pour que le client calcule les points
+            });
+        }, 500);
+
     } else {
-        // C'est SEULEMENT maintenant qu'on change de joueur
-        passerAuTourSuivant();
+        turnIndex = (turnIndex + 2) % 3;
+        donnerLaMain();
     }
 };
 
