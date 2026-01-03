@@ -565,28 +565,22 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable, socket, user }) => {
     const [loadingTableId, setLoadingTableId] = useState(null);
     const [playersInLobby, setPlayersInLobby] = useState([]);
 
-    // AJOUT : On demande la liste dès qu'on arrive !
     useEffect(() => {
-        // 1. On écoute la réponse
         socket.on('update_players', (players) => {
             console.log("Mise à jour Lobby:", players);
             setPlayersInLobby(players);
         });
-
-        // 2. On demande au serveur "Qui est là ?" immédiatement
-        socket.emit('request_lobby_info'); 
+        
+        socket.emit('request_lobby_info');
 
         return () => socket.off('update_players');
     }, [socket]);
 
     const handleJoin = (table) => {
         setLoadingTableId(table.id);
-        
-        // On envoie le vrai pseudo
         const myPseudo = user ? user.pseudo : "Invité";
         socket.emit('join_game', myPseudo);
 
-        // On écoute le démarrage
         socket.once('game_start', () => {
             onJoinTable({
                 mode: 'multi',
@@ -602,16 +596,9 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable, socket, user }) => {
     const filteredTables = MOCK_TABLES.filter(t => filterStake === 'all' || t.stake === filterStake);
 
     return (
-        // ... (Le reste du return (JSX) reste IDENTIQUE, ne change rien au HTML) ...
         <div className="flex flex-col h-full p-4 md:p-6 relative bg-zinc-950 overflow-y-auto text-white font-sans">
-           {/* ... garde tout le code visuel ici ... */}
-           {/* Si tu veux je peux te redonner tout le bloc JSX pour être sûr, mais c'est le même */}
            <button onClick={onBack} className="absolute top-6 left-6 text-zinc-500 hover:text-white transition-colors p-2 rounded hover:bg-white/10"><SafeIcon icon={Icons.ChevronLeft} size={32} /></button>
            <div className="flex-1 max-w-3xl mx-auto w-full pt-8 pb-12">
-               {/* ... etc ... */}
-               {/* Pour faire simple, copie-colle juste la logique handleJoin ci-dessus dans ton code existant */}
-               {/* Si tu préfères le code COMPLET de LobbyScreen dis-le moi */}
-               
                 <div className="flex justify-between items-end mb-8">
                     <div>
                         <h2 className="text-2xl md:text-4xl font-black uppercase tracking-tighter italic">SALON <span className="text-green-500">JEU</span></h2>
@@ -672,7 +659,6 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable, socket, user }) => {
                         <div className="w-20 h-20 rounded-full border-4 border-t-green-500 border-zinc-800 animate-spin mb-8"></div>
                         <h2 className="text-3xl font-black text-white uppercase italic animate-pulse">En attente des joueurs...</h2>
                         
-                        {/* AFFICHER QUI EST LÀ */}
                         <div className="mt-4 bg-zinc-800 p-4 rounded-xl border border-zinc-700 min-w-[200px]">
                             <p className="text-zinc-500 text-xs mb-2 uppercase">Joueurs prêts ({playersInLobby.length}/3)</p>
                             {playersInLobby.map((p, i) => (
@@ -684,7 +670,10 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable, socket, user }) => {
                         </div>
                     </div>
                 )}
-
+           </div>
+        </div>
+    );
+};
 const LoginScreen = ({ onLogin }) => {
     const [pseudo, setPseudo] = useState("");
     const [password, setPassword] = useState("");
