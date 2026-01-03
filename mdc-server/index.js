@@ -90,15 +90,14 @@ const appliquerCoup = (tile, side, playerId) => {
 const lancerManche = () => {
     console.log("🎲 DISTRIBUTION (NOUVELLE MANCHE)...");
     
-    // --- CORRECTIF : ON VIDE LE PLATEAU ICI, DE FAÇON ABSOLUE ---
+    // 1. Nettoyage absolu du plateau
     board = [];
     ends = null;
     passCount = 0;
-    // -----------------------------------------------------------
 
     const deck = generateDominoes();
     
-    // Distribution
+    // 2. Distribution des mains
     players[0].hand = deck.slice(0, 7);
     players[1].hand = deck.slice(7, 14);
     players[2].hand = deck.slice(14, 21);
@@ -113,26 +112,30 @@ const lancerManche = () => {
     let startTile = null;
     let autoPlay = false;
 
-    // Détermination du premier joueur
+    // 3. Qui commence ?
     if (lastWinnerId !== null && players[lastWinnerId]) {
-        // Le gagnant précédent commence
         console.log(`👑 Le gagnant précédent (${players[lastWinnerId].name}) garde la main.`);
         starterIndex = lastWinnerId;
-        autoPlay = false;
+        autoPlay = false; // Le gagnant joue ce qu'il veut
     } else {
-        // Sinon (Premier jeu ou bug), le plus gros double commence
-        console.log("🔍 Recherche du plus gros domino pour commencer...");
+        console.log("🔍 Recherche du plus gros domino (Double 6 ou + lourd)...");
         let maxVal = -1;
         players.forEach((p, index) => {
             p.hand.forEach(tile => {
+                // Poids : Double = Valeur + 100, Simple = v1 + v2
                 let val = (tile.v1 === tile.v2) ? (tile.v1 + 100) : (tile.v1 + tile.v2);
                 if (val > maxVal) { maxVal = val; starterIndex = index; startTile = tile; }
             });
         });
-        autoPlay = true;
+        autoPlay = true; // Le Double 6 est posé automatiquement
     }
 
-    // Envoi des mains
+    // --- CORRECTION MAJEURE ICI ---
+    // On met à jour le tour officiel MAINTENANT, avant de jouer
+    turnIndex = starterIndex;
+    // ------------------------------
+
+    // 4. Envoi des infos aux clients
     players.forEach((p, index) => {
         io.to(p.id).emit('game_start', { 
             hand: p.hand, 
@@ -142,15 +145,15 @@ const lancerManche = () => {
         });
     });
 
-    // Lancement du jeu
+    // 5. Action !
     if (autoPlay && startTile) {
-        console.log(`🐷 DÉMARRAGE AUTO : ${players[starterIndex].name} avec [${startTile.v1}|${startTile.v2}]`);
+        console.log(`🐷 COCHON AUTO : ${players[starterIndex].name} pose [${startTile.v1}|${startTile.v2}]`);
+        // On attend un peu que les joueurs voient leur main
         setTimeout(() => {
             appliquerCoup(startTile, 'start', starterIndex);
         }, 1500);
     } else {
-        // Si c'est manuel, on s'assure que le turnIndex est bon et on donne la main
-        turnIndex = starterIndex;
+        // Mode manuel (Gagnant précédent)
         setTimeout(donnerLaMain, 1000); 
     }
 };
