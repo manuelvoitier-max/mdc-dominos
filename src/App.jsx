@@ -1174,31 +1174,37 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
       }
   }, []);
 
-  // GESTION DU TIMER ET DE L'AUTO-JEU
+  /// GESTION DU TIMER ET DE L'AUTO-JEU
   useEffect(() => {
     let timer;
     // Le chrono tourne visuellement pour tout le monde
     if (gameState.status === 'playing' && timeLeft > 0 && !gameState.pendingChoice) {
       timer = setInterval(() => setTimeLeft(p => p - 1), 1000);
     } 
-    // MAIS : Quand il arrive à 0...
+    // QUAND LE TEMPS EST ÉCOULÉ (0) :
     else if (timeLeft === 0 && gameState.status === 'playing') {
       
-      // STOP ! Si on est en multijoueur, on ne fait RIEN DU TOUT.
-      // On attend que le serveur nous dise quoi faire (via socket).
-      if (config.mode === 'multi') {
+      // En Multijoueur, on agit SEULEMENT si c'est MON tour (index 0)
+      // Si c'est le tour de l'adversaire (1 ou 2), on attend qu'il joue (ou que son tel gère le timeout)
+      if (config.mode === 'multi' && gameState.turnIndex !== 0) {
           return; 
       }
 
-      // EN SOLO SEULEMENT : L'ordinateur joue à ma place
+      // Si c'est mon tour (Solo ou Multi), je joue automatiquement ou je passe
       const p = gameState.players[gameState.turnIndex];
       const moves = getValidMoves(p.hand, gameState.ends);
-      if (moves.length > 0) playTile(p.id, moves[0].tile, moves[0].side);
-      else passTurn(p.id);
+      
+      if (moves.length > 0) {
+          // Joue le premier domino disponible (Auto-play)
+          playTile(p.id, moves[0].tile, moves[0].side);
+      } else {
+          // Sinon, on passe le tour (Déclenchera socket.emit('player_pass') grâce à ta fonction passTurn)
+          passTurn(p.id);
+      }
     }
     return () => clearInterval(timer);
   }, [timeLeft, gameState.status, gameState.pendingChoice, gameState.turnIndex, config.mode]);
-
+  
   useEffect(() => {
       if (gameState.status === 'winning_animation') {
           const t = setTimeout(() => {
@@ -1358,9 +1364,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   }, [gameState.turnIndex, gameState.status, gameState.pendingChoice]);
 
   const passTurn = (id) => {
-    / --- CORRECTIF MULTIJOUEUR ---
-    // Si on est en ligne, on ne calcule rien ici.
-    // On prévient le serveur qu'on est bloqué, et on attend sa réponse.
+    // --- CORRECTIF MULTIJOUEUR --- 
     if (config.mode === 'multi') {
         console.log("⛔ Je suis boudé -> Envoi au serveur");
         socket.emit('player_pass'); 
