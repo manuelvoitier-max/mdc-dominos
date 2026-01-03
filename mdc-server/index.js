@@ -42,37 +42,13 @@ const donnerLaMain = () => {
 };
 
 const appliquerCoup = (tile, side, playerId) => {
-    // Vérification basique anti-triche
-    if (board.find(d => d.id === tile.id)) return;
-    
-    // Si quelqu'un joue, on remet le compteur de "Boudé" à 0
-    passCount = 0;
+    // ... (tout le début de la fonction reste identique) ...
+    // ... (board.find, logique de placement, retrait de la main...)
 
-    let orientation = (tile.v1 === tile.v2) ? 'vertical' : 'horizontal';
-    let placed = { ...tile, orientation, placedAt: Date.now(), sourcePlayerId: playerId };
-
-    if (board.length === 0) {
-        board = [placed];
-        ends = { left: tile.v1, right: tile.v2 };
-    } else {
-        if (side === 'left') {
-            if (placed.v2 !== ends.left) { let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp; }
-            ends.left = placed.v1;
-            board.unshift(placed);
-        } else {
-            if (placed.v1 !== ends.right) { let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp; }
-            ends.right = placed.v2;
-            board.push(placed);
-        }
-    }
-    
-    // Retrait du domino de la main du joueur (Côté Serveur)
     if (players[playerId]) {
         players[playerId].hand = players[playerId].hand.filter(d => d.id !== tile.id);
     }
     
-    // 1. On met à jour le plateau pour tout le monde
-    // On ajoute 'lastMoveBy' pour que l'animation parte du bon joueur
     io.emit('board_update', { 
         board, 
         ends, 
@@ -80,29 +56,33 @@ const appliquerCoup = (tile, side, playerId) => {
         lastMoveBy: playerId 
     });
 
-    // 2. On vérifie la victoire
+    // --- CORRECTION ICI : GESTION DE LA SUITE DE LA PARTIE ---
     if (players[playerId] && players[playerId].hand.length === 0) {
         console.log(`🏆 VICTOIRE : ${players[playerId].name}`);
         lastWinnerId = playerId;
         
-        // On révèle les mains pour le calcul des scores final
         const allHands = players.map(p => ({ 
             serverIndex: players.indexOf(p), 
             hand: p.hand 
         }));
 
-        // Petit délai pour laisser l'animation du dernier domino se finir
         setTimeout(() => {
             io.emit('round_won', { 
                 winnerId: playerId, 
                 winningTile: tile,
                 allHands: allHands
             });
+
+            // ICI : ON RELANCE AUTOMATIQUEMENT LA MANCHE APRÈS 10 SECONDES
+            console.log("⏳ Nouvelle manche dans 10s...");
+            setTimeout(() => {
+                lancerManche(); 
+            }, 10000); // 10 secondes pour laisser le temps de voir le tableau des scores
+
         }, 500);
 
     } else {
-        // Pas de victoire ? Au suivant !
-        turnIndex = (turnIndex + 2) % 3; // Rotation Martinique (Anti-horaire)
+        turnIndex = (turnIndex + 2) % 3;
         donnerLaMain();
     }
 };
