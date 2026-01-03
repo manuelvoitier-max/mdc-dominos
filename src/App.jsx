@@ -994,11 +994,10 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   const ownedPhrases = MOCK_DB.items.filter(i => i.type === 'phrase' && user.inventory.includes(i.id));
   const currentBoard = MOCK_DB.items.find(i => i.id === user.equippedBoard) || MOCK_DB.items.find(i => i.id === 'board_classic');
 
-  // 3. LE CERVEAU DU JEU (CORRIGÉ : TIMING + ORTHOGRAPHE)
+  // 3. LE CERVEAU DU JEU (CORRECTIF : MAINS ADVERSES + SYNCHRO)
   useEffect(() => {
       if (config.mode === 'multi') {
           
-          // Fonction pour traiter les données reçues (soit du Lobby, soit du Socket)
           const handleGameData = (serverData) => {
               console.log("🎮 DONNÉES REÇUES :", serverData);
               
@@ -1006,23 +1005,29 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
                   const myIdx = serverData.myIndex;
                   const allPlayers = serverData.players || [];
                   
-                  // Calcul des positions (Gauche / Droite)
+                  // Calcul des positions
                   const nextIndex = (myIdx + 1) % 3;       
                   const afterNextIndex = (myIdx + 2) % 3;
                   const localTurnIndex = (serverData.turnIndex - myIdx + 3) % 3;
 
                   const newPlayers = [...prev.players];
 
-                  // 1. MOI : Je mets mes dominos reçus dans ma main !
+                  // 1. MOI : Je prends mes vrais dominos
                   newPlayers[0].name = allPlayers[myIdx]?.name || "Moi";
-                  newPlayers[0].hand = serverData.hand; // <--- C'est ici que tes dominos arrivent
+                  newPlayers[0].hand = serverData.hand; 
 
-                  // 2. ADVERSAIRES
+                  // 2. CORRECTION CRUCIALE : CRÉATION DES DOMINOS FACTICES
+                  // On crée une main de 7 dominos "cachés" pour les adversaires
+                  // Sinon le jeu croit qu'ils ont gagné (0 carte) !
+                  const dummyHand = Array(7).fill({ id: 'hidden', v1: -1, v2: -1 });
+
+                  // GAUCHE
                   newPlayers[1].name = allPlayers[nextIndex]?.name || "Attente...";
-                  newPlayers[1].hand = allPlayers[nextIndex]?.hand || []; // Souvent vide car caché
+                  newPlayers[1].hand = dummyHand; 
 
+                  // DROITE
                   newPlayers[2].name = allPlayers[afterNextIndex]?.name || "Attente...";
-                  newPlayers[2].hand = allPlayers[afterNextIndex]?.hand || [];
+                  newPlayers[2].hand = dummyHand; 
 
                   return {
                       ...prev,
@@ -1036,35 +1041,35 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
               setTimeLeft(15);
           };
 
-          // CAS 1 : On vient d'arriver du Lobby avec les dominos en main -> On charge direct !
-          if (config.initialData) {
-              handleGameData(config.initialData);
-          }
-
-          // CAS 2 : On écoute quand même le socket (pour la manche suivante)
+          // Démarrage via Lobby ou Socket
+          if (config.initialData) handleGameData(config.initialData);
           socket.on('game_start', handleGameData);
 
-          // C. Mise à jour du plateau (CORRIGÉE POUR ANIMATION ET SYNCHRO)
+          // MISE À JOUR DU PLATEAU (ET DES MAINS ADVERSES)
           socket.on('board_update', (data) => {
               const audio = new Audio('https://actions.google.com/sounds/v1/impacts/wood_plank_flick.ogg');
               audio.play().catch(e => {});
 
               setGameState(prev => {
                   const myIdx = prev.myServerIndex !== undefined ? prev.myServerIndex : 0;
-                  
-                  // 1. Calcul du tour local (Synchro des indicateurs)
                   const localTurnIndex = (data.turnIndex - myIdx + 3) % 3;
+                  
+                  // Calcul de qui a joué pour enlever 1 domino à la bonne personne
+                  const serverLastMoveBy = data.lastMoveBy !== undefined ? data.lastMoveBy : -1;
+                  const localLastMoveBy = serverLastMoveBy !== -1 ? (serverLastMoveBy - myIdx + 3) % 3 : -1;
 
-                  // 2. Calcul de QUI vient de jouer localement (Pour l'animation)
-                  // Si le serveur n'envoie pas l'info (vieux serveur), on suppose que c'est le joueur courant
-                  const serverLastMoveBy = data.lastMoveBy !== undefined ? data.lastMoveBy : data.turnIndex;
-                  const localLastMoveBy = (serverLastMoveBy - myIdx + 3) % 3;
-
-                  // 3. Mise à jour de MA main (si c'est moi qui ai joué)
-                  const newPlayers = prev.players.map(p => {
+                  const newPlayers = prev.players.map((p, index) => {
+                      // Si c'est MOI (0) qui ai joué, on filtre ma main
                       if (p.id === 0 && localLastMoveBy === 0) {
                            const idsOnBoard = data.board.map(b => b.id);
                            return { ...p, hand: p.hand.filter(h => !idsOnBoard.includes(h.id)) };
+                      }
+                      // Si c'est un ADVERSAIRE (1 ou 2) qui a joué, on retire un domino factice
+                      if (p.id !== 0 && p.id === localLastMoveBy) {
+                           // On retire le dernier élément du tableau factice pour réduire le compteur
+                           const newHand = [...p.hand];
+                           newHand.pop(); 
+                           return { ...p, hand: newHand };
                       }
                       return p;
                   });
@@ -1076,40 +1081,33 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
                       turnIndex: localTurnIndex, 
                       players: newPlayers,
                       pendingChoice: null,
-                      // NOUVEAU : On stocke qui vient de jouer pour l'animation
-                      justPlayedId: localLastMoveBy 
+                      justPlayedId: localLastMoveBy
                   };
               });
           });
 
-          // D. Réception du signal "C'est à toi/lui de jouer"
+          // ÉCOUTE DU CHANGEMENT DE TOUR (Pour débloquer le jeu)
           socket.on('your_turn', (data) => {
-              console.log("👉 CHANGEMENT DE TOUR :", data);
-              
               setGameState(prev => {
                   const myIdx = prev.myServerIndex !== undefined ? prev.myServerIndex : 0;
                   const localTurnIndex = (data.playerIndex - myIdx + 3) % 3;
-
-                  // Si c'est à MOI de jouer (localTurnIndex === 0)
-                  if (localTurnIndex === 0) {
-                      const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-                      audio.volume = 0.2;
-                      audio.play().catch(e => {});
-                  }
-
-                  return {
-                      ...prev,
-                      turnIndex: localTurnIndex,
-                      status: 'playing',
-                      pendingChoice: null // On ferme les popups précédents
-                  };
+                  return { ...prev, turnIndex: localTurnIndex };
               });
+          });
+
+          // ÉCOUTE DE LA VICTOIRE
+          socket.on('round_won', (data) => {
+               setGameState(prev => {
+                   const myIdx = prev.myServerIndex !== undefined ? prev.myServerIndex : 0;
+                   const localWinnerId = (data.winnerId - myIdx + 3) % 3;
+                   return { ...prev, status: 'winning_animation', winnerId: localWinnerId, pendingChoice: null };
+               });
           });
 
           return () => { 
               socket.off('game_start'); 
               socket.off('board_update');
-              socket.off('your_turn'); // <--- AJOUT
+              socket.off('your_turn');
               socket.off('round_won');
           };
 
