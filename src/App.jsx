@@ -1086,6 +1086,31 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
               });
           });
 
+          // D. CHANGEMENT DE TOUR (C'est ça qui manquait !)
+          socket.on('your_turn', (data) => {
+              console.log("👉 TOUR REÇU DU SERVEUR :", data);
+              
+              setGameState(prev => {
+                  const myIdx = prev.myServerIndex !== undefined ? prev.myServerIndex : 0;
+                  // On calcule qui doit jouer sur MON écran
+                  const localTurnIndex = (data.playerIndex - myIdx + 3) % 3;
+
+                  // Si c'est MOI (0), je fais un petit bip
+                  if (localTurnIndex === 0) {
+                       const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+                       audio.volume = 0.5;
+                       audio.play().catch(e => {});
+                  }
+
+                  return {
+                      ...prev,
+                      turnIndex: localTurnIndex, // <--- C'est ici que l'affichage se met à jour !
+                      status: 'playing',
+                      pendingChoice: null
+                  };
+              });
+          });
+
           // D. VICTOIRE (Avec récupération des mains adverses)
           socket.on('round_won', (data) => {
               console.log("🏆 VICTOIRE REÇUE + MAINS RÉVÉLÉES");
