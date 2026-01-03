@@ -1082,9 +1082,35 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
               });
           });
 
+          // D. Réception du signal "C'est à toi/lui de jouer"
+          socket.on('your_turn', (data) => {
+              console.log("👉 CHANGEMENT DE TOUR :", data);
+              
+              setGameState(prev => {
+                  const myIdx = prev.myServerIndex !== undefined ? prev.myServerIndex : 0;
+                  const localTurnIndex = (data.playerIndex - myIdx + 3) % 3;
+
+                  // Si c'est à MOI de jouer (localTurnIndex === 0)
+                  if (localTurnIndex === 0) {
+                      const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+                      audio.volume = 0.2;
+                      audio.play().catch(e => {});
+                  }
+
+                  return {
+                      ...prev,
+                      turnIndex: localTurnIndex,
+                      status: 'playing',
+                      pendingChoice: null // On ferme les popups précédents
+                  };
+              });
+          });
+
           return () => { 
               socket.off('game_start'); 
               socket.off('board_update');
+              socket.off('your_turn'); // <--- AJOUT
+              socket.off('round_won');
           };
 
       } else {
