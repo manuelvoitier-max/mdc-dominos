@@ -999,33 +999,25 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
       if (config.mode === 'multi') {
           
           const handleGameData = (serverData) => {
-              console.log("🎮 DONNÉES REÇUES :", serverData);
+              console.log("🎮 DONNÉES REÇUES (Nouvelle Manche) :", serverData);
               
               setGameState(prev => {
                   const myIdx = serverData.myIndex;
                   const allPlayers = serverData.players || [];
                   
-                  // Calcul des positions
                   const nextIndex = (myIdx + 1) % 3;       
                   const afterNextIndex = (myIdx + 2) % 3;
                   const localTurnIndex = (serverData.turnIndex - myIdx + 3) % 3;
 
                   const newPlayers = [...prev.players];
 
-                  // 1. MOI : Je prends mes vrais dominos
+                  // 1. Mise à jour des mains
                   newPlayers[0].name = allPlayers[myIdx]?.name || "Moi";
                   newPlayers[0].hand = serverData.hand; 
 
-                  // 2. CORRECTION CRUCIALE : CRÉATION DES DOMINOS FACTICES
-                  // On crée une main de 7 dominos "cachés" pour les adversaires
-                  // Sinon le jeu croit qu'ils ont gagné (0 carte) !
                   const dummyHand = Array(7).fill({ id: 'hidden', v1: -1, v2: -1 });
-
-                  // GAUCHE
                   newPlayers[1].name = allPlayers[nextIndex]?.name || "Attente...";
                   newPlayers[1].hand = dummyHand; 
-
-                  // DROITE
                   newPlayers[2].name = allPlayers[afterNextIndex]?.name || "Attente...";
                   newPlayers[2].hand = dummyHand; 
 
@@ -1034,8 +1026,12 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
                       players: newPlayers,
                       turnIndex: localTurnIndex,
                       status: 'playing',
-                      currentManche: 1,
-                      myServerIndex: myIdx
+                      currentManche: prev.currentManche + 1, // On incrémente le numéro de manche
+                      myServerIndex: myIdx,
+                      // --- CORRECTION ICI : ON VIDE LE PLATEAU ---
+                      board: [], 
+                      ends: null
+                      // -------------------------------------------
                   };
               });
               setTimeLeft(15);
@@ -1204,7 +1200,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
     }
     return () => clearInterval(timer);
   }, [timeLeft, gameState.status, gameState.pendingChoice, gameState.turnIndex, config.mode]);
-  
+
   useEffect(() => {
       if (gameState.status === 'winning_animation') {
           const t = setTimeout(() => {
