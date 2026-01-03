@@ -20,7 +20,7 @@ let turnIndex = 0;
 let gameStarted = false;
 let lastWinnerId = null;
 
-// --- FONCTIONS ---
+// --- FONCTIONS JEU ---
 const generateDominoes = () => {
     const dominoes = [];
     for (let i = 0; i <= 6; i++) {
@@ -34,8 +34,9 @@ const generateDominoes = () => {
 const passerAuTourSuivant = () => {
     turnIndex = (turnIndex + 2) % 3; 
     const currentPlayer = players[turnIndex];
+    // Petite sécurité si le joueur s'est déconnecté entre temps
     if (currentPlayer) {
-        console.log(`👉 Tour de ${currentPlayer.name}`);
+        console.log(`👉 Tour de ${currentPlayer.name} (Index ${turnIndex})`);
         io.emit('your_turn', { playerIndex: turnIndex });
     }
 };
@@ -61,7 +62,6 @@ const appliquerCoup = (tile, side, playerId) => {
         }
     }
     
-    // Mise à jour de la main du joueur sur le serveur
     if (players[playerId]) {
         players[playerId].hand = players[playerId].hand.filter(d => d.id !== tile.id);
     }
@@ -71,38 +71,39 @@ const appliquerCoup = (tile, side, playerId) => {
     if (players[playerId] && players[playerId].hand.length === 0) {
         console.log(`🏆 VICTOIRE de ${players[playerId].name}`);
         lastWinnerId = playerId;
+        // On ne reset pas tout de suite pour laisser voir la victoire
     } else {
         passerAuTourSuivant();
     }
 };
 
 const lancerManche = () => {
-    console.log("🎲 DISTRIBUTION...");
+    console.log("🎲 DISTRIBUTION DES DOMINOS...");
     const deck = generateDominoes();
     
-    // 1. On remplit les mains
+    // On remplit les mains (Serveur)
     players[0].hand = deck.slice(0, 7);
     players[1].hand = deck.slice(7, 14);
     players[2].hand = deck.slice(14, 21);
 
-    // 2. On prépare la liste des joueurs (juste noms et ID) pour l'envoyer à tout le monde
+    // Info publique (Noms + ID)
     const playersPublicInfo = players.map(p => ({
         id: p.id,
         name: p.name,
-        handSize: 7 // Au début tout le monde a 7
+        handSize: 7
     }));
 
     let starterIndex = -1;
     let startTile = null;
     let autoPlay = false;
 
-    // Logique de démarrage (Cochon ou Gagnant)
     if (lastWinnerId !== null && players[lastWinnerId]) {
         starterIndex = lastWinnerId;
         autoPlay = false;
         board = [];
         ends = null;
     } else {
+        // Recherche du Cochon
         let maxVal = -1;
         players.forEach((p, index) => {
             p.hand.forEach(tile => {
@@ -113,63 +114,70 @@ const lancerManche = () => {
         autoPlay = true;
     }
 
-    // 3. IMPORTANT : On envoie les mains AVANT de jouer le premier coup !
-    // Comme ça les joueurs ont leurs dominos quand le plateau bouge.
+    // ENVOI DES MAINS AUX JOUEURS
     players.forEach((p, index) => {
         io.to(p.id).emit('game_start', { 
             hand: p.hand, 
-            turnIndex: starterIndex, // On dit qui commence (sera mis à jour si autoplay)
+            turnIndex: starterIndex, 
             myIndex: index,
-            players: playersPublicInfo // ON ENVOIE BIEN LES NOMS ICI
+            players: playersPublicInfo 
         });
     });
 
-    // 4. Si c'est un démarrage automatique (Cochon), on attend 1 seconde que les clients soient prêts
-    // Puis on joue le coup.
     if (autoPlay && startTile) {
-        console.log(`🐷 COCHON AUTO : ${players[starterIndex].name} joue le [${startTile.v1}|${startTile.v2}]`);
-        
+        console.log(`🐷 COCHON AUTO : ${players[starterIndex].name}`);
         setTimeout(() => {
-            // On joue le coup sur le serveur
             appliquerCoup(startTile, 'start', starterIndex);
-        }, 1500); // Délai pour laisser l'animation de distribution se faire
+        }, 1500);
     } else {
-        // Si ce n'est pas auto (gagnant précédent), on initialise juste le tour
         board = [];
         ends = null;
         turnIndex = starterIndex;
-        // On ne fait rien, on attend que le joueur joue.
     }
 };
 
 io.on('connection', (socket) => {
     console.log(`🔌 Connecté: ${socket.id}`);
 
-    // Demande d'infos du Lobby (Nouveau code Client)
+    // --- RECEPTION DEMANDE D'INFOS (LOBBY) ---
     socket.on('request_lobby_info', () => {
+        // On envoie la liste actuelle à celui qui demande
         const publicList = players.map(p => ({ name: p.name, id: p.id }));
         socket.emit('update_players', publicList);
     });
 
     socket.on('join_game', (pseudo) => {
-        // Si le joueur est déjà là (reconnexion rapide), on met à jour le socket
+        // 1. Est-ce que ce joueur existe déjà (par pseudo) ?
         const existingPlayer = players.find(p => p.name === pseudo);
+
         if (existingPlayer) {
-            existingPlayer.id = socket.id; // Mise à jour ID
-            console.log(`🔄 ${pseudo} reconnecté.`);
-        } else if (players.length < 3) {
-            players.push({ id: socket.id, name: pseudo, type: 'human', hand: [] });
-            console.log(`👤 ${pseudo} rejoint (${players.length}/3)`);
+            // C'est une RECONNEXION : On met à jour son ID socket
+            existingPlayer.id = socket.id;
+            console.log(`🔄 ${pseudo} est revenu (Socket mis à jour)`);
+        } else {
+            // C'est un NOUVEAU (si place dispo)
+            if (players.length < 3) {
+                players.push({ id: socket.id, name: pseudo, type: 'human', hand: [] });
+                console.log(`👤 ${pseudo} a rejoint la table. (${players.length}/3)`);
+            } else {
+                console.log(`⛔ Table pleine, ${pseudo} rejeté.`);
+                socket.emit('game_full');
+                return;
+            }
         }
         
-        // On diffuse la liste mise à jour au Lobby
+        // 2. On prévient TOUT LE MONDE de la nouvelle liste
         const publicList = players.map(p => ({ name: p.name, id: p.id }));
         io.emit('update_players', publicList);
 
+        // 3. Si on est 3, on lance (si pas déjà lancé)
         if (players.length === 3 && !gameStarted) {
             gameStarted = true;
-            console.log("✅ 3 JOUEURS - START dans 2s...");
+            console.log("✅ 3 JOUEURS - LANCEMENT !!");
             setTimeout(lancerManche, 2000);
+        } else if (players.length === 3 && gameStarted) {
+            // Si le jeu a déjà commencé et que qqn revient, on pourrait lui renvoyer sa main (Bonus futur)
+            // Pour l'instant on laisse couler.
         }
     });
 
@@ -179,19 +187,16 @@ io.on('connection', (socket) => {
         }
     });
 
+    // --- DECONNEXION ---
     socket.on('disconnect', () => {
-         console.log(`❌ Départ : ${socket.id}`);
-         if (io.engine.clientsCount === 0) {
-             console.log("🧹 Reset Serveur");
-             players = [];
-             gameStarted = false;
-             lastWinnerId = null;
-             board = [];
-         }
+         console.log(`⚠️ Perte de connexion : ${socket.id}`);
+         // IMPORTANT : ON NE SUPPRIME PLUS LES JOUEURS ICI !
+         // Ils restent en mémoire "fantôme" en attendant leur retour.
+         // Seul un redémarrage manuel du serveur via Render effacera la liste.
     });
 });
 
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-    console.log(`⚡ SERVEUR V6 (FIX DISTRIBUTION + NOMS) PRÊT`);
+    console.log(`⚡ SERVEUR STABLE (Persistant) PRÊT`);
 });
