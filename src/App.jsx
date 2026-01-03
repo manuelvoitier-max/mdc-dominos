@@ -581,7 +581,7 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable, socket, user }) => {
         const myPseudo = user ? user.pseudo : "Invité";
         socket.emit('join_game', myPseudo);
 
-        // MODIFICATION ICI : On récupère 'serverData' (les cartes et les noms)
+        // ICI : On ajoute '(serverData)' pour récupérer les dominos envoyés par le serveur
         socket.once('game_start', (serverData) => {
             onJoinTable({
                 mode: 'multi',
@@ -590,7 +590,7 @@ const LobbyScreen = ({ onBack, onJoinTable, onCreateTable, socket, user }) => {
                 stake: table.stake,
                 currency: 'gold',
                 difficulty: 'medium',
-                initialData: serverData // <--- ON TRANSMET LE PAQUET AU JEU !
+                initialData: serverData // <--- AJOUT CRUCIAL : On transmet le paquet au jeu !
             });
         });
     };
@@ -998,29 +998,29 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
   useEffect(() => {
       if (config.mode === 'multi') {
           
-          // On crée une fonction commune pour éviter de répéter le code
-          const handleGameStart = (serverData) => {
-              console.log("🎮 START REÇU (Socket ou Lobby)", serverData);
+          // Fonction pour traiter les données reçues (soit du Lobby, soit du Socket)
+          const handleGameData = (serverData) => {
+              console.log("🎮 DONNÉES REÇUES :", serverData);
               
               setGameState(prev => {
                   const myIdx = serverData.myIndex;
-                  const allPlayers = serverData.players || []; 
-
-                  // 1. CORRECTION ORTHOGRAPHE VARIABLE
-                  const nextIdx = (myIdx + 1) % 3;       
-                  const afterNextIndex = (myIdx + 2) % 3; // <--- C'est corrigé ici (C'était 'Idx' avant)
+                  const allPlayers = serverData.players || [];
                   
+                  // Calcul des positions (Gauche / Droite)
+                  const nextIndex = (myIdx + 1) % 3;       
+                  const afterNextIndex = (myIdx + 2) % 3;
                   const localTurnIndex = (serverData.turnIndex - myIdx + 3) % 3;
+
                   const newPlayers = [...prev.players];
 
-                  // 2. MISE À JOUR DES JOUEURS
+                  // 1. MOI : Je mets mes dominos reçus dans ma main !
                   newPlayers[0].name = allPlayers[myIdx]?.name || "Moi";
-                  newPlayers[0].hand = serverData.hand;
+                  newPlayers[0].hand = serverData.hand; // <--- C'est ici que tes dominos arrivent
 
-                  newPlayers[1].name = allPlayers[nextIdx]?.name || "Attente...";
-                  newPlayers[1].hand = allPlayers[nextIdx]?.hand || [];
+                  // 2. ADVERSAIRES
+                  newPlayers[1].name = allPlayers[nextIndex]?.name || "Attente...";
+                  newPlayers[1].hand = allPlayers[nextIndex]?.hand || []; // Souvent vide car caché
 
-                  // Maintenant 'afterNextIndex' existe bien !
                   newPlayers[2].name = allPlayers[afterNextIndex]?.name || "Attente...";
                   newPlayers[2].hand = allPlayers[afterNextIndex]?.hand || [];
 
@@ -1036,15 +1036,15 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
               setTimeLeft(15);
           };
 
-          // A. On écoute le socket (pour les parties suivantes)
-          socket.on('game_start', handleGameStart);
-
-          // B. CORRECTION TIMING : Si on vient du Lobby avec des données, on lance TOUT DE SUITE !
+          // CAS 1 : On vient d'arriver du Lobby avec les dominos en main -> On charge direct !
           if (config.initialData) {
-              handleGameStart(config.initialData);
+              handleGameData(config.initialData);
           }
 
-          // C. Mise à jour du plateau
+          // CAS 2 : On écoute quand même le socket (pour la manche suivante)
+          socket.on('game_start', handleGameData);
+
+          // ... (Le reste : board_update reste identique à ce que tu as)
           socket.on('board_update', (data) => {
               const audio = new Audio('https://actions.google.com/sounds/v1/impacts/wood_plank_flick.ogg');
               audio.play().catch(e => {});
@@ -1053,6 +1053,7 @@ const GameScreen = ({ config, onExit, onWin, onPartieEnd, user, onDoubleWin, soc
                   const myIdx = prev.myServerIndex !== undefined ? prev.myServerIndex : 0;
                   const localTurnIndex = (data.turnIndex - myIdx + 3) % 3;
 
+                  // Mise à jour de MA main pour enlever le domino joué
                   const newPlayers = prev.players.map(p => {
                       if (p.id === 0) {
                            const idsOnBoard = data.board.map(b => b.id);
