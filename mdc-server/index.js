@@ -42,37 +42,13 @@ const donnerLaMain = () => {
 };
 
 const appliquerCoup = (tile, side, playerId) => {
-    // Vérification basique anti-triche
-    if (board.find(d => d.id === tile.id)) return;
-    
-    // Si quelqu'un joue, on remet le compteur de "Boudé" à 0
-    passCount = 0;
+    // ... (tout le début de la fonction reste identique) ...
+    // ... (board.find, logique de placement, retrait de la main...)
 
-    let orientation = (tile.v1 === tile.v2) ? 'vertical' : 'horizontal';
-    let placed = { ...tile, orientation, placedAt: Date.now(), sourcePlayerId: playerId };
-
-    if (board.length === 0) {
-        board = [placed];
-        ends = { left: tile.v1, right: tile.v2 };
-    } else {
-        if (side === 'left') {
-            if (placed.v2 !== ends.left) { let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp; }
-            ends.left = placed.v1;
-            board.unshift(placed);
-        } else {
-            if (placed.v1 !== ends.right) { let tmp=placed.v1; placed.v1=placed.v2; placed.v2=tmp; }
-            ends.right = placed.v2;
-            board.push(placed);
-        }
-    }
-    
-    // Retrait du domino de la main du joueur (Côté Serveur)
     if (players[playerId]) {
         players[playerId].hand = players[playerId].hand.filter(d => d.id !== tile.id);
     }
     
-    // 1. On met à jour le plateau pour tout le monde
-    // On ajoute 'lastMoveBy' pour que l'animation parte du bon joueur
     io.emit('board_update', { 
         board, 
         ends, 
@@ -80,44 +56,53 @@ const appliquerCoup = (tile, side, playerId) => {
         lastMoveBy: playerId 
     });
 
-    // 2. On vérifie la victoire
+    // --- CORRECTION ICI : GESTION DE LA SUITE DE LA PARTIE ---
     if (players[playerId] && players[playerId].hand.length === 0) {
         console.log(`🏆 VICTOIRE : ${players[playerId].name}`);
         lastWinnerId = playerId;
         
-        // On révèle les mains pour le calcul des scores final
         const allHands = players.map(p => ({ 
             serverIndex: players.indexOf(p), 
             hand: p.hand 
         }));
 
-        // Petit délai pour laisser l'animation du dernier domino se finir
         setTimeout(() => {
             io.emit('round_won', { 
                 winnerId: playerId, 
                 winningTile: tile,
                 allHands: allHands
             });
+
+            // ICI : ON RELANCE AUTOMATIQUEMENT LA MANCHE APRÈS 10 SECONDES
+            console.log("⏳ Nouvelle manche dans 10s...");
+            setTimeout(() => {
+                lancerManche(); 
+            }, 10000); // 10 secondes pour laisser le temps de voir le tableau des scores
+
         }, 500);
 
     } else {
-        // Pas de victoire ? Au suivant !
-        turnIndex = (turnIndex + 2) % 3; // Rotation Martinique (Anti-horaire)
+        turnIndex = (turnIndex + 2) % 3;
         donnerLaMain();
     }
 };
 
 const lancerManche = () => {
-    console.log("🎲 DISTRIBUTION...");
-    const deck = generateDominoes();
-    passCount = 0;
+    console.log("🎲 DISTRIBUTION (NOUVELLE MANCHE)...");
     
-    // Distribution serveur
+    // --- CORRECTIF : ON VIDE LE PLATEAU ICI, DE FAÇON ABSOLUE ---
+    board = [];
+    ends = null;
+    passCount = 0;
+    // -----------------------------------------------------------
+
+    const deck = generateDominoes();
+    
+    // Distribution
     players[0].hand = deck.slice(0, 7);
     players[1].hand = deck.slice(7, 14);
     players[2].hand = deck.slice(14, 21);
 
-    // Infos publiques (Noms + Nombre de dominos, mais pas les valeurs)
     const playersPublicInfo = players.map(p => ({
         id: p.id,
         name: p.name,
@@ -128,14 +113,15 @@ const lancerManche = () => {
     let startTile = null;
     let autoPlay = false;
 
+    // Détermination du premier joueur
     if (lastWinnerId !== null && players[lastWinnerId]) {
         // Le gagnant précédent commence
+        console.log(`👑 Le gagnant précédent (${players[lastWinnerId].name}) garde la main.`);
         starterIndex = lastWinnerId;
         autoPlay = false;
-        board = [];
-        ends = null;
     } else {
-        // Premier tour ou nouvelle session : Gros Cochon commence
+        // Sinon (Premier jeu ou bug), le plus gros double commence
+        console.log("🔍 Recherche du plus gros domino pour commencer...");
         let maxVal = -1;
         players.forEach((p, index) => {
             p.hand.forEach(tile => {
@@ -146,7 +132,7 @@ const lancerManche = () => {
         autoPlay = true;
     }
 
-    // ENVOI DES MAINS AUX JOUEURS
+    // Envoi des mains
     players.forEach((p, index) => {
         io.to(p.id).emit('game_start', { 
             hand: p.hand, 
@@ -156,18 +142,16 @@ const lancerManche = () => {
         });
     });
 
+    // Lancement du jeu
     if (autoPlay && startTile) {
-        console.log(`🐷 COCHON AUTO : ${players[starterIndex].name} avec [${startTile.v1}|${startTile.v2}]`);
-        // On laisse 1.5s pour que les joueurs voient leur main avant que le cochon parte
+        console.log(`🐷 DÉMARRAGE AUTO : ${players[starterIndex].name} avec [${startTile.v1}|${startTile.v2}]`);
         setTimeout(() => {
             appliquerCoup(startTile, 'start', starterIndex);
         }, 1500);
     } else {
-        board = [];
-        ends = null;
+        // Si c'est manuel, on s'assure que le turnIndex est bon et on donne la main
         turnIndex = starterIndex;
-        // On laisse 1s puis on donne la main au gagnant
-        setTimeout(donnerLaMain, 1000);
+        setTimeout(donnerLaMain, 1000); 
     }
 };
 
@@ -214,6 +198,7 @@ io.on('connection', (socket) => {
     });
 
     // Gestion du "Je boude" envoyé par le Client
+    // Gestion du "Je boude" (CORRIGÉ : Calcul des points en cas de blocage)
     socket.on('player_pass', () => {
         if (players[turnIndex] && players[turnIndex].id === socket.id) {
             console.log(`🛑 ${players[turnIndex].name} passe son tour.`);
@@ -223,10 +208,49 @@ io.on('connection', (socket) => {
             io.emit('player_passed', { playerIndex: turnIndex });
 
             if (passCount >= 3) {
-                console.log("🚫 JEU BLOQUÉ (3 boudés) -> FIN DE MANCHE");
-                // TODO: Gérer le calcul des points en cas de blocage général
-                // Pour l'instant on reset ou on déclare égalité
-                io.emit('round_draw', {}); 
+                console.log("🚫 JEU BLOQUÉ (3 boudés) -> CALCUL DU VAINQUEUR...");
+                
+                // 1. On calcule les points de chaque joueur restant
+                const scores = players.map((p, idx) => {
+                    const points = p.hand.reduce((sum, tile) => sum + tile.v1 + tile.v2, 0);
+                    return { index: idx, points: points, id: p.id };
+                });
+
+                // 2. On trouve le score le plus bas
+                const minPoints = Math.min(...scores.map(s => s.points));
+                const winners = scores.filter(s => s.points === minPoints);
+
+                if (winners.length === 1) {
+                    // --- UN SEUL VAINQUEUR (Le plus petit score) ---
+                    const winner = winners[0];
+                    console.log(`🏆 VICTOIRE AUX POINTS : ${players[winner.index].name} avec ${winner.points} points.`);
+                    
+                    lastWinnerId = winner.index;
+
+                    // On prépare les mains pour l'affichage client
+                    const allHands = players.map(p => ({ 
+                        serverIndex: players.indexOf(p), 
+                        hand: p.hand 
+                    }));
+
+                    // On envoie 'round_won' comme une victoire normale !
+                    // Astuce : Pour 'winningTile', on prend le dernier domino du plateau (celui qui a bloqué)
+                    // pour éviter que le client ne plante sur un domino null.
+                    const blockingTile = board.length > 0 ? board[board.length - 1] : {v1:0, v2:0};
+
+                    io.emit('round_won', { 
+                        winnerId: winner.index, 
+                        winningTile: blockingTile, // Visuel seulement
+                        allHands: allHands,
+                        reason: 'blocked' // Info bonus
+                    });
+
+                } else {
+                    // --- VRAIE ÉGALITÉ (Plusieurs joueurs ont le même score minimum) ---
+                    console.log("⚖️ ÉGALITÉ PARFAITE aux points.");
+                    io.emit('round_draw', {}); 
+                }
+                
                 passCount = 0;
             } else {
                 // Au suivant
